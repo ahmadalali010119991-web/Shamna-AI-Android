@@ -559,46 +559,60 @@ jobs:
           s=s.replace(marker, marker + "\n                  view.evaluateJavascript(" + jlit + ", null);", 1)
 
           # Native WebViewClient fallback for normal navigations.
-          if "SHAMNA_NATIVE_EXTERNAL_V3" not in s:
-              pos=s.find("            @Override\n            public void onPageFinished")
-              if pos < 0: pos=s.find("        @Override\n        public void onPageFinished")
-              if pos < 0: raise SystemExit("WebViewClient insertion point missing")
-              overload=r'''
-                // SHAMNA_NATIVE_EXTERNAL_V3
+          # Avoid duplicate overrides: patch an existing WebResourceRequest override when present,
+          # otherwise insert a single override.
+          if "SHAMNA_NATIVE_EXTERNAL_V4" not in s:
+              method_pat = re.compile(
+                  r'@Override\s+public boolean shouldOverrideUrlLoading\s*\(WebView view,\s*android\.webkit\.WebResourceRequest request\)\s*\{.*?\n\s*\}',
+                  re.S
+              )
+              method = r'''
+                // SHAMNA_NATIVE_EXTERNAL_V4
                 @Override
                 public boolean shouldOverrideUrlLoading(WebView view, android.webkit.WebResourceRequest request) {
-                    android.net.Uri u=request.getUrl();
-                    if(u==null) return false;
-                    String scheme=u.getScheme()==null?"":u.getScheme().toLowerCase(java.util.Locale.ROOT);
-                    String host=u.getHost()==null?"":u.getHost().toLowerCase(java.util.Locale.ROOT);
-                    if(("http".equals(scheme)||"https".equals(scheme)) && !(host.equals("perchance.org")||host.endsWith(".perchance.org"))){
-                        try{
-                            android.content.Intent i=new android.content.Intent(android.content.Intent.ACTION_VIEW,u);
-                            i.addCategory(android.content.Intent.CATEGORY_BROWSABLE);
-                            startActivity(i);
-                            return true;
-                        }catch(Exception ignored){}
+                    android.net.Uri u = request.getUrl();
+                    if (u == null) return false;
+
+                    String scheme = u.getScheme() == null ? "" : u.getScheme().toLowerCase(java.util.Locale.ROOT);
+                    String host = u.getHost() == null ? "" : u.getHost().toLowerCase(java.util.Locale.ROOT);
+
+                    if ("http".equals(scheme) || "https".equals(scheme)) {
+                        boolean internal = host.equals("perchance.org") || host.endsWith(".perchance.org");
+                        if (!internal) {
+                            try {
+                                android.content.Intent i = new android.content.Intent(android.content.Intent.ACTION_VIEW, u);
+                                i.addCategory(android.content.Intent.CATEGORY_BROWSABLE);
+                                startActivity(i);
+                                return true;
+                            } catch (Exception ignored) {}
+                        }
                     }
                     return false;
                 }
-
-                @Override
-                public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                    try{
-                        android.net.Uri u=android.net.Uri.parse(url);
-                        String scheme=u.getScheme()==null?"":u.getScheme().toLowerCase(java.util.Locale.ROOT);
-                        String host=u.getHost()==null?"":u.getHost().toLowerCase(java.util.Locale.ROOT);
-                        if(("http".equals(scheme)||"https".equals(scheme)) && !(host.equals("perchance.org")||host.endsWith(".perchance.org"))){
-                            android.content.Intent i=new android.content.Intent(android.content.Intent.ACTION_VIEW,u);
-                            i.addCategory(android.content.Intent.CATEGORY_BROWSABLE);
-                            startActivity(i);
-                            return true;
-                        }
-                    }catch(Exception ignored){}
-                    return false;
-                }
               '''
-              s=s[:pos]+overload+"\n"+s[pos:]
+
+              if method_pat.search(s):
+                  s = method_pat.sub(method.strip(), s, count=1)
+              else:
+                  pos=s.find("            @Override\n            public void onPageFinished")
+                  if pos < 0: pos=s.find("        @Override\n        public void onPageFinished")
+                  if pos < 0: raise SystemExit("WebViewClient insertion point missing")
+                  s=s[:pos]+method+"\n"+s[pos:]
+
+              # Remove any duplicate legacy String overload we may have injected in prior workflow logic.
+              dup_pat = re.compile(
+                  r'\n\s*@Override\s+public boolean shouldOverrideUrlLoading\s*\(WebView view,\s*String url\)\s*\{.*?\n\s*\}',
+                  re.S
+              )
+              seen = 0
+              def keep_first(m):
+                  nonlocal_seen = None
+                  return ""
+              # If multiple String overloads exist, keep the first only.
+              matches=list(dup_pat.finditer(s))
+              if len(matches) > 1:
+                  for m in reversed(matches[1:]):
+                      s=s[:m.start()]+s[m.end():]
 
           p.write_text(s,encoding="utf-8")
           print("Robust download/open/external-browser handling applied")
