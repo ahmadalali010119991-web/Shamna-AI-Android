@@ -21,25 +21,49 @@ jobs:
           java-version: '17'
 
       - name: Install Android SDK 35
+        shell: bash
         run: |
-          yes | sdkmanager --licenses || true
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
 
-      - name: Set up Gradle
+          if [ ! -f "$SDKMANAGER" ]; then
+            echo "sdkmanager not found at expected path:"
+            echo "$SDKMANAGER"
+            echo "ANDROID_HOME=$ANDROID_HOME"
+            find "$ANDROID_HOME" -type f -name sdkmanager 2>/dev/null | head -20
+            exit 1
+          fi
+
+          yes | "$SDKMANAGER" --licenses || true
+
+          "$SDKMANAGER" \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
+
+      - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
       - name: Extract Shamna AI project
+        shell: bash
         run: |
           unzip -o Shamna_AI_Android_Project.zip
+          echo "Project extracted"
+          ls -la
+          ls -la app
 
       - name: Fix Android permission code
+        shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
 
           p = Path("app/src/main/java/com/shamna/ai/MainActivity.java")
+
+          if not p.exists():
+              raise SystemExit(f"MainActivity.java not found: {p}")
+
           s = p.read_text(encoding="utf-8")
 
           s = s.replace(
@@ -53,18 +77,48 @@ jobs:
           )
 
           p.write_text(s, encoding="utf-8")
+
+          print("MainActivity.java updated successfully")
           PY
 
-      - name: Build APK
+      - name: Verify project files
+        shell: bash
         run: |
-          gradle :app:assembleDebug --stacktrace
+          test -f settings.gradle
+          test -f build.gradle
+          test -f app/build.gradle
+          test -f app/src/main/AndroidManifest.xml
+          echo "Required Android project files found"
+
+      - name: Build debug APK
+        shell: bash
+        run: |
+          gradle :app:assembleDebug --stacktrace --no-daemon
+
+      - name: Verify APK exists
+        shell: bash
+        run: |
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+
+          if [ ! -f "$APK" ]; then
+            echo "APK was not generated"
+            find app/build/outputs -type f 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "APK generated successfully:"
+          ls -lh "$APK"
 
       - name: Rename APK
+        shell: bash
         run: |
           cp app/build/outputs/apk/debug/app-debug.apk Shamna-AI.apk
+          ls -lh Shamna-AI.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Shamna-AI-APK
           path: Shamna-AI.apk
+          if-no-files-found: error
+          retention-days: 30
