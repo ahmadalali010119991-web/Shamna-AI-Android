@@ -1,0 +1,72 @@
+name: Build Shamna AI APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 35
+        run: |
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Extract Shamna AI project
+        run: |
+          unzip -o Shamna_AI_Android_Project.zip
+
+      - name: Fix Android permission code
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path("app/src/main/java/com/shamna/ai/MainActivity.java")
+          s = p.read_text(encoding="utf-8")
+
+          s = s.replace(
+              "checkSelfPermission(MainActivity.this, Manifest.permission.CAMERA)",
+              "checkSelfPermission(Manifest.permission.CAMERA)"
+          )
+
+          s = s.replace(
+              "checkSelfPermission(MainActivity.this, Manifest.permission.RECORD_AUDIO)",
+              "checkSelfPermission(Manifest.permission.RECORD_AUDIO)"
+          )
+
+          p.write_text(s, encoding="utf-8")
+          PY
+
+      - name: Build APK
+        run: |
+          gradle :app:assembleDebug --stacktrace
+
+      - name: Rename APK
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk Shamna-AI.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Shamna-AI-APK
+          path: Shamna-AI.apk
