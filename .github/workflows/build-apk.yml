@@ -269,161 +269,359 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
+          import re, json
 
           p = Path("app/src/main/java/com/shamna/ai/MainActivity.java")
           s = p.read_text(encoding="utf-8")
 
-          if "SHAMNA_DOWNLOAD_FIX" not in s:
-              # Find the WebView variable name from its declaration.
-              m = re.search(r'\bWebView\s+(\w+)\s*;', s)
-              if not m:
-                  m = re.search(r'\bWebView\s+(\w+)\s*=', s)
-              if not m:
-                  raise SystemExit("Could not detect WebView variable name")
-              wv = m.group(1)
+          # Load the actual generator directly inside the Android WebView.
+          # This avoids the cross-origin iframe wrapper, so generated blob/data files
+          # can be handled reliably by the native app.
+          s = s.replace("https://shamna-ai.vercel.app", "https://perchance.org/shamna-ai")
 
-              # Add a JS bridge and native download listener after the first loadUrl call.
+          # Detect WebView variable.
+          m = re.search(r'\bWebView\s+(\w+)\s*;', s) or re.search(r'\bWebView\s+(\w+)\s*=', s)
+          if not m:
+              raise SystemExit("Could not detect WebView variable name")
+          wv = m.group(1)
+
+          # Remove any previous download bridge/listener patch if present by rebuilding
+          # from the original extracted source each workflow run; the source zip itself
+          # is unchanged, so this block is applied once per build.
+          if "SHAMNA_DOWNLOAD_FIX_V2" not in s:
               anchor = re.search(r'^\s*'+re.escape(wv)+r'\.loadUrl\([^;]+\);\s*$', s, flags=re.M)
               if not anchor:
                   raise SystemExit("Could not find WebView loadUrl(...)")
 
               native = f'''
-                  // SHAMNA_DOWNLOAD_FIX
+                  // SHAMNA_DOWNLOAD_FIX_V2
                   {wv}.addJavascriptInterface(new Object() {{
-                      @android.webkit.JavascriptInterface
-                      public void saveBase64File(String dataUrl, String suggestedName, String mimeType) {{
-                          try {{
-                              String safeMime = (mimeType == null || mimeType.isEmpty()) ? "application/octet-stream" : mimeType;
-                              String ext = android.webkit.MimeTypeMap.getSingleton().getExtensionFromMimeType(safeMime);
-                              String name = (suggestedName == null || suggestedName.trim().isEmpty()) ? "Shamna-AI-file" : suggestedName.trim();
-                              if (ext != null && !ext.isEmpty() && !name.toLowerCase().endsWith("." + ext.toLowerCase())) {{
-                                  name += "." + ext;
-                              }}
-                              int comma = dataUrl.indexOf(',');
-                              String payload = comma >= 0 ? dataUrl.substring(comma + 1) : dataUrl;
-                              byte[] bytes = android.util.Base64.decode(payload, android.util.Base64.DEFAULT);
+                      private android.net.Uri saveBytes(byte[] bytes, String suggestedName, String mimeType) throws Exception {{
+                          String safeMime = (mimeType == null || mimeType.trim().isEmpty())
+                              ? "application/octet-stream" : mimeType.trim();
 
-                              java.io.File dir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
+                          String ext = android.webkit.MimeTypeMap.getSingleton().getExtensionFromMimeType(safeMime);
+                          String name = (suggestedName == null || suggestedName.trim().isEmpty())
+                              ? "Shamna-AI-file" : suggestedName.trim();
+
+                          name = name.replaceAll("[\\\\/:*?\\"<>|]", "_");
+
+                          if (ext != null && !ext.isEmpty() &&
+                              !name.toLowerCase(java.util.Locale.ROOT).endsWith("." + ext.toLowerCase(java.util.Locale.ROOT))) {{
+                              name += "." + ext;
+                          }}
+
+                          android.content.ContentResolver resolver = getContentResolver();
+
+                          if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {{
+                              android.content.ContentValues values = new android.content.ContentValues();
+                              values.put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, name);
+                              values.put(android.provider.MediaStore.MediaColumns.MIME_TYPE, safeMime);
+                              values.put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS + "/Shamna AI");
+                              values.put(android.provider.MediaStore.MediaColumns.IS_PENDING, 1);
+
+                              android.net.Uri uri = resolver.insert(
+                                  android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values
+                              );
+                              if (uri == null) throw new java.io.IOException("Unable to create download");
+
+                              try (java.io.OutputStream out = resolver.openOutputStream(uri)) {{
+                                  if (out == null) throw new java.io.IOException("Unable to open output stream");
+                                  out.write(bytes);
+                                  out.flush();
+                              }}
+
+                              values.clear();
+                              values.put(android.provider.MediaStore.MediaColumns.IS_PENDING, 0);
+                              resolver.update(uri, values, null, null);
+                              return uri;
+                          }} else {{
+                              java.io.File dir = android.os.Environment.getExternalStoragePublicDirectory(
+                                  android.os.Environment.DIRECTORY_DOWNLOADS
+                              );
                               if (!dir.exists()) dir.mkdirs();
-                              java.io.File out = new java.io.File(dir, name);
-
-                              String base = name;
-                              String suffix = "";
-                              int dot = name.lastIndexOf('.');
-                              if (dot > 0) {{
-                                  base = name.substring(0, dot);
-                                  suffix = name.substring(dot);
+                              java.io.File outFile = new java.io.File(dir, name);
+                              try (java.io.FileOutputStream out = new java.io.FileOutputStream(outFile)) {{
+                                  out.write(bytes);
+                                  out.flush();
                               }}
-                              int n = 1;
-                              while (out.exists()) {{
-                                  out = new java.io.File(dir, base + "-" + n + suffix);
-                                  n++;
-                              }}
-
-                              try (java.io.FileOutputStream fos = new java.io.FileOutputStream(out)) {{
-                                  fos.write(bytes);
-                              }}
-
                               android.media.MediaScannerConnection.scanFile(
                                   MainActivity.this,
-                                  new String[]{{out.getAbsolutePath()}},
+                                  new String[]{{outFile.getAbsolutePath()}},
                                   new String[]{{safeMime}},
                                   null
                               );
-
-                              final String msg = "تم التنزيل: " + out.getName();
-                              runOnUiThread(() -> android.widget.Toast.makeText(MainActivity.this, msg, android.widget.Toast.LENGTH_LONG).show());
-                          }} catch (Exception e) {{
-                              runOnUiThread(() -> android.widget.Toast.makeText(MainActivity.this, "تعذر تنزيل الملف", android.widget.Toast.LENGTH_LONG).show());
+                              return android.net.Uri.fromFile(outFile);
                           }}
                       }}
-                  }}, "ShamnaDownloader");
+
+                      private void openSaved(android.net.Uri uri, String mimeType) {{
+                          try {{
+                              android.content.Intent intent = new android.content.Intent(android.content.Intent.ACTION_VIEW);
+                              intent.setDataAndType(uri, mimeType == null || mimeType.isEmpty() ? "*/*" : mimeType);
+                              intent.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                              intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+                              startActivity(intent);
+                          }} catch (Exception ex) {{
+                              android.widget.Toast.makeText(
+                                  MainActivity.this,
+                                  "تم حفظ الملف في التنزيلات",
+                                  android.widget.Toast.LENGTH_LONG
+                              ).show();
+                          }}
+                      }}
+
+                      @android.webkit.JavascriptInterface
+                      public void saveDataUrl(String dataUrl, String suggestedName, String mimeType, boolean openAfter) {{
+                          try {{
+                              if (dataUrl == null || !dataUrl.startsWith("data:")) {{
+                                  throw new IllegalArgumentException("Expected data URL");
+                              }}
+                              int comma = dataUrl.indexOf(',');
+                              if (comma < 0) throw new IllegalArgumentException("Invalid data URL");
+
+                              String header = dataUrl.substring(0, comma);
+                              String payload = dataUrl.substring(comma + 1);
+
+                              String actualMime = mimeType;
+                              if (actualMime == null || actualMime.isEmpty()) {{
+                                  int colon = header.indexOf(':');
+                                  int semi = header.indexOf(';');
+                                  if (colon >= 0 && semi > colon) actualMime = header.substring(colon + 1, semi);
+                              }}
+                              if (actualMime == null || actualMime.isEmpty()) actualMime = "application/octet-stream";
+
+                              byte[] bytes;
+                              if (header.contains(";base64")) {{
+                                  bytes = android.util.Base64.decode(payload, android.util.Base64.DEFAULT);
+                              }} else {{
+                                  bytes = java.net.URLDecoder.decode(payload, "UTF-8").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                              }}
+
+                              android.net.Uri uri = saveBytes(bytes, suggestedName, actualMime);
+                              final String toast = openAfter ? "تم حفظ الملف، جارٍ فتحه" : "تم حفظ الملف في التنزيلات";
+                              runOnUiThread(() -> {{
+                                  android.widget.Toast.makeText(MainActivity.this, toast, android.widget.Toast.LENGTH_SHORT).show();
+                                  if (openAfter) openSaved(uri, actualMime);
+                              }});
+                          }} catch (Exception e) {{
+                              runOnUiThread(() -> android.widget.Toast.makeText(
+                                  MainActivity.this,
+                                  "تعذر تنزيل الملف: " + e.getClass().getSimpleName(),
+                                  android.widget.Toast.LENGTH_LONG
+                              ).show());
+                          }}
+                      }}
+
+                      @android.webkit.JavascriptInterface
+                      public void openExternal(String url) {{
+                          runOnUiThread(() -> {{
+                              try {{
+                                  android.content.Intent intent = new android.content.Intent(
+                                      android.content.Intent.ACTION_VIEW,
+                                      android.net.Uri.parse(url)
+                                  );
+                                  startActivity(intent);
+                              }} catch (Exception e) {{
+                                  android.widget.Toast.makeText(MainActivity.this, "تعذر فتح الرابط", android.widget.Toast.LENGTH_LONG).show();
+                              }}
+                          }});
+                      }}
+                  }}, "ShamnaNative");
 
                   {wv}.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {{
                       try {{
-                          if (url != null && (url.startsWith("blob:") || url.startsWith("data:"))) {{
+                          if (url == null) return;
+
+                          if (url.startsWith("blob:") || url.startsWith("data:")) {{
                               String qUrl = org.json.JSONObject.quote(url);
-                              String qMime = org.json.JSONObject.quote(mimeType == null ? "" : mimeType);
                               String qName = org.json.JSONObject.quote(
                                   android.webkit.URLUtil.guessFileName(url, contentDisposition, mimeType)
                               );
+                              String qMime = org.json.JSONObject.quote(mimeType == null ? "" : mimeType);
+
                               String js =
                                   "(async()=>{{try{{" +
                                   "const u=" + qUrl + ";" +
-                                  "let d=u;" +
-                                  "if(u.startsWith('blob:')){{const r=await fetch(u);const b=await r.blob();d=await new Promise((res,rej)=>{{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(b);}});}}" +
-                                  "window.ShamnaDownloader.saveBase64File(d," + qName + "," + qMime + ");" +
-                                  "}}catch(e){{console.error('Shamna download error',e);}}}})();";
+                                  "let data=u, mime=" + qMime + ";" +
+                                  "if(u.startsWith('blob:')){{" +
+                                  " const r=await fetch(u); const b=await r.blob(); mime=mime||b.type||'';" +
+                                  " data=await new Promise((res,rej)=>{{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(b);}});" +
+                                  "}}" +
+                                  "ShamnaNative.saveDataUrl(data," + qName + ",mime,false);" +
+                                  "}}catch(e){{console.error(e);}}}})();";
                               {wv}.evaluateJavascript(js, null);
                               return;
                           }}
 
                           android.app.DownloadManager.Request req = new android.app.DownloadManager.Request(android.net.Uri.parse(url));
-                          req.setMimeType(mimeType);
-                          req.addRequestHeader("User-Agent", userAgent);
+                          if (mimeType != null && !mimeType.isEmpty()) req.setMimeType(mimeType);
+                          if (userAgent != null) req.addRequestHeader("User-Agent", userAgent);
                           String cookie = android.webkit.CookieManager.getInstance().getCookie(url);
                           if (cookie != null) req.addRequestHeader("Cookie", cookie);
+
                           String filename = android.webkit.URLUtil.guessFileName(url, contentDisposition, mimeType);
                           req.setTitle(filename);
                           req.setDescription("Shamna AI");
                           req.setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-                          req.setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, filename);
-                          android.app.DownloadManager dm = (android.app.DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+                          req.setDestinationInExternalPublicDir(
+                              android.os.Environment.DIRECTORY_DOWNLOADS,
+                              "Shamna AI/" + filename
+                          );
+
+                          android.app.DownloadManager dm =
+                              (android.app.DownloadManager) getSystemService(DOWNLOAD_SERVICE);
                           dm.enqueue(req);
                           android.widget.Toast.makeText(MainActivity.this, "بدأ التنزيل", android.widget.Toast.LENGTH_SHORT).show();
                       }} catch (Exception e) {{
-                          android.widget.Toast.makeText(MainActivity.this, "تعذر تنزيل الملف", android.widget.Toast.LENGTH_LONG).show();
+                          android.widget.Toast.makeText(
+                              MainActivity.this,
+                              "تعذر تنزيل الملف",
+                              android.widget.Toast.LENGTH_LONG
+                          ).show();
                       }}
                   }});
               '''
 
               s = s[:anchor.end()] + "\n" + native + s[anchor.end():]
 
-              # Intercept ordinary anchor clicks for blob/data URLs before navigation fails.
-              js_patch = r"""
+              # Inject robust JS hooks into the generator page itself.
+              js = r"""
           (function(){
-            if(window.__shamnaDownloadInterceptInstalled) return;
-            window.__shamnaDownloadInterceptInstalled=true;
-            document.addEventListener('click', async function(e){
-              var a=e.target && e.target.closest ? e.target.closest('a') : null;
-              if(!a) return;
-              var href=a.getAttribute('href')||'';
-              if(!(href.startsWith('blob:')||href.startsWith('data:'))) return;
-              e.preventDefault();
+            if(window.__shamnaDownloadV2Installed) return;
+            window.__shamnaDownloadV2Installed=true;
+
+            const blobs = new Map();
+            const oldCreate = URL.createObjectURL.bind(URL);
+            const oldRevoke = URL.revokeObjectURL.bind(URL);
+
+            URL.createObjectURL = function(obj){
+              const u = oldCreate(obj);
+              try{ blobs.set(u,obj); }catch(_){}
+              return u;
+            };
+            URL.revokeObjectURL = function(u){
+              setTimeout(()=>blobs.delete(u),30000);
+              return oldRevoke(u);
+            };
+
+            async function toDataUrl(url){
+              if(url.startsWith('data:')) return {data:url,mime:(url.match(/^data:([^;,]+)/)||[])[1]||''};
+              let b = blobs.get(url);
+              if(!b){
+                const r = await fetch(url);
+                b = await r.blob();
+              }
+              const data = await new Promise((resolve,reject)=>{
+                const fr=new FileReader();
+                fr.onload=()=>resolve(fr.result);
+                fr.onerror=reject;
+                fr.readAsDataURL(b);
+              });
+              return {data,mime:b.type||''};
+            }
+
+            function guessName(url,mime,download){
+              if(download && download !== 'true') return download;
+              let ext = '';
+              if(mime==='application/pdf') ext='.pdf';
+              else if(mime==='image/png') ext='.png';
+              else if(mime==='image/jpeg') ext='.jpg';
+              else if(mime==='image/webp') ext='.webp';
+              return 'Shamna-AI-'+Date.now()+ext;
+            }
+
+            async function send(url,name,mime,openAfter){
               try{
-                var data=href;
-                var mime='';
-                if(href.startsWith('blob:')){
-                  var r=await fetch(href);
-                  var b=await r.blob();
-                  mime=b.type||'';
-                  data=await new Promise(function(resolve,reject){
-                    var fr=new FileReader();
-                    fr.onload=function(){resolve(fr.result)};
-                    fr.onerror=reject;
-                    fr.readAsDataURL(b);
-                  });
-                }else{
-                  var mm=href.match(/^data:([^;,]+)/);
-                  mime=mm?mm[1]:'';
+                if(!url) return false;
+                if(url.startsWith('blob:')||url.startsWith('data:')){
+                  const x=await toDataUrl(url);
+                  ShamnaNative.saveDataUrl(x.data,name||guessName(url,x.mime,''),mime||x.mime,!!openAfter);
+                  return true;
                 }
-                var name=a.getAttribute('download')||'Shamna-AI-file';
-                if(window.ShamnaDownloader) window.ShamnaDownloader.saveBase64File(data,name,mime);
-              }catch(err){
-                console.error('Shamna anchor download error',err);
+                if(openAfter){
+                  ShamnaNative.openExternal(url);
+                  return true;
+                }
+              }catch(e){ console.error('Shamna native file error',e); }
+              return false;
+            }
+
+            const oldOpen = window.open;
+            window.open = function(url,target,features){
+              try{
+                if(typeof url==='string' && (url.startsWith('blob:')||url.startsWith('data:'))){
+                  send(url,'Shamna-AI-'+Date.now(),'',true);
+                  return null;
+                }
+              }catch(_){}
+              return oldOpen ? oldOpen.call(window,url,target,features) : null;
+            };
+
+            const oldClick = HTMLAnchorElement.prototype.click;
+            HTMLAnchorElement.prototype.click = function(){
+              const href=this.href||this.getAttribute('href')||'';
+              if(href.startsWith('blob:')||href.startsWith('data:')){
+                send(href,guessName(href,'',this.getAttribute('download')||''),'',false);
+                return;
+              }
+              return oldClick.call(this);
+            };
+
+            document.addEventListener('click',function(e){
+              const a=e.target && e.target.closest ? e.target.closest('a') : null;
+              if(a){
+                const href=a.href||a.getAttribute('href')||'';
+                if(href.startsWith('blob:')||href.startsWith('data:')){
+                  e.preventDefault();
+                  e.stopImmediatePropagation();
+                  const label=(a.textContent||'').trim();
+                  const openAfter=/فتح|open/i.test(label);
+                  send(href,guessName(href,'',a.getAttribute('download')||''),'',openAfter);
+                  return;
+                }
+              }
+
+              // Fallback for generator buttons that don't use an <a> element.
+              const el=e.target && e.target.closest ? e.target.closest('button,[role="button"]') : null;
+              if(!el) return;
+              const txt=(el.textContent||'').trim();
+
+              if(/تحميل|تنزيل|download/i.test(txt)){
+                let box=el;
+                for(let i=0;i<6 && box;i++,box=box.parentElement){
+                  const img=box.querySelector && box.querySelector('img');
+                  if(img && img.src && (img.src.startsWith('blob:')||img.src.startsWith('data:'))){
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    send(img.src,guessName(img.src,'image/png',''),'image/png',false);
+                    return;
+                  }
+                }
+                if(blobs.size){
+                  const last=[...blobs.keys()].pop();
+                  e.preventDefault();
+                  e.stopImmediatePropagation();
+                  send(last,'Shamna-AI-'+Date.now(),'',false);
+                }
+              } else if(/فتح|open/i.test(txt) && blobs.size){
+                const last=[...blobs.keys()].pop();
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                send(last,'Shamna-AI-'+Date.now(),'',true);
               }
             },true);
           })();
               """
-              import json
-              java_js = json.dumps(js_patch, ensure_ascii=False)
-              marker = "                progressBar.setVisibility(View.GONE);"
-              if marker in s:
-                  s = s.replace(marker, marker + "\n                  view.evaluateJavascript(" + java_js + ", null);", 1)
+
+              java_js=json.dumps(js,ensure_ascii=False)
+              marker="                progressBar.setVisibility(View.GONE);"
+              if marker not in s:
+                  raise SystemExit("Could not find onPageFinished marker")
+              s=s.replace(marker, marker + "\n                  view.evaluateJavascript(" + java_js + ", null);", 1)
 
           p.write_text(s, encoding="utf-8")
-          print("WebView download support applied successfully")
+          print("Direct generator load + robust downloads applied")
           PY
 
       - name: Verify project files
