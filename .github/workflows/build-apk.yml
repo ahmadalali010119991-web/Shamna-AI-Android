@@ -53,13 +53,6 @@ jobs:
           ls -la
           ls -la app
 
-      - name: Inspect MainActivity source
-        shell: bash
-        run: |
-          echo "===== MAINACTIVITY SOURCE BEGIN ====="
-          sed -n '1,260p' app/src/main/java/com/shamna/ai/MainActivity.java
-          echo "===== MAINACTIVITY SOURCE END ====="
-
       - name: Fix Android permission code
         shell: bash
         run: |
@@ -130,6 +123,145 @@ jobs:
 
           p.write_text(s, encoding="utf-8")
           print("Safe-area fix applied successfully")
+          PY
+
+      - name: Fix keyboard chat UX
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          import re
+
+          p = Path("app/src/main/java/com/shamna/ai/MainActivity.java")
+          s = p.read_text(encoding="utf-8")
+
+          # Ensure the activity always resizes for the soft keyboard.
+          if "SHAMNA_KEYBOARD_RESIZE" not in s:
+              m = re.search(r'(^\s*setContentView\s*\([^;]+\);\s*$)', s, flags=re.M)
+              if not m:
+                  raise SystemExit("Could not find setContentView(...)")
+              native = """
+                  // SHAMNA_KEYBOARD_RESIZE
+                  getWindow().setSoftInputMode(
+                      android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+                      | android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN
+                  );
+              """
+              s = s[:m.end()] + "\n" + native + s[m.end():]
+
+          # Inject a compact mobile layout fix after each page finishes loading.
+          if "SHAMNA_KEYBOARD_WEB_FIX" not in s:
+              js = r"""
+          (function(){
+            if (window.__shamnaKeyboardFixInstalled) {
+              if (window.__shamnaApplyViewportFix) window.__shamnaApplyViewportFix();
+              return;
+            }
+            window.__shamnaKeyboardFixInstalled = true;
+
+            var style = document.createElement('style');
+            style.id = 'shamna-keyboard-fix';
+            style.textContent = [
+              'html,body{margin:0!important;max-width:100%!important;}',
+              'html{height:var(--shamna-vh,100dvh)!important;overflow:hidden!important;}',
+              'body{height:var(--shamna-vh,100dvh)!important;min-height:0!important;overflow:hidden!important;}',
+              'body>div:first-of-type{height:var(--shamna-vh,100dvh)!important;min-height:0!important;max-height:var(--shamna-vh,100dvh)!important;}',
+              'header,[role="banner"],[class*="header" i],[class*="topbar" i],[class*="top-bar" i]{flex-shrink:0!important;z-index:99999!important;}',
+              '[class*="messages" i],[class*="conversation" i],[class*="chat" i],[class*="history" i]{min-height:0!important;overflow-y:auto!important;overscroll-behavior-y:contain!important;-webkit-overflow-scrolling:touch!important;}',
+              'textarea,input,[contenteditable="true"]{scroll-margin-top:88px!important;scroll-margin-bottom:110px!important;}'
+            ].join('');
+
+            (document.head || document.documentElement).appendChild(style);
+
+            function makeLikelyChatScrollable(){
+              var all = document.querySelectorAll('div,main,section');
+              for (var i=0;i<all.length;i++){
+                var el=all[i];
+                var cs=getComputedStyle(el);
+                var r=el.getBoundingClientRect();
+                if (r.height>120 && r.width>200 && (cs.overflowY==='hidden' || cs.overflowY==='clip')) {
+                  if (el.scrollHeight > el.clientHeight + 24) {
+                    el.style.setProperty('overflow-y','auto','important');
+                    el.style.setProperty('min-height','0','important');
+                    el.style.setProperty('overscroll-behavior-y','contain','important');
+                    el.style.setProperty('-webkit-overflow-scrolling','touch','important');
+                  }
+                }
+              }
+            }
+
+            function keepTopBarVisible(){
+              var els = document.querySelectorAll('header,nav,div');
+              for (var i=0;i<els.length;i++){
+                var el=els[i], txt=(el.innerText||'').trim(), r=el.getBoundingClientRect();
+                if (txt.indexOf('Shamna AI')!==-1 && r.height>35 && r.height<140 && r.width>220) {
+                  var buttons=el.querySelectorAll('button,a,[role="button"]');
+                  if (buttons.length>=2 && r.top<160) {
+                    el.style.setProperty('position','sticky','important');
+                    el.style.setProperty('top','0','important');
+                    el.style.setProperty('z-index','2147483000','important');
+                    el.style.setProperty('flex-shrink','0','important');
+                    break;
+                  }
+                }
+              }
+            }
+
+            function applyViewportFix(){
+              var vv=window.visualViewport;
+              var h=Math.round(vv ? vv.height : window.innerHeight);
+              if(h<200) h=window.innerHeight;
+              document.documentElement.style.setProperty('--shamna-vh',h+'px');
+              makeLikelyChatScrollable();
+              keepTopBarVisible();
+            }
+
+            window.__shamnaApplyViewportFix=applyViewportFix;
+            applyViewportFix();
+
+            if(window.visualViewport){
+              visualViewport.addEventListener('resize',function(){
+                applyViewportFix();
+                setTimeout(applyViewportFix,80);
+                setTimeout(applyViewportFix,250);
+              });
+              visualViewport.addEventListener('scroll',applyViewportFix);
+            }
+            window.addEventListener('resize',applyViewportFix);
+
+            document.addEventListener('focusin',function(e){
+              var t=e.target;
+              if(!t) return;
+              var tag=(t.tagName||'').toLowerCase();
+              if(tag==='textarea' || tag==='input' || t.isContentEditable){
+                setTimeout(function(){
+                  applyViewportFix();
+                  try{t.scrollIntoView({block:'nearest',inline:'nearest',behavior:'auto'});}catch(_){}
+                },180);
+              }
+            },true);
+
+            document.addEventListener('focusout',function(){
+              setTimeout(applyViewportFix,180);
+            },true);
+
+            new MutationObserver(function(){setTimeout(applyViewportFix,30);})
+              .observe(document.documentElement,{childList:true,subtree:true});
+          })();
+              """
+              java_literal = json.dumps(js, ensure_ascii=False)
+
+              old = "                progressBar.setVisibility(View.GONE);"
+              if old not in s:
+                  raise SystemExit("Could not find onPageFinished progress line")
+              replacement = old + """
+                  // SHAMNA_KEYBOARD_WEB_FIX
+                  view.evaluateJavascript(""" + java_literal + """, null);"""
+              s = s.replace(old, replacement, 1)
+
+          p.write_text(s, encoding="utf-8")
+          print("Keyboard/chat UX fix applied successfully")
           PY
 
       - name: Verify project files
