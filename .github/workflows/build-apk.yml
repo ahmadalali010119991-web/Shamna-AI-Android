@@ -81,6 +81,55 @@ jobs:
           print("MainActivity.java updated successfully")
           PY
 
+
+      - name: Fix Android safe areas
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path("app/src/main/java/com/shamna/ai/MainActivity.java")
+          s = p.read_text(encoding="utf-8")
+
+          marker = "SHAMNA_SAFE_AREA_FIX"
+          if marker not in s:
+              code = r'''
+                  // SHAMNA_SAFE_AREA_FIX
+                  final android.view.View shamnaRoot = findViewById(android.R.id.content);
+                  if (shamnaRoot != null) {
+                      androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(
+                          shamnaRoot,
+                          (view, insets) -> {
+                              androidx.core.graphics.Insets bars = insets.getInsets(
+                                  androidx.core.view.WindowInsetsCompat.Type.systemBars()
+                              );
+                              view.setPadding(
+                                  view.getPaddingLeft(),
+                                  bars.top,
+                                  view.getPaddingRight(),
+                                  0
+                              );
+                              return insets;
+                          }
+                      );
+                      androidx.core.view.ViewCompat.requestApplyInsets(shamnaRoot);
+                  }
+
+                  getWindow().setStatusBarColor(android.graphics.Color.rgb(4, 47, 31));
+                  getWindow().setNavigationBarColor(android.graphics.Color.rgb(4, 47, 31));
+              '''
+
+              m = re.search(r'(^\s*setContentView\s*\([^;]+\);\s*$)', s, flags=re.M)
+              if not m:
+                  raise SystemExit("Could not find setContentView(...) in MainActivity.java")
+
+              s = s[:m.end()] + "\n" + code + s[m.end():]
+
+          p.write_text(s, encoding="utf-8")
+          print("Safe-area fix applied successfully")
+          PY
+
       - name: Verify project files
         shell: bash
         run: |
