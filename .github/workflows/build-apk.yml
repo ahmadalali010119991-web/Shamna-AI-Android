@@ -97,23 +97,18 @@ jobs:
               code = r'''
                   // SHAMNA_SAFE_AREA_FIX
                   final android.view.View shamnaRoot = findViewById(android.R.id.content);
-                  if (shamnaRoot != null) {
-                      androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(
-                          shamnaRoot,
-                          (view, insets) -> {
-                              androidx.core.graphics.Insets bars = insets.getInsets(
-                                  androidx.core.view.WindowInsetsCompat.Type.systemBars()
-                              );
-                              view.setPadding(
-                                  view.getPaddingLeft(),
-                                  bars.top,
-                                  view.getPaddingRight(),
-                                  0
-                              );
-                              return insets;
-                          }
-                      );
-                      androidx.core.view.ViewCompat.requestApplyInsets(shamnaRoot);
+                  if (shamnaRoot != null && android.os.Build.VERSION.SDK_INT >= 20) {
+                      shamnaRoot.setOnApplyWindowInsetsListener((view, insets) -> {
+                          int topInset = insets.getSystemWindowInsetTop();
+                          view.setPadding(
+                              view.getPaddingLeft(),
+                              topInset,
+                              view.getPaddingRight(),
+                              0
+                          );
+                          return insets;
+                      });
+                      shamnaRoot.requestApplyInsets();
                   }
 
                   getWindow().setStatusBarColor(android.graphics.Color.rgb(4, 47, 31));
