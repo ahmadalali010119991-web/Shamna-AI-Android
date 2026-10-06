@@ -361,7 +361,9 @@ jobs:
                               intent.setDataAndType(uri, mimeType == null || mimeType.isEmpty() ? "*/*" : mimeType);
                               intent.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION);
                               intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
-                              startActivity(intent);
+                              android.content.Intent chooser = android.content.Intent.createChooser(intent, "فتح الملف باستخدام");
+                              chooser.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+                              startActivity(chooser);
                           }} catch (Exception ex) {{
                               android.widget.Toast.makeText(
                                   MainActivity.this,
@@ -482,6 +484,10 @@ jobs:
                           ).show();
                       }}
                   }});
+
+                  // SHAMNA_EXTERNAL_LINKS
+                  // External http/https links must open in the user's browser, not inside the app.
+                  // Keep only Shamna/Perchance internal navigation in this WebView.
               '''
 
               s = s[:anchor.end()] + "\n" + native + s[anchor.end():]
@@ -620,6 +626,55 @@ jobs:
               if marker not in s:
                   raise SystemExit("Could not find onPageFinished marker")
               s=s.replace(marker, marker + "\n                  view.evaluateJavascript(" + java_js + ", null);", 1)
+
+              # Route external links to the system browser instead of loading them in WebView.
+              if "SHAMNA_EXTERNAL_LINKS" not in s:
+                  overload = r'''
+                @Override
+                public boolean shouldOverrideUrlLoading(WebView view, android.webkit.WebResourceRequest request) {
+                    android.net.Uri uri = request.getUrl();
+                    if (uri == null) return false;
+                    String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(java.util.Locale.ROOT);
+                    String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(java.util.Locale.ROOT);
+
+                    if ("http".equals(scheme) || "https".equals(scheme)) {
+                        boolean internal = host.equals("perchance.org") || host.endsWith(".perchance.org");
+                        if (!internal) {
+                            try {
+                                android.content.Intent intent = new android.content.Intent(android.content.Intent.ACTION_VIEW, uri);
+                                startActivity(intent);
+                                return true;
+                            } catch (Exception ignored) {}
+                        }
+                    }
+                    return false;
+                }
+
+                @Override
+                public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                    try {
+                        android.net.Uri uri = android.net.Uri.parse(url);
+                        String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(java.util.Locale.ROOT);
+                        String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(java.util.Locale.ROOT);
+
+                        if ("http".equals(scheme) || "https".equals(scheme)) {
+                            boolean internal = host.equals("perchance.org") || host.endsWith(".perchance.org");
+                            if (!internal) {
+                                android.content.Intent intent = new android.content.Intent(android.content.Intent.ACTION_VIEW, uri);
+                                startActivity(intent);
+                                return true;
+                            }
+                        }
+                    } catch (Exception ignored) {}
+                    return false;
+                }
+                  '''
+                  pos = s.find("            @Override\n            public void onPageFinished")
+                  if pos < 0:
+                      pos = s.find("        @Override\n        public void onPageFinished")
+                  if pos < 0:
+                      raise SystemExit("Could not find WebViewClient insertion point")
+                  s = s[:pos] + overload + "\n" + s[pos:]
 
           p.write_text(s, encoding="utf-8")
           print("Direct generator load + robust downloads applied")
