@@ -295,7 +295,7 @@ jobs:
                           String ext = android.webkit.MimeTypeMap.getSingleton().getExtensionFromMimeType(safeMime);
                           String name = (suggestedName == null || suggestedName.trim().isEmpty())
                               ? ("Shamna-AI-" + System.currentTimeMillis()) : suggestedName.trim();
-                          name = name.replace('/', '_').replace('\\\\', '_').replace(':', '_').replace('*', '_').replace('?', '_').replace('"', '_').replace('<', '_').replace('>', '_').replace('|', '_');
+                          name = "Shamna-AI-" + System.currentTimeMillis();
                           if (ext != null && !ext.isEmpty() && !name.toLowerCase(java.util.Locale.ROOT).endsWith("." + ext.toLowerCase(java.util.Locale.ROOT))) {
                               name += "." + ext;
                           }
