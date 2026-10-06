@@ -759,12 +759,12 @@ jobs:
                           cover.setClickable(true);
                           cover.setFocusable(true);
                           float density = getResources().getDisplayMetrics().density;
-                          int size = Math.round(42 * density);
+                          int size = Math.round(34 * density);
                           android.widget.FrameLayout.LayoutParams lp =
                               new android.widget.FrameLayout.LayoutParams(size, size);
                           lp.gravity = android.view.Gravity.TOP | android.view.Gravity.RIGHT;
-                          lp.topMargin = Math.round(2 * density);
-                          lp.rightMargin = Math.round(2 * density);
+                          lp.topMargin = Math.round(3 * density);
+                          lp.rightMargin = Math.round(3 * density);
                           cover.setElevation(10000f);
                           frame.addView(cover, lp);
                       }
