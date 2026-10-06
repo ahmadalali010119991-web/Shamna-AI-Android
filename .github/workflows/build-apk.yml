@@ -154,102 +154,193 @@ jobs:
           if "SHAMNA_KEYBOARD_WEB_FIX" not in s:
               js = r"""
           (function(){
-            if (window.__shamnaKeyboardFixInstalled) {
-              if (window.__shamnaApplyViewportFix) window.__shamnaApplyViewportFix();
-              return;
-            }
-            window.__shamnaKeyboardFixInstalled = true;
+            const TOP = window;
 
-            var style = document.createElement('style');
-            style.id = 'shamna-keyboard-fix';
-            style.textContent = [
-              'html,body{margin:0!important;max-width:100%!important;}',
-              'html{height:var(--shamna-vh,100dvh)!important;overflow:hidden!important;}',
-              'body{height:var(--shamna-vh,100dvh)!important;min-height:0!important;overflow:hidden!important;}',
-              'body>div:first-of-type{height:var(--shamna-vh,100dvh)!important;min-height:0!important;max-height:var(--shamna-vh,100dvh)!important;}',
-              'header,[role="banner"],[class*="header" i],[class*="topbar" i],[class*="top-bar" i]{flex-shrink:0!important;z-index:99999!important;}',
-              '[class*="messages" i],[class*="conversation" i],[class*="chat" i],[class*="history" i]{min-height:0!important;overflow-y:auto!important;overscroll-behavior-y:contain!important;-webkit-overflow-scrolling:touch!important;}',
-              'textarea,input,[contenteditable="true"]{scroll-margin-top:88px!important;scroll-margin-bottom:110px!important;}'
-            ].join('');
+            function install(w){
+              try{
+                if(!w || w.__shamnaNativeV5) return;
+                w.__shamnaNativeV5 = true;
+                const d = w.document;
+                const bridge = w.ShamnaNative || TOP.ShamnaNative;
+                if(!d || !bridge) return;
 
-            (document.head || document.documentElement).appendChild(style);
+                const blobMap = new Map();
 
-            function makeLikelyChatScrollable(){
-              var all = document.querySelectorAll('div,main,section');
-              for (var i=0;i<all.length;i++){
-                var el=all[i];
-                var cs=getComputedStyle(el);
-                var r=el.getBoundingClientRect();
-                if (r.height>120 && r.width>200 && (cs.overflowY==='hidden' || cs.overflowY==='clip')) {
-                  if (el.scrollHeight > el.clientHeight + 24) {
-                    el.style.setProperty('overflow-y','auto','important');
-                    el.style.setProperty('min-height','0','important');
-                    el.style.setProperty('overscroll-behavior-y','contain','important');
-                    el.style.setProperty('-webkit-overflow-scrolling','touch','important');
+                try{
+                  const c = w.URL.createObjectURL.bind(w.URL);
+                  w.URL.createObjectURL = function(obj){
+                    const u = c(obj);
+                    try{ blobMap.set(u,obj); }catch(_){}
+                    return u;
+                  };
+                }catch(_){}
+
+                function isExternal(u){
+                  try{
+                    const x = new w.URL(u, w.location.href);
+                    return (x.protocol==='http:' || x.protocol==='https:') &&
+                      x.hostname!=='perchance.org' &&
+                      !x.hostname.endsWith('.perchance.org');
+                  }catch(_){ return false; }
+                }
+
+                async function asData(u){
+                  if(u.startsWith('data:')){
+                    return {data:u,mime:(u.match(/^data:([^;,]+)/)||[])[1]||''};
+                  }
+                  let bl = blobMap.get(u);
+                  if(!bl){
+                    const r = await w.fetch(u);
+                    bl = await r.blob();
+                  }
+                  const data = await new Promise((ok,no)=>{
+                    const fr = new w.FileReader();
+                    fr.onload=()=>ok(fr.result);
+                    fr.onerror=no;
+                    fr.readAsDataURL(bl);
+                  });
+                  return {data,mime:bl.type||''};
+                }
+
+                function fileName(mime, preferred){
+                  if(preferred) return preferred;
+                  let ext='';
+                  if(mime==='application/pdf') ext='.pdf';
+                  else if(mime==='image/png') ext='.png';
+                  else if(mime==='image/jpeg') ext='.jpg';
+                  else if(mime==='image/webp') ext='.webp';
+                  return 'Shamna-AI-'+Date.now()+ext;
+                }
+
+                async function nativeSave(url, preferred, mime, openAfter){
+                  try{
+                    const x = await asData(url);
+                    bridge.saveDataUrl(x.data,fileName(mime||x.mime,preferred),mime||x.mime,!!openAfter);
+                    return true;
+                  }catch(e){
+                    try{ console.error('Shamna nativeSave',e); }catch(_){}
+                    return false;
                   }
                 }
-              }
-            }
 
-            function keepTopBarVisible(){
-              var els = document.querySelectorAll('header,nav,div');
-              for (var i=0;i<els.length;i++){
-                var el=els[i], txt=(el.innerText||'').trim(), r=el.getBoundingClientRect();
-                if (txt.indexOf('Shamna AI')!==-1 && r.height>35 && r.height<140 && r.width>220) {
-                  var buttons=el.querySelectorAll('button,a,[role="button"]');
-                  if (buttons.length>=2 && r.top<160) {
-                    el.style.setProperty('position','sticky','important');
-                    el.style.setProperty('top','0','important');
-                    el.style.setProperty('z-index','2147483000','important');
-                    el.style.setProperty('flex-shrink','0','important');
-                    break;
+                function findFileUrl(root){
+                  let el=root;
+                  for(let i=0;i<10 && el;i++,el=el.parentElement){
+                    const nodes=[el].concat(Array.from(el.querySelectorAll ? el.querySelectorAll('a,img,object,embed,source') : []));
+                    for(const n of nodes){
+                      const vals=[
+                        n.href,n.src,n.data,
+                        n.getAttribute&&n.getAttribute('href'),
+                        n.getAttribute&&n.getAttribute('src'),
+                        n.getAttribute&&n.getAttribute('data'),
+                        n.getAttribute&&n.getAttribute('data-url'),
+                        n.getAttribute&&n.getAttribute('data-download'),
+                        n.getAttribute&&n.getAttribute('data-src')
+                      ].filter(Boolean);
+                      for(const v of vals){
+                        if(typeof v==='string' && (v.startsWith('blob:')||v.startsWith('data:'))) return v;
+                      }
+                    }
                   }
+                  if(blobMap.size) return Array.from(blobMap.keys()).pop();
+                  return '';
                 }
-              }
+
+                d.addEventListener('click',function(e){
+                  try{
+                    const a=e.target && e.target.closest ? e.target.closest('a') : null;
+                    if(a){
+                      const href=a.href||a.getAttribute('href')||'';
+                      if(isExternal(href)){
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
+                        bridge.openBrowser(href);
+                        return;
+                      }
+                      if(href.startsWith('blob:')||href.startsWith('data:')){
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
+                        const txt=(a.textContent||'').trim();
+                        nativeSave(href,a.getAttribute('download')||'','',/فتح|open/i.test(txt));
+                        return;
+                      }
+                    }
+
+                    const btn=e.target && e.target.closest ? e.target.closest('button,[role="button"],a') : null;
+                    if(!btn) return;
+                    const txt=(btn.textContent||'').replace(/\s+/g,' ').trim();
+                    if(/تحميل|تنزيل|download|حفظ/i.test(txt) || /فتح|open/i.test(txt)){
+                      const u=findFileUrl(btn);
+                      if(u){
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
+                        const openAfter=/فتح|open/i.test(txt) && !/تحميل|تنزيل|download|حفظ/i.test(txt);
+                        const mime=/pdf/i.test(txt)?'application/pdf':(/صورة|image/i.test(txt)?'image/png':'');
+                        nativeSave(u,'',mime,openAfter);
+                      }
+                    }
+                  }catch(err){
+                    try{ console.error('Shamna click intercept',err); }catch(_){}
+                  }
+                },true);
+
+                const oldOpen=w.open;
+                w.open=function(url,target,features){
+                  try{
+                    if(typeof url==='string'){
+                      if(isExternal(url)){
+                        bridge.openBrowser(url);
+                        return null;
+                      }
+                      if(url.startsWith('blob:')||url.startsWith('data:')){
+                        nativeSave(url,'','',true);
+                        return null;
+                      }
+                    }
+                  }catch(_){}
+                  return oldOpen ? oldOpen.call(w,url,target,features) : null;
+                };
+
+                try{
+                  const oldClick=w.HTMLAnchorElement.prototype.click;
+                  w.HTMLAnchorElement.prototype.click=function(){
+                    try{
+                      const href=this.href||this.getAttribute('href')||'';
+                      if(isExternal(href)){
+                        bridge.openBrowser(href);
+                        return;
+                      }
+                      if(href.startsWith('blob:')||href.startsWith('data:')){
+                        nativeSave(href,this.getAttribute('download')||'','',false);
+                        return;
+                      }
+                    }catch(_){}
+                    return oldClick.call(this);
+                  };
+                }catch(_){}
+
+                function scanFrames(){
+                  try{
+                    d.querySelectorAll('iframe').forEach(fr=>{
+                      try{
+                        const cw=fr.contentWindow;
+                        if(cw) install(cw);
+                        fr.addEventListener('load',()=>{ try{ install(fr.contentWindow); }catch(_){} },{once:false});
+                      }catch(_){}
+                    });
+                  }catch(_){}
+                }
+
+                scanFrames();
+                try{
+                  new w.MutationObserver(scanFrames).observe(d.documentElement||d,{childList:true,subtree:true});
+                }catch(_){}
+              }catch(_){}
             }
 
-            function applyViewportFix(){
-              var vv=window.visualViewport;
-              var h=Math.round(vv ? vv.height : window.innerHeight);
-              if(h<200) h=window.innerHeight;
-              document.documentElement.style.setProperty('--shamna-vh',h+'px');
-              makeLikelyChatScrollable();
-              keepTopBarVisible();
-            }
-
-            window.__shamnaApplyViewportFix=applyViewportFix;
-            applyViewportFix();
-
-            if(window.visualViewport){
-              visualViewport.addEventListener('resize',function(){
-                applyViewportFix();
-                setTimeout(applyViewportFix,80);
-                setTimeout(applyViewportFix,250);
-              });
-              visualViewport.addEventListener('scroll',applyViewportFix);
-            }
-            window.addEventListener('resize',applyViewportFix);
-
-            document.addEventListener('focusin',function(e){
-              var t=e.target;
-              if(!t) return;
-              var tag=(t.tagName||'').toLowerCase();
-              if(tag==='textarea' || tag==='input' || t.isContentEditable){
-                setTimeout(function(){
-                  applyViewportFix();
-                  try{t.scrollIntoView({block:'nearest',inline:'nearest',behavior:'auto'});}catch(_){}
-                },180);
-              }
-            },true);
-
-            document.addEventListener('focusout',function(){
-              setTimeout(applyViewportFix,180);
-            },true);
-
-            new MutationObserver(function(){setTimeout(applyViewportFix,30);})
-              .observe(document.documentElement,{childList:true,subtree:true});
+            install(TOP);
           })();
-              """
+          """
               java_literal = json.dumps(js, ensure_ascii=False)
 
               old = "                progressBar.setVisibility(View.GONE);"
