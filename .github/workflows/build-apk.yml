@@ -287,18 +287,18 @@ jobs:
           if not anchor:
               raise SystemExit("Could not find loadUrl")
 
-          native = f'''
+          native = r'''
                   // SHAMNA_FILE_BRIDGE_V3
-                  {wv}.addJavascriptInterface(new Object() {{
-                      private android.net.Uri saveBytes(byte[] bytes, String suggestedName, String mime) throws Exception {{
+                  __WEBVIEW__.addJavascriptInterface(new Object() {
+                      private android.net.Uri saveBytes(byte[] bytes, String suggestedName, String mime) throws Exception {
                           String safeMime = (mime == null || mime.trim().isEmpty()) ? "application/octet-stream" : mime.trim();
                           String ext = android.webkit.MimeTypeMap.getSingleton().getExtensionFromMimeType(safeMime);
                           String name = (suggestedName == null || suggestedName.trim().isEmpty())
                               ? ("Shamna-AI-" + System.currentTimeMillis()) : suggestedName.trim();
                           name = name.replaceAll("[\\\\/:*?\\"<>|]", "_");
-                          if (ext != null && !ext.isEmpty() && !name.toLowerCase(java.util.Locale.ROOT).endsWith("." + ext.toLowerCase(java.util.Locale.ROOT))) {{
+                          if (ext != null && !ext.isEmpty() && !name.toLowerCase(java.util.Locale.ROOT).endsWith("." + ext.toLowerCase(java.util.Locale.ROOT))) {
                               name += "." + ext;
-                          }}
+                          }
 
                           android.content.ContentResolver resolver = getContentResolver();
                           android.content.ContentValues values = new android.content.ContentValues();
@@ -309,85 +309,85 @@ jobs:
 
                           android.net.Uri uri = resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
                           if (uri == null) throw new java.io.IOException("insert failed");
-                          try (java.io.OutputStream out = resolver.openOutputStream(uri)) {{
+                          try (java.io.OutputStream out = resolver.openOutputStream(uri)) {
                               if (out == null) throw new java.io.IOException("stream failed");
                               out.write(bytes);
                               out.flush();
-                          }}
+                          }
                           values.clear();
                           values.put(android.provider.MediaStore.MediaColumns.IS_PENDING, 0);
                           resolver.update(uri, values, null, null);
                           return uri;
-                      }}
+                      }
 
-                      private void openUri(android.net.Uri uri, String mime) {{
-                          try {{
+                      private void openUri(android.net.Uri uri, String mime) {
+                          try {
                               android.content.Intent v = new android.content.Intent(android.content.Intent.ACTION_VIEW);
                               v.setDataAndType(uri, (mime == null || mime.isEmpty()) ? "*/*" : mime);
                               v.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION);
                               android.content.Intent chooser = android.content.Intent.createChooser(v, "فتح الملف باستخدام");
                               chooser.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
                               startActivity(chooser);
-                          }} catch (Exception e) {{
+                          } catch (Exception e) {
                               android.widget.Toast.makeText(MainActivity.this, "تم حفظ الملف في التنزيلات", android.widget.Toast.LENGTH_LONG).show();
-                          }}
-                      }}
+                          }
+                      }
 
                       @android.webkit.JavascriptInterface
-                      public void saveDataUrl(String dataUrl, String name, String mime, boolean openAfter) {{
-                          try {{
+                      public void saveDataUrl(String dataUrl, String name, String mime, boolean openAfter) {
+                          try {
                               if (dataUrl == null || !dataUrl.startsWith("data:")) throw new IllegalArgumentException("bad data url");
                               int comma = dataUrl.indexOf(',');
                               if (comma < 0) throw new IllegalArgumentException("bad data url");
                               String header = dataUrl.substring(0, comma);
                               String payload = dataUrl.substring(comma + 1);
                               String realMime = mime;
-                              if (realMime == null || realMime.isEmpty()) {{
+                              if (realMime == null || realMime.isEmpty()) {
                                   int c = header.indexOf(':');
                                   int sc = header.indexOf(';');
                                   if (c >= 0 && sc > c) realMime = header.substring(c + 1, sc);
-                              }}
+                              }
                               if (realMime == null || realMime.isEmpty()) realMime = "application/octet-stream";
                               byte[] bytes = header.contains(";base64")
                                   ? android.util.Base64.decode(payload, android.util.Base64.DEFAULT)
                                   : java.net.URLDecoder.decode(payload, "UTF-8").getBytes(java.nio.charset.StandardCharsets.UTF_8);
                               final String fm = realMime;
                               final android.net.Uri uri = saveBytes(bytes, name, fm);
-                              runOnUiThread(() -> {{
+                              runOnUiThread(() -> {
                                   android.widget.Toast.makeText(MainActivity.this, "تم حفظ الملف في التنزيلات", android.widget.Toast.LENGTH_SHORT).show();
                                   if (openAfter) openUri(uri, fm);
-                              }});
-                          }} catch (Exception e) {{
+                              });
+                          } catch (Exception e) {
                               runOnUiThread(() -> android.widget.Toast.makeText(MainActivity.this, "تعذر تنزيل الملف", android.widget.Toast.LENGTH_LONG).show());
-                          }}
-                      }}
+                          }
+                      }
 
                       @android.webkit.JavascriptInterface
-                      public void openBrowser(String url) {{
+                      public void openBrowser(String url) {
                           if (url == null || url.isEmpty()) return;
-                          runOnUiThread(() -> {{
-                              try {{
+                          runOnUiThread(() -> {
+                              try {
                                   android.content.Intent i = new android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url));
                                   i.addCategory(android.content.Intent.CATEGORY_BROWSABLE);
                                   startActivity(i);
-                              }} catch (Exception e) {{
+                              } catch (Exception e) {
                                   android.widget.Toast.makeText(MainActivity.this, "تعذر فتح المتصفح", android.widget.Toast.LENGTH_LONG).show();
-                              }}
-                          }});
-                      }}
-                  }}, "ShamnaNative");
+                              }
+                          });
+                      }
+                  }, "ShamnaNative");
 
-                  {wv}.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {{
-                      try {{
+                  __WEBVIEW__.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {
+                      try {
                           if (url == null) return;
-                          if (url.startsWith("blob:") || url.startsWith("data:")) {{
+                          if (url.startsWith("blob:") || url.startsWith("data:")) {
                               String qu = org.json.JSONObject.quote(url);
                               String qn = org.json.JSONObject.quote(android.webkit.URLUtil.guessFileName(url, contentDisposition, mimeType));
                               String qm = org.json.JSONObject.quote(mimeType == null ? "" : mimeType);
-                              String js = "(async()=>{try{let u=" + qu + ",d=u,m=" + qm + ";if(u.startsWith('blob:')){let r=await fetch(u),b=await r.blob();m=m||b.type||'';d=await new Promise((ok,no)=>{let f=new FileReader();f.onload=()=>ok(f.result);f.onerror=no;f.readAsDataURL(b);});}ShamnaNative.saveDataUrl(d,"+qn+",m,false);}catch(e){console.error(e)}})();";
-                              {wv}.evaluateJavascript(js, null);
+                              String js = "(async()=>{try{let u=" + qu + ",d=u,m=" + qm + ";if(u.startsWith('blob:')){let r=await fetch(u),b=await r.blob();m=m||b.type||'';d=await new Promise((ok,no)=>{let f=new FileReader();f.onload=()=>ok(f.result);f.onerror=no;f.readAsDataURL(b);});}ShamnaNative.saveDataUrl(d,"+qn+",m,false);}catch(e){console.error(e)})();";
+                              __WEBVIEW__.evaluateJavascript(js, null);
                               return;
-                          }}
+                          }
                           android.app.DownloadManager.Request req = new android.app.DownloadManager.Request(android.net.Uri.parse(url));
                           if (mimeType != null && !mimeType.isEmpty()) req.setMimeType(mimeType);
                           if (userAgent != null) req.addRequestHeader("User-Agent", userAgent);
@@ -399,11 +399,12 @@ jobs:
                           req.setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, "Shamna AI/" + filename);
                           ((android.app.DownloadManager)getSystemService(DOWNLOAD_SERVICE)).enqueue(req);
                           android.widget.Toast.makeText(MainActivity.this, "بدأ التنزيل", android.widget.Toast.LENGTH_SHORT).show();
-                      }} catch (Exception e) {{
+                      } catch (Exception e) {
                           android.widget.Toast.makeText(MainActivity.this, "تعذر تنزيل الملف", android.widget.Toast.LENGTH_LONG).show();
-                      }}
-                  }});
+                      }
+                  });
           '''
+          native = native.replace("__WEBVIEW__", wv)
           s = s[:anchor.end()] + "\n" + native + s[anchor.end():]
 
           # Force any new-window navigation to external browser.
