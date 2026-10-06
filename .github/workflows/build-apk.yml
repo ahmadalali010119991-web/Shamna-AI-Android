@@ -696,6 +696,124 @@ jobs:
           print("Legacy storage compatibility added; Android 10+ remains permissionless via MediaStore")
           PY
 
+      - name: Fix microphone permissions and cover Perchance developer button
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          # ---- Manifest permissions ----
+          mp = Path("app/src/main/AndroidManifest.xml")
+          ms = mp.read_text(encoding="utf-8")
+          perms = [
+              '<uses-permission android:name="android.permission.RECORD_AUDIO" />',
+              '<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />'
+          ]
+          mend = ms.find('>')
+          if mend < 0:
+              raise SystemExit("Invalid AndroidManifest.xml")
+          for perm in perms:
+              if perm not in ms:
+                  ms = ms[:mend+1] + "\n    " + perm + ms[mend+1:]
+          mp.write_text(ms, encoding="utf-8")
+
+          # ---- MainActivity runtime permission + WebView permission bridge ----
+          p = Path("app/src/main/java/com/shamna/ai/MainActivity.java")
+          src = p.read_text(encoding="utf-8")
+
+          # Request Android RECORD_AUDIO permission at runtime.
+          if "SHAMNA_RUNTIME_MIC_PERMISSION_V1" not in src:
+              m = re.search(r'(^\\s*setContentView\\s*\\([^;]+\\);\\s*$)', src, flags=re.M)
+              if not m:
+                  raise SystemExit("setContentView not found")
+              runtime = r'''
+                  // SHAMNA_RUNTIME_MIC_PERMISSION_V1
+                  if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M
+                          && checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
+                          != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                      requestPermissions(
+                          new String[]{android.Manifest.permission.RECORD_AUDIO},
+                          7001
+                      );
+                  }
+              '''
+              src = src[:m.end()] + "\n" + runtime + src[m.end():]
+
+          # Grant WebView getUserMedia audio permission only for the current origin
+          # after Android-level microphone permission is present.
+          if "SHAMNA_WEBVIEW_MIC_PERMISSION_V1" not in src:
+              chrome = re.search(
+                  r'\\b([A-Za-z_][A-Za-z0-9_]*)\\.setWebChromeClient\\s*\\(new\\s+WebChromeClient\\s*\\(\\)\\s*\\{',
+                  src
+              )
+              if not chrome:
+                  raise SystemExit("WebChromeClient block not found")
+              pos = chrome.end()
+              method = r'''
+                      // SHAMNA_WEBVIEW_MIC_PERMISSION_V1
+                      @Override
+                      public void onPermissionRequest(final android.webkit.PermissionRequest request) {
+                          if (request == null) return;
+                          runOnUiThread(() -> {
+                              try {
+                                  java.util.ArrayList<String> allowed = new java.util.ArrayList<>();
+                                  for (String resource : request.getResources()) {
+                                      if (android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource)
+                                              && (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M
+                                              || checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
+                                              == android.content.pm.PackageManager.PERMISSION_GRANTED)) {
+                                          allowed.add(resource);
+                                      }
+                                  }
+                                  if (!allowed.isEmpty()) {
+                                      request.grant(allowed.toArray(new String[0]));
+                                  } else {
+                                      request.deny();
+                                  }
+                              } catch (Exception e) {
+                                  try { request.deny(); } catch (Exception ignored) {}
+                              }
+                          });
+                      }
+              '''
+              src = src[:pos] + "\n" + method + src[pos:]
+
+          # Native visual cover for the Perchance developer control.
+          # This is app-only, blocks taps, does not touch Perchance logic/site.
+          if "SHAMNA_NATIVE_TOOL_COVER_V1" not in src:
+              m = re.search(r'(^\\s*setContentView\\s*\\([^;]+\\);\\s*$)', src, flags=re.M)
+              if not m:
+                  raise SystemExit("setContentView not found for overlay")
+              overlay = r'''
+                  // SHAMNA_NATIVE_TOOL_COVER_V1
+                  try {
+                      android.view.View shamnaContent = findViewById(android.R.id.content);
+                      if (shamnaContent instanceof android.widget.FrameLayout) {
+                          android.widget.FrameLayout frame = (android.widget.FrameLayout) shamnaContent;
+                          android.widget.ImageView cover = new android.widget.ImageView(this);
+                          cover.setImageResource(getApplicationInfo().icon);
+                          cover.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+                          cover.setClickable(true);
+                          cover.setFocusable(true);
+                          float density = getResources().getDisplayMetrics().density;
+                          int size = Math.round(38 * density);
+                          android.widget.FrameLayout.LayoutParams lp =
+                              new android.widget.FrameLayout.LayoutParams(size, size);
+                          lp.gravity = android.view.Gravity.TOP | android.view.Gravity.END;
+                          lp.topMargin = Math.round(2 * density);
+                          lp.rightMargin = Math.round(2 * density);
+                          cover.setElevation(1000f);
+                          frame.addView(cover, lp);
+                      }
+                  } catch (Exception ignored) {}
+              '''
+              src = src[:m.end()] + "\n" + overlay + src[m.end():]
+
+          p.write_text(src, encoding="utf-8")
+          print("Microphone permission bridge and app-only developer-button cover added")
+          PY
+
       - name: Verify project files
         shell: bash
         run: |
