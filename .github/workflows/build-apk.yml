@@ -772,26 +772,50 @@ jobs:
               '''
               src = src[:insert_after] + "\n" + overlay + src[insert_after:]
 
-          if "SHAMNA_WEBVIEW_MIC_PERMISSION_V2" not in src:
-              needle = ".setWebChromeClient(new WebChromeClient() {"
-              cp = src.find(needle)
-              if cp < 0:
-                  raise SystemExit("WebChromeClient block not found")
-              brace = src.find("{", cp)
-              method = r'''
-                      // SHAMNA_WEBVIEW_MIC_PERMISSION_V2
-                      @Override
-                      public void onPermissionRequest(final android.webkit.PermissionRequest request) {
+          # Replace the existing WebChromeClient onPermissionRequest implementation
+          # instead of adding a second override.
+          sig = "public void onPermissionRequest"
+          sp = src.find(sig)
+          if sp < 0:
+              raise SystemExit("Existing onPermissionRequest method not found")
+          open_brace = src.find("{", sp)
+          if open_brace < 0:
+              raise SystemExit("onPermissionRequest opening brace not found")
+          depth = 0
+          close_brace = -1
+          i = open_brace
+          while i < len(src):
+              ch = src[i]
+              if ch == "{":
+                  depth += 1
+              elif ch == "}":
+                  depth -= 1
+                  if depth == 0:
+                      close_brace = i
+                      break
+              i += 1
+          if close_brace < 0:
+              raise SystemExit("onPermissionRequest closing brace not found")
+
+          method = r'''public void onPermissionRequest(final android.webkit.PermissionRequest request) {
+                          // SHAMNA_WEBVIEW_MIC_PERMISSION_V3
                           if (request == null) return;
                           runOnUiThread(() -> {
                               try {
                                   java.util.ArrayList<String> allowed = new java.util.ArrayList<>();
                                   for (String resource : request.getResources()) {
-                                      if (android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource)
-                                              && (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M
-                                              || checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
-                                              == android.content.pm.PackageManager.PERMISSION_GRANTED)) {
-                                          allowed.add(resource);
+                                      if (android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource)) {
+                                          if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M
+                                                  || checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
+                                                  == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                                              allowed.add(resource);
+                                          }
+                                      } else if (android.webkit.PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(resource)) {
+                                          if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M
+                                                  || checkSelfPermission(android.Manifest.permission.CAMERA)
+                                                  == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                                              allowed.add(resource);
+                                          }
                                       }
                                   }
                                   if (!allowed.isEmpty()) {
@@ -803,9 +827,8 @@ jobs:
                                   try { request.deny(); } catch (Exception ignored) {}
                               }
                           });
-                      }
-              '''
-              src = src[:brace+1] + "\n" + method + src[brace+1:]
+                      }'''
+          src = src[:sp] + method + src[close_brace+1:]
 
           p.write_text(src, encoding="utf-8")
           print("Microphone permissions and native developer-button cover patched")
