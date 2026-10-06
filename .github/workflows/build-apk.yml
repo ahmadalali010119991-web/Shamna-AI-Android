@@ -264,6 +264,168 @@ jobs:
           print("Keyboard/chat UX fix applied successfully")
           PY
 
+      - name: Fix WebView downloads
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path("app/src/main/java/com/shamna/ai/MainActivity.java")
+          s = p.read_text(encoding="utf-8")
+
+          if "SHAMNA_DOWNLOAD_FIX" not in s:
+              # Find the WebView variable name from its declaration.
+              m = re.search(r'\bWebView\s+(\w+)\s*;', s)
+              if not m:
+                  m = re.search(r'\bWebView\s+(\w+)\s*=', s)
+              if not m:
+                  raise SystemExit("Could not detect WebView variable name")
+              wv = m.group(1)
+
+              # Add a JS bridge and native download listener after the first loadUrl call.
+              anchor = re.search(r'^\s*'+re.escape(wv)+r'\.loadUrl\([^;]+\);\s*$', s, flags=re.M)
+              if not anchor:
+                  raise SystemExit("Could not find WebView loadUrl(...)")
+
+              native = f'''
+                  // SHAMNA_DOWNLOAD_FIX
+                  {wv}.addJavascriptInterface(new Object() {{
+                      @android.webkit.JavascriptInterface
+                      public void saveBase64File(String dataUrl, String suggestedName, String mimeType) {{
+                          try {{
+                              String safeMime = (mimeType == null || mimeType.isEmpty()) ? "application/octet-stream" : mimeType;
+                              String ext = android.webkit.MimeTypeMap.getSingleton().getExtensionFromMimeType(safeMime);
+                              String name = (suggestedName == null || suggestedName.trim().isEmpty()) ? "Shamna-AI-file" : suggestedName.trim();
+                              if (ext != null && !ext.isEmpty() && !name.toLowerCase().endsWith("." + ext.toLowerCase())) {{
+                                  name += "." + ext;
+                              }}
+                              int comma = dataUrl.indexOf(',');
+                              String payload = comma >= 0 ? dataUrl.substring(comma + 1) : dataUrl;
+                              byte[] bytes = android.util.Base64.decode(payload, android.util.Base64.DEFAULT);
+
+                              java.io.File dir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
+                              if (!dir.exists()) dir.mkdirs();
+                              java.io.File out = new java.io.File(dir, name);
+
+                              String base = name;
+                              String suffix = "";
+                              int dot = name.lastIndexOf('.');
+                              if (dot > 0) {{
+                                  base = name.substring(0, dot);
+                                  suffix = name.substring(dot);
+                              }}
+                              int n = 1;
+                              while (out.exists()) {{
+                                  out = new java.io.File(dir, base + "-" + n + suffix);
+                                  n++;
+                              }}
+
+                              try (java.io.FileOutputStream fos = new java.io.FileOutputStream(out)) {{
+                                  fos.write(bytes);
+                              }}
+
+                              android.media.MediaScannerConnection.scanFile(
+                                  MainActivity.this,
+                                  new String[]{{out.getAbsolutePath()}},
+                                  new String[]{{safeMime}},
+                                  null
+                              );
+
+                              final String msg = "تم التنزيل: " + out.getName();
+                              runOnUiThread(() -> android.widget.Toast.makeText(MainActivity.this, msg, android.widget.Toast.LENGTH_LONG).show());
+                          }} catch (Exception e) {{
+                              runOnUiThread(() -> android.widget.Toast.makeText(MainActivity.this, "تعذر تنزيل الملف", android.widget.Toast.LENGTH_LONG).show());
+                          }}
+                      }}
+                  }}, "ShamnaDownloader");
+
+                  {wv}.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {{
+                      try {{
+                          if (url != null && (url.startsWith("blob:") || url.startsWith("data:"))) {{
+                              String qUrl = org.json.JSONObject.quote(url);
+                              String qMime = org.json.JSONObject.quote(mimeType == null ? "" : mimeType);
+                              String qName = org.json.JSONObject.quote(
+                                  android.webkit.URLUtil.guessFileName(url, contentDisposition, mimeType)
+                              );
+                              String js =
+                                  "(async()=>{{try{{" +
+                                  "const u=" + qUrl + ";" +
+                                  "let d=u;" +
+                                  "if(u.startsWith('blob:')){{const r=await fetch(u);const b=await r.blob();d=await new Promise((res,rej)=>{{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(b);}});}}" +
+                                  "window.ShamnaDownloader.saveBase64File(d," + qName + "," + qMime + ");" +
+                                  "}}catch(e){{console.error('Shamna download error',e);}}}})();";
+                              {wv}.evaluateJavascript(js, null);
+                              return;
+                          }}
+
+                          android.app.DownloadManager.Request req = new android.app.DownloadManager.Request(android.net.Uri.parse(url));
+                          req.setMimeType(mimeType);
+                          req.addRequestHeader("User-Agent", userAgent);
+                          String cookie = android.webkit.CookieManager.getInstance().getCookie(url);
+                          if (cookie != null) req.addRequestHeader("Cookie", cookie);
+                          String filename = android.webkit.URLUtil.guessFileName(url, contentDisposition, mimeType);
+                          req.setTitle(filename);
+                          req.setDescription("Shamna AI");
+                          req.setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                          req.setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, filename);
+                          android.app.DownloadManager dm = (android.app.DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+                          dm.enqueue(req);
+                          android.widget.Toast.makeText(MainActivity.this, "بدأ التنزيل", android.widget.Toast.LENGTH_SHORT).show();
+                      }} catch (Exception e) {{
+                          android.widget.Toast.makeText(MainActivity.this, "تعذر تنزيل الملف", android.widget.Toast.LENGTH_LONG).show();
+                      }}
+                  }});
+              '''
+
+              s = s[:anchor.end()] + "\n" + native + s[anchor.end():]
+
+              # Intercept ordinary anchor clicks for blob/data URLs before navigation fails.
+              js_patch = r"""
+          (function(){
+            if(window.__shamnaDownloadInterceptInstalled) return;
+            window.__shamnaDownloadInterceptInstalled=true;
+            document.addEventListener('click', async function(e){
+              var a=e.target && e.target.closest ? e.target.closest('a') : null;
+              if(!a) return;
+              var href=a.getAttribute('href')||'';
+              if(!(href.startsWith('blob:')||href.startsWith('data:'))) return;
+              e.preventDefault();
+              try{
+                var data=href;
+                var mime='';
+                if(href.startsWith('blob:')){
+                  var r=await fetch(href);
+                  var b=await r.blob();
+                  mime=b.type||'';
+                  data=await new Promise(function(resolve,reject){
+                    var fr=new FileReader();
+                    fr.onload=function(){resolve(fr.result)};
+                    fr.onerror=reject;
+                    fr.readAsDataURL(b);
+                  });
+                }else{
+                  var mm=href.match(/^data:([^;,]+)/);
+                  mime=mm?mm[1]:'';
+                }
+                var name=a.getAttribute('download')||'Shamna-AI-file';
+                if(window.ShamnaDownloader) window.ShamnaDownloader.saveBase64File(data,name,mime);
+              }catch(err){
+                console.error('Shamna anchor download error',err);
+              }
+            },true);
+          })();
+              """
+              import json
+              java_js = json.dumps(js_patch, ensure_ascii=False)
+              marker = "                progressBar.setVisibility(View.GONE);"
+              if marker in s:
+                  s = s.replace(marker, marker + "\n                  view.evaluateJavascript(" + java_js + ", null);", 1)
+
+          p.write_text(s, encoding="utf-8")
+          print("WebView download support applied successfully")
+          PY
+
       - name: Verify project files
         shell: bash
         run: |
