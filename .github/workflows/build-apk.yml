@@ -53,6 +53,13 @@ jobs:
           ls -la
           ls -la app
 
+      - name: Inspect MainActivity source
+        shell: bash
+        run: |
+          echo "===== MAINACTIVITY SOURCE BEGIN ====="
+          sed -n '1,260p' app/src/main/java/com/shamna/ai/MainActivity.java
+          echo "===== MAINACTIVITY SOURCE END ====="
+
       - name: Fix Android permission code
         shell: bash
         run: |
