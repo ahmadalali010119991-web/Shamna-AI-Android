@@ -528,6 +528,28 @@ jobs:
             if(window.__shamnaNativeV3) return;
             window.__shamnaNativeV3=true;
 
+            function hidePerchanceDeveloperButton(){
+              try{
+                document.querySelectorAll('button,a,[role="button"]').forEach(function(el){
+                  const t=(el.textContent||'').trim();
+                  if(t==='🛠️' || t==='🛠'){
+                    el.style.opacity='0';
+                    el.style.pointerEvents='none';
+                    el.style.userSelect='none';
+                    el.setAttribute('aria-hidden','true');
+                    el.setAttribute('tabindex','-1');
+                  }
+                });
+              }catch(_){}
+            }
+            hidePerchanceDeveloperButton();
+            try{
+              new MutationObserver(hidePerchanceDeveloperButton).observe(
+                document.documentElement||document,
+                {childList:true,subtree:true,characterData:true}
+              );
+            }catch(_){}
+
             const blobMap=new Map();
             try{
               const c=URL.createObjectURL.bind(URL);
@@ -657,294 +679,21 @@ jobs:
           print("Robust download/open/external-browser handling applied")
           PY
 
-      - name: Harden app-only downloads and hide developer button
+      - name: Add legacy download permission
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import json, re
-
-          # Add AndroidX WebKit so the interception script can be injected at
-          # document-start in every frame, including nested/cross-origin frames.
-          g = Path("app/build.gradle")
-          gs = g.read_text(encoding="utf-8")
-          dep = "implementation 'androidx.webkit:webkit:1.12.1'"
-          if dep not in gs:
-              m = re.search(r'dependencies\\s*\\{', gs)
-              if not m:
-                  raise SystemExit("dependencies block not found")
-              gs = gs[:m.end()] + "\n    " + dep + gs[m.end():]
-              g.write_text(gs, encoding="utf-8")
-
-          p = Path("app/src/main/java/com/shamna/ai/MainActivity.java")
-          src = p.read_text(encoding="utf-8")
-
-          m = re.search(r'\\bWebView\\s+(\\w+)\\s*;', src) or re.search(r'\\bWebView\\s+(\\w+)\\s*=', src)
-          if not m:
-              raise SystemExit("WebView variable not found")
-          wv = m.group(1)
-
-          load = re.search(r'^\\s*'+re.escape(wv)+r'\\.loadUrl\\([^;]+\\);\\s*
-        shell: bash
-        run: |
-          test -f settings.gradle
-          test -f build.gradle
-          test -f app/build.gradle
-          test -f app/src/main/AndroidManifest.xml
-          echo "Required Android project files found"
-
-      - name: Build debug APK
-        shell: bash
-        run: |
-          gradle :app:assembleDebug --stacktrace --no-daemon
-
-      - name: Verify APK exists
-        shell: bash
-        run: |
-          APK="app/build/outputs/apk/debug/app-debug.apk"
-
-          if [ ! -f "$APK" ]; then
-            echo "APK was not generated"
-            find app/build/outputs -type f 2>/dev/null || true
-            exit 1
-          fi
-
-          echo "APK generated successfully:"
-          ls -lh "$APK"
-
-      - name: Rename APK
-        shell: bash
-        run: |
-          cp app/build/outputs/apk/debug/app-debug.apk Shamna-AI.apk
-          ls -lh Shamna-AI.apk
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Shamna-AI-APK
-          path: Shamna-AI.apk
-          if-no-files-found: error
-          retention-days: 30
-, src, flags=re.M)
-          if not load:
-              raise SystemExit("loadUrl not found")
-
-          docjs = r"""
-          (function(){
-            if(window.__SHAMNA_ANDROID_DOCSTART_V6__) return;
-            window.__SHAMNA_ANDROID_DOCSTART_V6__ = true;
-
-            const native = window.ShamnaNative;
-            if(!native) return;
-
-            const created = new Map();
-
-            function hideDeveloperButton(){
-              try{
-                document.querySelectorAll('button,a,[role="button"]').forEach(function(el){
-                  const t=(el.textContent||'').trim();
-                  if(t==='🛠️' || t==='🛠'){
-                    el.style.opacity='0';
-                    el.style.pointerEvents='none';
-                    el.style.userSelect='none';
-                    el.setAttribute('aria-hidden','true');
-                    el.setAttribute('tabindex','-1');
-                  }
-                });
-              }catch(_){}
-            }
-
-            function observeUi(){
-              hideDeveloperButton();
-              try{
-                new MutationObserver(hideDeveloperButton).observe(
-                  document.documentElement || document,
-                  {childList:true,subtree:true,characterData:true}
-                );
-              }catch(_){}
-            }
-
-            if(document.readyState==='loading'){
-              document.addEventListener('DOMContentLoaded',observeUi,{once:true});
-            } else {
-              observeUi();
-            }
-
-            try{
-              const originalCreate = URL.createObjectURL.bind(URL);
-              URL.createObjectURL = function(obj){
-                const u = originalCreate(obj);
-                try{ created.set(u,obj); }catch(_){}
-                return u;
-              };
-            }catch(_){}
-
-            function isExternal(u){
-              try{
-                const x=new URL(u,location.href);
-                return (x.protocol==='http:' || x.protocol==='https:') &&
-                  x.hostname!=='perchance.org' &&
-                  !x.hostname.endsWith('.perchance.org');
-              }catch(_){return false;}
-            }
-
-            function fileName(mime, preferred){
-              if(preferred) return preferred;
-              let ext='';
-              if(mime==='application/pdf') ext='.pdf';
-              else if(mime==='image/png') ext='.png';
-              else if(mime==='image/jpeg') ext='.jpg';
-              else if(mime==='image/webp') ext='.webp';
-              else if(mime==='audio/mpeg') ext='.mp3';
-              else if(mime==='audio/mp4') ext='.m4a';
-              return 'Shamna-AI-'+Date.now()+ext;
-            }
-
-            async function toDataUrl(url){
-              if(url.startsWith('data:')){
-                return {data:url,mime:(url.match(/^data:([^;,]+)/)||[])[1]||''};
-              }
-              let blob=created.get(url);
-              if(!blob){
-                const r=await fetch(url);
-                blob=await r.blob();
-              }
-              const data=await new Promise((resolve,reject)=>{
-                const fr=new FileReader();
-                fr.onload=()=>resolve(fr.result);
-                fr.onerror=reject;
-                fr.readAsDataURL(blob);
-              });
-              return {data:data,mime:blob.type||''};
-            }
-
-            async function save(url, preferred, mime, openAfter){
-              try{
-                const x=await toDataUrl(url);
-                native.saveDataUrl(
-                  x.data,
-                  fileName(mime||x.mime,preferred),
-                  mime||x.mime||'application/octet-stream',
-                  !!openAfter
-                );
-                return true;
-              }catch(e){
-                try{console.error('SHAMNA_SAVE_FAILED',e);}catch(_){}
-                return false;
-              }
-            }
-
-            function closestGeneratedUrl(root){
-              let el=root;
-              for(let depth=0; depth<12 && el; depth++,el=el.parentElement){
-                const nodes=[el].concat(Array.from(el.querySelectorAll ? el.querySelectorAll('a,img,object,embed,source') : []));
-                for(const n of nodes){
-                  const vals=[
-                    n.href,n.src,n.data,
-                    n.getAttribute&&n.getAttribute('href'),
-                    n.getAttribute&&n.getAttribute('src'),
-                    n.getAttribute&&n.getAttribute('data'),
-                    n.getAttribute&&n.getAttribute('data-url'),
-                    n.getAttribute&&n.getAttribute('data-download'),
-                    n.getAttribute&&n.getAttribute('data-file'),
-                    n.getAttribute&&n.getAttribute('data-src')
-                  ].filter(Boolean);
-                  for(const v of vals){
-                    if(typeof v==='string' && (v.startsWith('blob:')||v.startsWith('data:'))) return v;
-                  }
-                }
-              }
-              if(created.size) return Array.from(created.keys()).pop();
-              return '';
-            }
-
-            document.addEventListener('click',function(e){
-              try{
-                const a=e.target && e.target.closest ? e.target.closest('a') : null;
-                if(a){
-                  const href=a.href||a.getAttribute('href')||'';
-                  if(isExternal(href)){
-                    e.preventDefault();
-                    e.stopImmediatePropagation();
-                    native.openBrowser(href);
-                    return;
-                  }
-                  if(href.startsWith('blob:')||href.startsWith('data:')){
-                    e.preventDefault();
-                    e.stopImmediatePropagation();
-                    const txt=(a.textContent||'').trim();
-                    save(href,a.getAttribute('download')||'','',/فتح|open/i.test(txt));
-                    return;
-                  }
-                }
-
-                const b=e.target && e.target.closest ? e.target.closest('button,[role="button"],a') : null;
-                if(!b) return;
-                const txt=(b.textContent||'').replace(/\\s+/g,' ').trim();
-                if(/تحميل|تنزيل|download|حفظ|فتح|open/i.test(txt)){
-                  const u=closestGeneratedUrl(b);
-                  if(u){
-                    e.preventDefault();
-                    e.stopImmediatePropagation();
-                    const openAfter=/فتح|open/i.test(txt) && !/تحميل|تنزيل|download|حفظ/i.test(txt);
-                    const mime=/pdf/i.test(txt)?'application/pdf':(/صورة|image/i.test(txt)?'image/png':'');
-                    save(u,'',mime,openAfter);
-                  }
-                }
-              }catch(err){
-                try{console.error('SHAMNA_CLICK_FAILED',err);}catch(_){}
-              }
-            },true);
-
-            const originalOpen=window.open;
-            window.open=function(url,target,features){
-              try{
-                if(typeof url==='string'){
-                  if(isExternal(url)){native.openBrowser(url);return null;}
-                  if(url.startsWith('blob:')||url.startsWith('data:')){
-                    save(url,'','',true);
-                    return null;
-                  }
-                }
-              }catch(_){}
-              return originalOpen ? originalOpen.call(window,url,target,features) : null;
-            };
-
-            try{
-              const originalClick=HTMLAnchorElement.prototype.click;
-              HTMLAnchorElement.prototype.click=function(){
-                try{
-                  const href=this.href||this.getAttribute('href')||'';
-                  if(isExternal(href)){native.openBrowser(href);return;}
-                  if(href.startsWith('blob:')||href.startsWith('data:')){
-                    save(href,this.getAttribute('download')||'','',false);
-                    return;
-                  }
-                }catch(_){}
-                return originalClick.call(this);
-              };
-            }catch(_){}
-          })();
-          """
-
-          if "SHAMNA_ANDROID_DOCSTART_V6" not in src:
-              jlit = json.dumps(docjs, ensure_ascii=False)
-              block = f'''
-                  // SHAMNA_ANDROID_DOCSTART_V6
-                  try {{
-                      if (androidx.webkit.WebViewFeature.isFeatureSupported(androidx.webkit.WebViewFeature.DOCUMENT_START_SCRIPT)) {{
-                          androidx.webkit.WebViewCompat.addDocumentStartJavaScript(
-                              {wv},
-                              {jlit},
-                              java.util.Collections.singleton("*")
-                          );
-                      }}
-                  }} catch (Throwable ignored) {{}}
-          '''
-              src = src[:load.start()] + block + "\n" + src[load.start():]
-
-          p.write_text(src, encoding="utf-8")
-          print("App-only document-start download bridge and developer-button hiding installed")
+          p=Path("app/src/main/AndroidManifest.xml")
+          s=p.read_text(encoding="utf-8")
+          perm='<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />'
+          if 'android.permission.WRITE_EXTERNAL_STORAGE' not in s:
+              s=s.replace('<manifest', '<manifest', 1)
+              end=s.find('>')
+              if end!=-1:
+                  s=s[:end+1]+"\n    "+perm+s[end+1:]
+          p.write_text(s,encoding="utf-8")
+          print("Legacy storage compatibility added; Android 10+ remains permissionless via MediaStore")
           PY
 
       - name: Verify project files
