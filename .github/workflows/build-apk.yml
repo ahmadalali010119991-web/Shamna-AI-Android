@@ -893,17 +893,35 @@ jobs:
           # The old root-back behavior finished the Activity, which destroyed
           # the WebView and aborted any in-flight answer. Put the task in the
           # background instead, preserving the exact live WebView/session.
-          old_back = r'''        } else {
-              super.onBackPressed();
-          }'''
-          new_back = r'''        } else {
-              // SHAMNA_BACKGROUND_BACK_V1
-              moveTaskToBack(true);
-          }'''
           if "SHAMNA_BACKGROUND_BACK_V1" not in src:
-              if old_back not in src:
-                  raise SystemExit("Root onBackPressed branch not found")
-              src = src.replace(old_back, new_back, 1)
+              sig = "public void onBackPressed()"
+              sp = src.find(sig)
+              if sp < 0:
+                  raise SystemExit("onBackPressed method not found")
+              brace = src.find("{", sp)
+              if brace < 0:
+                  raise SystemExit("onBackPressed opening brace not found")
+              depth = 0
+              end = -1
+              for i in range(brace, len(src)):
+                  if src[i] == "{":
+                      depth += 1
+                  elif src[i] == "}":
+                      depth -= 1
+                      if depth == 0:
+                          end = i
+                          break
+              if end < 0:
+                  raise SystemExit("onBackPressed closing brace not found")
+              method = src[sp:end+1]
+              if "super.onBackPressed();" not in method:
+                  raise SystemExit("Root onBackPressed fallback not found")
+              method = method.replace(
+                  "super.onBackPressed();",
+                  "// SHAMNA_BACKGROUND_BACK_V1\n            moveTaskToBack(true);",
+                  1
+              )
+              src = src[:sp] + method + src[end+1:]
 
           # Resume timers explicitly when returning. We intentionally DO NOT
           # call WebView.onPause()/pauseTimers() when backgrounding because
