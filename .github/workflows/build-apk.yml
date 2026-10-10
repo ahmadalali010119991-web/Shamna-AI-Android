@@ -348,7 +348,7 @@ jobs:
                   raise SystemExit("Could not find onPageFinished progress line")
               replacement = old + """
                   // SHAMNA_KEYBOARD_WEB_FIX
-                  view.evaluateJavascript(""" + java_literal + """, null);"""
+                  view.postDelayed(() -> view.evaluateJavascript(""" + java_literal + """, null), 250);"""
               s = s.replace(old, replacement, 1)
 
           p.write_text(s, encoding="utf-8")
@@ -669,7 +669,7 @@ jobs:
           marker="                progressBar.setVisibility(View.GONE);"
           if marker not in s:
               raise SystemExit("onPageFinished marker missing")
-          s=s.replace(marker, marker + "\n                  view.evaluateJavascript(" + jlit + ", null);", 1)
+          s=s.replace(marker, marker + "\n                  view.postDelayed(() -> view.evaluateJavascript(" + jlit + ", null), 350);", 1)
 
           # External links are handled at page level and via WebChromeClient.
           # Do not inject another shouldOverrideUrlLoading override because the base
@@ -876,20 +876,6 @@ jobs:
               '''
               src = src.replace(needle, needle + "\n" + code, 1)
 
-          # Keep the page prepared off-screen so returning to the app does not
-          # force a fresh render/page lifecycle.
-          if "SHAMNA_OFFSCREEN_PRERASTER_V1" not in src:
-              needle = "WebSettings settings = webView.getSettings();"
-              if needle not in src:
-                  raise SystemExit("WebSettings initialization not found")
-              code = r'''
-                  // SHAMNA_OFFSCREEN_PRERASTER_V1
-                  if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                      settings.setOffscreenPreRaster(true);
-                  }
-              '''
-              src = src.replace(needle, needle + "\n" + code, 1)
-
           # The old root-back behavior finished the Activity, which destroyed
           # the WebView and aborted any in-flight answer. Put the task in the
           # background instead, preserving the exact live WebView/session.
@@ -985,6 +971,59 @@ jobs:
 
           p.write_text(src, encoding="utf-8")
           print("Background WebView/session continuity patch applied")
+          PY
+
+      - name: Speed up initial WebView rendering
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path("app/src/main/java/com/shamna/ai/MainActivity.java")
+          src = p.read_text(encoding="utf-8")
+
+          # Hardware acceleration at the view level and normal WebView cache.
+          if "SHAMNA_STARTUP_PERF_V1" not in src:
+              needle = "WebSettings settings = webView.getSettings();"
+              if needle not in src:
+                  raise SystemExit("WebSettings initialization not found")
+              code = r'''
+                  // SHAMNA_STARTUP_PERF_V1
+                  webView.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null);
+                  settings.setCacheMode(android.webkit.WebSettings.LOAD_DEFAULT);
+                  settings.setLoadsImagesAutomatically(true);
+              '''
+              src = src.replace(needle, needle + "\n" + code, 1)
+
+          # Show the page as soon as Chromium commits visible content instead of
+          # keeping the loading overlay up until every subresource finishes.
+          if "SHAMNA_COMMIT_VISIBLE_V1" not in src:
+              needle = "webView.setWebViewClient(new WebViewClient() {"
+              cp = src.find(needle)
+              if cp < 0:
+                  raise SystemExit("WebViewClient block not found")
+              brace = src.find("{", cp)
+              method = r'''
+                  // SHAMNA_COMMIT_VISIBLE_V1
+                  @Override
+                  public void onPageCommitVisible(android.webkit.WebView view, String url) {
+                      try {
+                          if (progressBar != null) progressBar.setVisibility(android.view.View.GONE);
+                          view.setVisibility(android.view.View.VISIBLE);
+                      } catch (Exception ignored) {}
+                  }
+              '''
+              src = src[:brace+1] + "\n" + method + src[brace+1:]
+
+          # Do not hide the WebView during navigation.
+          src = src.replace(
+              "progressBar.setVisibility(View.VISIBLE);",
+              "progressBar.setVisibility(View.VISIBLE);\n                view.setVisibility(View.VISIBLE);",
+              1
+          )
+
+          p.write_text(src, encoding="utf-8")
+          print("Startup rendering performance patch applied")
           PY
 
       - name: Verify project files
