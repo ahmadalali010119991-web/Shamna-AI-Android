@@ -60,7 +60,7 @@ jobs:
           cat app/src/main/AndroidManifest.xml
           echo
           echo "===== MainActivity lifecycle / WebView declarations ====="
-          grep -nE "class MainActivity|WebView|onPause|onResume|onStop|onStart|onDestroy|onSaveInstanceState|onRestoreInstanceState|loadUrl|reload|finish\\(" app/src/main/java/com/shamna/ai/MainActivity.java || true
+          nl -ba app/src/main/java/com/shamna/ai/MainActivity.java | sed -n "27,250p"
 
       - name: Fix Android permission code
         shell: bash
