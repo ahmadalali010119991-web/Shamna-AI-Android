@@ -53,6 +53,15 @@ jobs:
           ls -la
           ls -la app
 
+      - name: Inspect lifecycle configuration
+        shell: bash
+        run: |
+          echo "===== AndroidManifest.xml ====="
+          cat app/src/main/AndroidManifest.xml
+          echo
+          echo "===== MainActivity lifecycle / WebView declarations ====="
+          grep -nE "class MainActivity|WebView|onPause|onResume|onStop|onStart|onDestroy|onSaveInstanceState|onRestoreInstanceState|loadUrl|reload|finish\\(" app/src/main/java/com/shamna/ai/MainActivity.java || true
+
       - name: Fix Android permission code
         shell: bash
         run: |
