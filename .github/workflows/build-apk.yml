@@ -53,6 +53,14 @@ jobs:
           ls -la
           ls -la app
 
+      - name: Inspect base Android layout
+        shell: bash
+        run: |
+          echo "===== activity_main.xml ====="
+          cat app/src/main/res/layout/activity_main.xml || true
+          echo "===== MainActivity relevant ====="
+          grep -n -E "setContentView|webView|progressBar|setOnApplyWindowInsetsListener|setSoftInputMode" app/src/main/java/com/shamna/ai/MainActivity.java || true
+
       - name: Fix Android permission code
         shell: bash
         run: |
