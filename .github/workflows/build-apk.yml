@@ -949,7 +949,7 @@ jobs:
                           float density = getResources().getDisplayMetrics().density;
 
                           // About 15% larger than the approved mockup corner treatment.
-                          int cornerSize = Math.round(32f * density);
+                          int cornerSize = Math.round(37f * density);
 
                           int[] cornerKinds = new int[] {
                               GoldCornerView.TOP_LEFT,
