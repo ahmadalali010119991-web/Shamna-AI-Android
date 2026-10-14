@@ -125,6 +125,79 @@ jobs:
           print("Safe-area fix applied successfully")
           PY
 
+      - name: Eliminate bottom interface gap
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path("app/src/main/java/com/shamna/ai/MainActivity.java")
+          src = p.read_text(encoding="utf-8")
+
+          # Make every native layer fill the available window and use the exact
+          # Shamna background so no white/black strip can appear at the bottom.
+          if "SHAMNA_BOTTOM_GAP_FIX_V1" not in src:
+              needle = "webView = findViewById(R.id.webView);"
+              if needle not in src:
+                  raise SystemExit("WebView initialization not found")
+
+              code = r'''
+                  // SHAMNA_BOTTOM_GAP_FIX_V1
+                  final int shamnaBg = android.graphics.Color.rgb(4, 47, 31);
+                  try {
+                      getWindow().getDecorView().setBackgroundColor(shamnaBg);
+                      getWindow().setNavigationBarColor(shamnaBg);
+
+                      android.view.View content = findViewById(android.R.id.content);
+                      if (content != null) {
+                          content.setBackgroundColor(shamnaBg);
+                          android.view.ViewGroup.LayoutParams cp = content.getLayoutParams();
+                          if (cp != null) {
+                              cp.width = android.view.ViewGroup.LayoutParams.MATCH_PARENT;
+                              cp.height = android.view.ViewGroup.LayoutParams.MATCH_PARENT;
+                              content.setLayoutParams(cp);
+                          }
+                      }
+
+                      webView.setBackgroundColor(shamnaBg);
+                      android.view.ViewGroup.LayoutParams wp = webView.getLayoutParams();
+                      if (wp != null) {
+                          wp.width = android.view.ViewGroup.LayoutParams.MATCH_PARENT;
+                          wp.height = android.view.ViewGroup.LayoutParams.MATCH_PARENT;
+                          webView.setLayoutParams(wp);
+                      }
+                  } catch (Exception ignored) {}
+              '''
+              src = src.replace(needle, needle + "\n" + code, 1)
+
+          # Prevent the same system inset from being propagated to descendants,
+          # which can create a second empty bottom band under the WebView.
+          old = """                          return insets;"""
+          new = """                          if (android.os.Build.VERSION.SDK_INT >= 20) {
+                              try { return insets.consumeSystemWindowInsets(); }
+                              catch (Exception ignored) {}
+                          }
+                          return insets;"""
+          if old in src and "consumeSystemWindowInsets" not in src:
+              src = src.replace(old, new, 1)
+
+          p.write_text(src, encoding="utf-8")
+
+          # Also harden the XML layout: root and WebView must fill the parent,
+          # with no accidental bottom margin/padding.
+          lp = Path("app/src/main/res/layout/activity_main.xml")
+          if lp.exists():
+              x = lp.read_text(encoding="utf-8")
+              x = re.sub(r'android:layout_height="[^"]+"', 'android:layout_height="match_parent"', x)
+              x = re.sub(r'android:layout_width="[^"]+"', 'android:layout_width="match_parent"', x)
+              x = re.sub(r'android:layout_marginBottom="[^"]+"', 'android:layout_marginBottom="0dp"', x)
+              x = re.sub(r'android:paddingBottom="[^"]+"', 'android:paddingBottom="0dp"', x)
+              lp.write_text(x, encoding="utf-8")
+
+          print("Bottom-gap fix applied")
+          PY
+
       - name: Fix keyboard chat UX
         shell: bash
         run: |
