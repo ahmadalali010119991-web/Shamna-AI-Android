@@ -53,14 +53,6 @@ jobs:
           ls -la
           ls -la app
 
-      - name: Inspect base Android layout
-        shell: bash
-        run: |
-          echo "===== activity_main.xml ====="
-          cat app/src/main/res/layout/activity_main.xml || true
-          echo "===== MainActivity relevant ====="
-          grep -n -E "setContentView|webView|progressBar|setOnApplyWindowInsetsListener|setSoftInputMode" app/src/main/java/com/shamna/ai/MainActivity.java || true
-
       - name: Fix Android permission code
         shell: bash
         run: |
@@ -98,44 +90,91 @@ jobs:
           import re
 
           p = Path("app/src/main/java/com/shamna/ai/MainActivity.java")
-          s = p.read_text(encoding="utf-8")
+          src = p.read_text(encoding="utf-8")
 
-          marker = "SHAMNA_SAFE_AREA_FIX"
-          if marker not in s:
-              code = r'''
-                  // SHAMNA_SAFE_AREA_FIX
-                  final android.view.View shamnaRoot = findViewById(android.R.id.content);
-                  if (shamnaRoot != null && android.os.Build.VERSION.SDK_INT >= 20) {
-                      shamnaRoot.setOnApplyWindowInsetsListener((view, insets) -> {
-                          int topInset = insets.getSystemWindowInsetTop();
-                          view.setPadding(
-                              view.getPaddingLeft(),
-                              topInset,
-                              view.getPaddingRight(),
-                              0
-                          );
-                          return insets;
-                      });
-                      shamnaRoot.requestApplyInsets();
-                  }
+          # Remove the older custom inset listener completely. Android's default
+          # decor fitting already sizes the Activity between system bars and
+          # resizes it for the IME. Consuming insets here caused the bottom gap.
+          src = re.sub(
+              r'\s*// SHAMNA_SAFE_AREA_FIX.*?getWindow\(\)\.setNavigationBarColor\(android\.graphics\.Color\.rgb\(4, 47, 31\)\);',
+              '',
+              src,
+              count=1,
+              flags=re.S
+          )
 
-                  getWindow().setStatusBarColor(android.graphics.Color.rgb(4, 47, 31));
-                  getWindow().setNavigationBarColor(android.graphics.Color.rgb(4, 47, 31));
-              '''
+          marker = "setContentView(R.layout.activity_main);"
+          if marker not in src:
+              raise SystemExit("setContentView marker not found")
 
-              m = re.search(r'(^\s*setContentView\s*\([^;]+\);\s*$)', s, flags=re.M)
-              if not m:
-                  raise SystemExit("Could not find setContentView(...) in MainActivity.java")
+          code = r'''
+                  // SHAMNA_SAFE_AREA_FIX_V2
+                  final int shamnaSystemBg = android.graphics.Color.rgb(4, 47, 31);
+                  getWindow().setStatusBarColor(shamnaSystemBg);
+                  getWindow().setNavigationBarColor(shamnaSystemBg);
+                  getWindow().setSoftInputMode(
+                      android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+                      | android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN
+                  );
+                  try {
+                      getWindow().setBackgroundDrawable(
+                          new android.graphics.drawable.ColorDrawable(shamnaSystemBg)
+                      );
+                      getWindow().getDecorView().setBackgroundColor(shamnaSystemBg);
+                  } catch (Exception ignored) {}
+          '''
 
-              s = s[:m.end()] + "\n" + code + s[m.end():]
+          if "SHAMNA_SAFE_AREA_FIX_V2" not in src:
+              src = src.replace(marker, marker + "\n" + code, 1)
 
-          p.write_text(s, encoding="utf-8")
-          print("Safe-area fix applied successfully")
+          p.write_text(src, encoding="utf-8")
+
+          # Make adjustResize explicit in the manifest as well.
+          mp = Path("app/src/main/AndroidManifest.xml")
+          ms = mp.read_text(encoding="utf-8")
+          activity = 'android:name=".MainActivity"'
+          if activity not in ms:
+              raise SystemExit("MainActivity manifest entry not found")
+          if 'android:windowSoftInputMode=' not in ms:
+              ms = ms.replace(activity, activity + '\n            android:windowSoftInputMode="adjustResize"', 1)
+          else:
+              ms = re.sub(
+                  r'android:windowSoftInputMode="[^"]*"',
+                  'android:windowSoftInputMode="adjustResize"',
+                  ms,
+                  count=1
+              )
+          mp.write_text(ms, encoding="utf-8")
+
+          print("System bars and IME resizing configured without custom inset consumption")
           PY
 
       - name: Eliminate bottom interface gap
         shell: bash
         run: |
+          cat > app/src/main/res/layout/activity_main.xml <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:background="@color/shamna_green">
+
+              <WebView
+                  android:id="@+id/webView"
+                  android:layout_width="match_parent"
+                  android:layout_height="match_parent"
+                  android:background="@color/shamna_green" />
+
+              <ProgressBar
+                  android:id="@+id/progressBar"
+                  style="?android:attr/progressBarStyleLarge"
+                  android:layout_width="48dp"
+                  android:layout_height="48dp"
+                  android:layout_gravity="center"
+                  android:indeterminate="true" />
+          </FrameLayout>
+          XML
+
           python3 - <<'PY'
           from pathlib import Path
           import re
@@ -143,67 +182,41 @@ jobs:
           p = Path("app/src/main/java/com/shamna/ai/MainActivity.java")
           src = p.read_text(encoding="utf-8")
 
-          # Make every native layer fill the available window and use the exact
-          # Shamna background so no white/black strip can appear at the bottom.
-          if "SHAMNA_BOTTOM_GAP_FIX_V1" not in src:
-              needle = "webView = findViewById(R.id.webView);"
-              if needle not in src:
-                  raise SystemExit("WebView initialization not found")
+          # Remove the previous V1 patch, including its inset consumption logic.
+          src = re.sub(
+              r'\s*// SHAMNA_BOTTOM_GAP_FIX_V1.*?catch \(Exception ignored\) \{\}\s*',
+              '\n',
+              src,
+              count=1,
+              flags=re.S
+          )
+          src = re.sub(
+              r'\s*if \(android\.os\.Build\.VERSION\.SDK_INT >= 20\) \{\s*try \{ return insets\.consumeSystemWindowInsets\(\); \}\s*catch \(Exception ignored\) \{\}\s*\}\s*return insets;',
+              ' return insets;',
+              src,
+              count=1,
+              flags=re.S
+          )
 
-              code = r'''
-                  // SHAMNA_BOTTOM_GAP_FIX_V1
-                  final int shamnaBg = android.graphics.Color.rgb(4, 47, 31);
+          needle = "webView = findViewById(R.id.webView);"
+          if needle not in src:
+              raise SystemExit("WebView initialization not found")
+
+          code = r'''
+                  // SHAMNA_BOTTOM_GAP_FIX_V2
                   try {
-                      getWindow().getDecorView().setBackgroundColor(shamnaBg);
-                      getWindow().setNavigationBarColor(shamnaBg);
-
-                      android.view.View content = findViewById(android.R.id.content);
-                      if (content != null) {
-                          content.setBackgroundColor(shamnaBg);
-                          android.view.ViewGroup.LayoutParams cp = content.getLayoutParams();
-                          if (cp != null) {
-                              cp.width = android.view.ViewGroup.LayoutParams.MATCH_PARENT;
-                              cp.height = android.view.ViewGroup.LayoutParams.MATCH_PARENT;
-                              content.setLayoutParams(cp);
-                          }
-                      }
-
-                      webView.setBackgroundColor(shamnaBg);
-                      android.view.ViewGroup.LayoutParams wp = webView.getLayoutParams();
-                      if (wp != null) {
-                          wp.width = android.view.ViewGroup.LayoutParams.MATCH_PARENT;
-                          wp.height = android.view.ViewGroup.LayoutParams.MATCH_PARENT;
-                          webView.setLayoutParams(wp);
-                      }
+                      final int shamnaBg2 = android.graphics.Color.rgb(4, 47, 31);
+                      android.view.View contentRoot = findViewById(android.R.id.content);
+                      if (contentRoot != null) contentRoot.setBackgroundColor(shamnaBg2);
+                      webView.setBackgroundColor(shamnaBg2);
+                      webView.setOverScrollMode(android.view.View.OVER_SCROLL_NEVER);
                   } catch (Exception ignored) {}
-              '''
+          '''
+          if "SHAMNA_BOTTOM_GAP_FIX_V2" not in src:
               src = src.replace(needle, needle + "\n" + code, 1)
 
-          # Prevent the same system inset from being propagated to descendants,
-          # which can create a second empty bottom band under the WebView.
-          old = """                          return insets;"""
-          new = """                          if (android.os.Build.VERSION.SDK_INT >= 20) {
-                              try { return insets.consumeSystemWindowInsets(); }
-                              catch (Exception ignored) {}
-                          }
-                          return insets;"""
-          if old in src and "consumeSystemWindowInsets" not in src:
-              src = src.replace(old, new, 1)
-
           p.write_text(src, encoding="utf-8")
-
-          # Also harden the XML layout: root and WebView must fill the parent,
-          # with no accidental bottom margin/padding.
-          lp = Path("app/src/main/res/layout/activity_main.xml")
-          if lp.exists():
-              x = lp.read_text(encoding="utf-8")
-              x = re.sub(r'android:layout_height="[^"]+"', 'android:layout_height="match_parent"', x)
-              x = re.sub(r'android:layout_width="[^"]+"', 'android:layout_width="match_parent"', x)
-              x = re.sub(r'android:layout_marginBottom="[^"]+"', 'android:layout_marginBottom="0dp"', x)
-              x = re.sub(r'android:paddingBottom="[^"]+"', 'android:paddingBottom="0dp"', x)
-              lp.write_text(x, encoding="utf-8")
-
-          print("Bottom-gap fix applied")
+          print("Native bottom-gap source removed and layout restored exactly")
           PY
 
       - name: Fix keyboard chat UX
@@ -236,6 +249,14 @@ jobs:
               js = r"""
           (function(){
             const TOP = window;
+            // SHAMNA_PAGE_BACKGROUND_GAP_V1
+            try{
+              const style=document.createElement('style');
+              style.textContent='html,body{background:#042f1f !important;}';
+              (document.head||document.documentElement).appendChild(style);
+              document.documentElement.style.backgroundColor='#042f1f';
+              if(document.body) document.body.style.backgroundColor='#042f1f';
+            }catch(_){}
 
             function install(w){
               try{
