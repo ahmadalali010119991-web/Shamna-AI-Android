@@ -696,7 +696,7 @@ jobs:
           print("Legacy storage compatibility added; Android 10+ remains permissionless via MediaStore")
           PY
 
-      - name: Fix microphone permissions and cover Perchance developer button
+      - name: Fix microphone permissions
         shell: bash
         run: |
           python3 - <<'PY'
@@ -741,36 +741,6 @@ jobs:
                   }
               '''
               src = src[:insert_after] + "\n" + runtime + src[insert_after:]
-
-          if "SHAMNA_NATIVE_TOOL_COVER_V2" not in src:
-              # Recompute because the previous insertion changed offsets.
-              sc = src.find("setContentView(")
-              semi = src.find(";", sc)
-              insert_after = semi + 1
-              overlay = r'''
-                  // SHAMNA_NATIVE_TOOL_COVER_V2
-                  try {
-                      android.view.View shamnaContent = findViewById(android.R.id.content);
-                      if (shamnaContent instanceof android.widget.FrameLayout) {
-                          android.widget.FrameLayout frame = (android.widget.FrameLayout) shamnaContent;
-                          android.widget.ImageView cover = new android.widget.ImageView(this);
-                          cover.setImageResource(getApplicationInfo().icon);
-                          cover.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
-                          cover.setClickable(true);
-                          cover.setFocusable(true);
-                          float density = getResources().getDisplayMetrics().density;
-                          int size = Math.round(34 * density);
-                          android.widget.FrameLayout.LayoutParams lp =
-                              new android.widget.FrameLayout.LayoutParams(size, size);
-                          lp.gravity = android.view.Gravity.TOP | android.view.Gravity.RIGHT;
-                          lp.topMargin = Math.round(3 * density);
-                          lp.rightMargin = Math.round(3 * density);
-                          cover.setElevation(10000f);
-                          frame.addView(cover, lp);
-                      }
-                  } catch (Exception ignored) {}
-              '''
-              src = src[:insert_after] + "\n" + overlay + src[insert_after:]
 
           # Replace the existing WebChromeClient onPermissionRequest implementation
           # instead of adding a second override.
@@ -831,7 +801,187 @@ jobs:
           src = src[:sp] + method + src[close_brace+1:]
 
           p.write_text(src, encoding="utf-8")
-          print("Microphone permissions and native developer-button cover patched")
+          print("Microphone permissions patched")
+          PY
+
+      - name: Add premium gold corner covers
+        shell: bash
+        run: |
+          cat > app/src/main/java/com/shamna/ai/GoldCornerView.java <<'JAVA'
+          package com.shamna.ai;
+
+          public class GoldCornerView extends android.view.View {
+              public static final int TOP_LEFT = 0;
+              public static final int TOP_RIGHT = 1;
+              public static final int BOTTOM_LEFT = 2;
+              public static final int BOTTOM_RIGHT = 3;
+
+              private final int corner;
+              private final android.graphics.Paint fill = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+              private final android.graphics.Paint stroke = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+              private final android.graphics.Paint accent = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+              private final android.graphics.Path path = new android.graphics.Path();
+
+              public GoldCornerView(android.content.Context context, int corner) {
+                  super(context);
+                  this.corner = corner;
+                  setClickable(true);
+                  setFocusable(false);
+                  setElevation(dp(1000));
+                  stroke.setStyle(android.graphics.Paint.Style.STROKE);
+                  stroke.setStrokeWidth(dp(1.4f));
+                  stroke.setColor(android.graphics.Color.rgb(255, 224, 112));
+                  accent.setStyle(android.graphics.Paint.Style.STROKE);
+                  accent.setStrokeWidth(dp(0.8f));
+                  accent.setColor(android.graphics.Color.argb(170, 255, 239, 168));
+              }
+
+              private float dp(float v) {
+                  return v * getResources().getDisplayMetrics().density;
+              }
+
+              @Override
+              protected void onDraw(android.graphics.Canvas canvas) {
+                  super.onDraw(canvas);
+                  final float w = getWidth();
+                  final float h = getHeight();
+                  path.reset();
+
+                  switch (corner) {
+                      case TOP_LEFT:
+                          path.moveTo(0, 0);
+                          path.lineTo(w, 0);
+                          path.lineTo(0, h);
+                          path.close();
+                          break;
+                      case TOP_RIGHT:
+                          path.moveTo(0, 0);
+                          path.lineTo(w, 0);
+                          path.lineTo(w, h);
+                          path.close();
+                          break;
+                      case BOTTOM_LEFT:
+                          path.moveTo(0, 0);
+                          path.lineTo(0, h);
+                          path.lineTo(w, h);
+                          path.close();
+                          break;
+                      default:
+                          path.moveTo(w, 0);
+                          path.lineTo(w, h);
+                          path.lineTo(0, h);
+                          path.close();
+                          break;
+                  }
+
+                  float x0 = (corner == TOP_RIGHT || corner == BOTTOM_RIGHT) ? w : 0;
+                  float y0 = (corner == BOTTOM_LEFT || corner == BOTTOM_RIGHT) ? h : 0;
+                  float x1 = (corner == TOP_RIGHT || corner == BOTTOM_RIGHT) ? 0 : w;
+                  float y1 = (corner == BOTTOM_LEFT || corner == BOTTOM_RIGHT) ? 0 : h;
+
+                  fill.setShader(new android.graphics.LinearGradient(
+                      x0, y0, x1, y1,
+                      new int[] {
+                          android.graphics.Color.rgb(255, 237, 154),
+                          android.graphics.Color.rgb(232, 184, 59),
+                          android.graphics.Color.rgb(173, 111, 11),
+                          android.graphics.Color.rgb(245, 202, 76)
+                      },
+                      new float[] {0f, 0.28f, 0.72f, 1f},
+                      android.graphics.Shader.TileMode.CLAMP
+                  ));
+
+                  canvas.drawPath(path, fill);
+                  fill.setShader(null);
+                  canvas.drawPath(path, stroke);
+
+                  // Fine metallic highlight lines parallel to the outer edges.
+                  android.graphics.Path p2 = new android.graphics.Path();
+                  final float inset = dp(3.2f);
+                  switch (corner) {
+                      case TOP_LEFT:
+                          p2.moveTo(inset, inset);
+                          p2.lineTo(w - inset * 1.5f, inset);
+                          p2.moveTo(inset, inset);
+                          p2.lineTo(inset, h - inset * 1.5f);
+                          break;
+                      case TOP_RIGHT:
+                          p2.moveTo(inset * 1.5f, inset);
+                          p2.lineTo(w - inset, inset);
+                          p2.moveTo(w - inset, inset);
+                          p2.lineTo(w - inset, h - inset * 1.5f);
+                          break;
+                      case BOTTOM_LEFT:
+                          p2.moveTo(inset, inset * 1.5f);
+                          p2.lineTo(inset, h - inset);
+                          p2.moveTo(inset, h - inset);
+                          p2.lineTo(w - inset * 1.5f, h - inset);
+                          break;
+                      default:
+                          p2.moveTo(w - inset, inset * 1.5f);
+                          p2.lineTo(w - inset, h - inset);
+                          p2.moveTo(inset * 1.5f, h - inset);
+                          p2.lineTo(w - inset, h - inset);
+                          break;
+                  }
+                  canvas.drawPath(p2, accent);
+              }
+          }
+          JAVA
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path("app/src/main/java/com/shamna/ai/MainActivity.java")
+          src = p.read_text(encoding="utf-8")
+
+          if "SHAMNA_GOLD_CORNERS_V1" not in src:
+              needle = "setContentView(R.layout.activity_main);"
+              if needle not in src:
+                  raise SystemExit("setContentView marker not found")
+
+              code = r'''
+                  // SHAMNA_GOLD_CORNERS_V1
+                  try {
+                      android.view.View rootView = findViewById(android.R.id.content);
+                      if (rootView instanceof android.widget.FrameLayout) {
+                          android.widget.FrameLayout frame = (android.widget.FrameLayout) rootView;
+                          float density = getResources().getDisplayMetrics().density;
+
+                          // About 15% larger than the approved mockup corner treatment.
+                          int cornerSize = Math.round(64f * density);
+
+                          int[] cornerKinds = new int[] {
+                              GoldCornerView.TOP_LEFT,
+                              GoldCornerView.TOP_RIGHT,
+                              GoldCornerView.BOTTOM_LEFT,
+                              GoldCornerView.BOTTOM_RIGHT
+                          };
+                          int[] gravities = new int[] {
+                              android.view.Gravity.TOP | android.view.Gravity.LEFT,
+                              android.view.Gravity.TOP | android.view.Gravity.RIGHT,
+                              android.view.Gravity.BOTTOM | android.view.Gravity.LEFT,
+                              android.view.Gravity.BOTTOM | android.view.Gravity.RIGHT
+                          };
+
+                          for (int i = 0; i < 4; i++) {
+                              GoldCornerView v = new GoldCornerView(this, cornerKinds[i]);
+                              android.widget.FrameLayout.LayoutParams lp =
+                                  new android.widget.FrameLayout.LayoutParams(cornerSize, cornerSize);
+                              lp.gravity = gravities[i];
+                              lp.leftMargin = 0;
+                              lp.topMargin = 0;
+                              lp.rightMargin = 0;
+                              lp.bottomMargin = 0;
+                              frame.addView(v, lp);
+                          }
+                      }
+                  } catch (Exception ignored) {}
+              '''
+              src = src.replace(needle, needle + "\n" + code, 1)
+
+          p.write_text(src, encoding="utf-8")
+          print("Gold corner covers added; old square cover removed")
           PY
 
       - name: Keep WebView session alive in background
