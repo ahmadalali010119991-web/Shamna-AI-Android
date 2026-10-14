@@ -1298,6 +1298,22 @@ jobs:
           test -f app/src/main/AndroidManifest.xml
           echo "Required Android project files found"
 
+      - name: Package complete Android project
+        shell: bash
+        run: |
+          rm -f Shamna-AI-Full-Project.zip
+          zip -r Shamna-AI-Full-Project.zip app gradle settings.gradle build.gradle gradle.properties 2>/dev/null ||           zip -r Shamna-AI-Full-Project.zip app settings.gradle build.gradle gradle.properties
+          echo "Complete patched Android project packaged:"
+          ls -lh Shamna-AI-Full-Project.zip
+
+      - name: Upload complete Android project
+        uses: actions/upload-artifact@v4
+        with:
+          name: Shamna-AI-Full-Project
+          path: Shamna-AI-Full-Project.zip
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Build debug APK
         shell: bash
         run: |
