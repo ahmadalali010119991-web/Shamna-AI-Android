@@ -90,157 +90,39 @@ jobs:
           import re
 
           p = Path("app/src/main/java/com/shamna/ai/MainActivity.java")
-          src = p.read_text(encoding="utf-8")
+          s = p.read_text(encoding="utf-8")
 
-          # Remove every previous custom Shamna inset implementation.
-          src = re.sub(
-              r'\s*// SHAMNA_EDGE_TO_EDGE_V1.*?\n\s*}\s*',
-              '\n',
-              src,
-              count=1,
-              flags=re.S
-          )
-          src = re.sub(
-              r'\s*// SHAMNA_SAFE_AREA_FIX_V2.*?catch \(Exception ignored\) \{\}\s*',
-              '\n',
-              src,
-              count=1,
-              flags=re.S
-          )
-          src = re.sub(
-              r'\s*// SHAMNA_SAFE_AREA_FIX.*?getWindow\(\)\.setNavigationBarColor\([^;]+\);',
-              '\n',
-              src,
-              count=1,
-              flags=re.S
-          )
-
-          marker = "setContentView(R.layout.activity_main);"
-          if marker not in src:
-              raise SystemExit("setContentView marker not found")
-
-          code = r'''
-                  // SHAMNA_WINDOW_LAYOUT_FINAL_V1
-                  final android.view.Window shamnaWindow = getWindow();
-                  final int shamnaBarColor = android.graphics.Color.rgb(4, 47, 31);
-
-                  // Use Android's normal content area. Do not manually add or
-                  // consume status/navigation/IME insets.
-                  if (android.os.Build.VERSION.SDK_INT >= 30) {
-                      shamnaWindow.setDecorFitsSystemWindows(true);
+          marker = "SHAMNA_SAFE_AREA_FIX"
+          if marker not in s:
+              code = r'''
+                  // SHAMNA_SAFE_AREA_FIX
+                  final android.view.View shamnaRoot = findViewById(android.R.id.content);
+                  if (shamnaRoot != null && android.os.Build.VERSION.SDK_INT >= 20) {
+                      shamnaRoot.setOnApplyWindowInsetsListener((view, insets) -> {
+                          int topInset = insets.getSystemWindowInsetTop();
+                          view.setPadding(
+                              view.getPaddingLeft(),
+                              topInset,
+                              view.getPaddingRight(),
+                              0
+                          );
+                          return insets;
+                      });
+                      shamnaRoot.requestApplyInsets();
                   }
-                  shamnaWindow.setStatusBarColor(shamnaBarColor);
-                  shamnaWindow.setNavigationBarColor(shamnaBarColor);
-                  shamnaWindow.setSoftInputMode(
-                      android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
-                      | android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN
-                  );
 
-                  try {
-                      android.view.View contentRoot = findViewById(android.R.id.content);
-                      if (contentRoot != null) {
-                          contentRoot.setPadding(0, 0, 0, 0);
-                          contentRoot.setFitsSystemWindows(false);
-                      }
-                  } catch (Exception ignored) {}
-          '''
-          if "SHAMNA_WINDOW_LAYOUT_FINAL_V1" not in src:
-              src = src.replace(marker, marker + "\n" + code, 1)
+                  getWindow().setStatusBarColor(android.graphics.Color.rgb(4, 47, 31));
+                  getWindow().setNavigationBarColor(android.graphics.Color.rgb(4, 47, 31));
+              '''
 
-          p.write_text(src, encoding="utf-8")
+              m = re.search(r'(^\s*setContentView\s*\([^;]+\);\s*$)', s, flags=re.M)
+              if not m:
+                  raise SystemExit("Could not find setContentView(...) in MainActivity.java")
 
-          mp = Path("app/src/main/AndroidManifest.xml")
-          ms = mp.read_text(encoding="utf-8")
-          activity = 'android:name=".MainActivity"'
-          if activity not in ms:
-              raise SystemExit("MainActivity manifest entry not found")
-          if 'android:windowSoftInputMode=' in ms:
-              ms = re.sub(
-                  r'android:windowSoftInputMode="[^"]*"',
-                  'android:windowSoftInputMode="adjustResize"',
-                  ms,
-                  count=1
-              )
-          else:
-              ms = ms.replace(activity, activity + '\n            android:windowSoftInputMode="adjustResize"', 1)
-          mp.write_text(ms, encoding="utf-8")
+              s = s[:m.end()] + "\n" + code + s[m.end():]
 
-          print("Final window layout: no custom bottom inset; adjustResize only")
-          PY
-
-      - name: Eliminate bottom interface gap
-        shell: bash
-        run: |
-          cat > app/src/main/res/layout/activity_main.xml <<'XML'
-          <?xml version="1.0" encoding="utf-8"?>
-          <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:layout_width="match_parent"
-              android:layout_height="match_parent"
-              android:padding="0dp"
-              android:background="@color/shamna_green">
-
-              <WebView
-                  android:id="@+id/webView"
-                  android:layout_width="match_parent"
-                  android:layout_height="match_parent"
-                  android:layout_margin="0dp"
-                  android:padding="0dp"
-                  android:background="@color/shamna_green" />
-
-              <ProgressBar
-                  android:id="@+id/progressBar"
-                  style="?android:attr/progressBarStyleLarge"
-                  android:layout_width="48dp"
-                  android:layout_height="48dp"
-                  android:layout_gravity="center"
-                  android:indeterminate="true" />
-          </FrameLayout>
-          XML
-
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-
-          p = Path("app/src/main/java/com/shamna/ai/MainActivity.java")
-          src = p.read_text(encoding="utf-8")
-
-          # Remove every previous native bottom-gap patch.
-          src = re.sub(
-              r'\s*// SHAMNA_BOTTOM_GAP_FIX_V2.*?catch \(Exception ignored\) \{\}\s*',
-              '\n',
-              src,
-              count=1,
-              flags=re.S
-          )
-          src = re.sub(
-              r'\s*// SHAMNA_BOTTOM_GAP_FIX_V1.*?catch \(Exception ignored\) \{\}\s*',
-              '\n',
-              src,
-              count=1,
-              flags=re.S
-          )
-
-          needle = "webView = findViewById(R.id.webView);"
-          if needle not in src:
-              raise SystemExit("WebView initialization not found")
-
-          code = r'''
-                  // SHAMNA_BOTTOM_GAP_FINAL_V1
-                  try {
-                      android.view.ViewGroup.LayoutParams p2 = webView.getLayoutParams();
-                      p2.width = android.view.ViewGroup.LayoutParams.MATCH_PARENT;
-                      p2.height = android.view.ViewGroup.LayoutParams.MATCH_PARENT;
-                      webView.setLayoutParams(p2);
-                      webView.setPadding(0, 0, 0, 0);
-                      webView.setVerticalScrollBarEnabled(false);
-                      webView.setOverScrollMode(android.view.View.OVER_SCROLL_NEVER);
-                  } catch (Exception ignored) {}
-          '''
-          if "SHAMNA_BOTTOM_GAP_FINAL_V1" not in src:
-              src = src.replace(needle, needle + "\n" + code, 1)
-
-          p.write_text(src, encoding="utf-8")
-          print("WebView forced to exact full parent height")
+          p.write_text(s, encoding="utf-8")
+          print("Safe-area fix applied successfully")
           PY
 
       - name: Fix keyboard chat UX
@@ -254,20 +136,25 @@ jobs:
           p = Path("app/src/main/java/com/shamna/ai/MainActivity.java")
           s = p.read_text(encoding="utf-8")
 
-          # Native IME policy is configured once in "Fix Android safe areas".
+          # Ensure the activity always resizes for the soft keyboard.
+          if "SHAMNA_KEYBOARD_RESIZE" not in s:
+              m = re.search(r'(^\s*setContentView\s*\([^;]+\);\s*$)', s, flags=re.M)
+              if not m:
+                  raise SystemExit("Could not find setContentView(...)")
+              native = """
+                  // SHAMNA_KEYBOARD_RESIZE
+                  getWindow().setSoftInputMode(
+                      android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+                      | android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN
+                  );
+              """
+              s = s[:m.end()] + "\n" + native + s[m.end():]
+
           # Inject a compact mobile layout fix after each page finishes loading.
           if "SHAMNA_KEYBOARD_WEB_FIX" not in s:
               js = r"""
           (function(){
             const TOP = window;
-            // SHAMNA_PAGE_BACKGROUND_GAP_V1
-            try{
-              const style=document.createElement('style');
-              style.textContent='html,body{background:#042f1f !important;margin-bottom:0 !important;padding-bottom:0 !important;}';
-              (document.head||document.documentElement).appendChild(style);
-              document.documentElement.style.backgroundColor='#042f1f';
-              if(document.body) document.body.style.backgroundColor='#042f1f';
-            }catch(_){}
 
             function install(w){
               try{
@@ -1297,22 +1184,6 @@ jobs:
           test -f app/build.gradle
           test -f app/src/main/AndroidManifest.xml
           echo "Required Android project files found"
-
-      - name: Package complete Android project
-        shell: bash
-        run: |
-          rm -f Shamna-AI-Full-Project.zip
-          zip -r Shamna-AI-Full-Project.zip app gradle settings.gradle build.gradle gradle.properties 2>/dev/null ||           zip -r Shamna-AI-Full-Project.zip app settings.gradle build.gradle gradle.properties
-          echo "Complete patched Android project packaged:"
-          ls -lh Shamna-AI-Full-Project.zip
-
-      - name: Upload complete Android project
-        uses: actions/upload-artifact@v4
-        with:
-          name: Shamna-AI-Full-Project
-          path: Shamna-AI-Full-Project.zip
-          if-no-files-found: error
-          retention-days: 30
 
       - name: Build debug APK
         shell: bash
