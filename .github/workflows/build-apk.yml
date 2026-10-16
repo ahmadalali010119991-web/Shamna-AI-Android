@@ -696,7 +696,7 @@ jobs:
           print("Legacy storage compatibility added; Android 10+ remains permissionless via MediaStore")
           PY
 
-      - name: Fix microphone permissions
+      - name: Fix camera and microphone permissions
         shell: bash
         run: |
           python3 - <<'PY'
@@ -706,7 +706,8 @@ jobs:
           ms = mp.read_text(encoding="utf-8")
           permissions = [
               '<uses-permission android:name="android.permission.RECORD_AUDIO" />',
-              '<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />'
+              '<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />',
+              '<uses-permission android:name="android.permission.CAMERA" />'
           ]
           manifest_open = ms.find(">")
           if manifest_open < 0:
@@ -728,16 +729,22 @@ jobs:
               raise SystemExit("setContentView terminator not found")
           insert_after = semi + 1
 
-          if "SHAMNA_RUNTIME_MIC_PERMISSION_V2" not in src:
+          if "SHAMNA_RUNTIME_MEDIA_PERMISSION_V1" not in src:
               runtime = r'''
-                  // SHAMNA_RUNTIME_MIC_PERMISSION_V2
-                  if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M
-                          && checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
-                          != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                      requestPermissions(
-                          new String[]{android.Manifest.permission.RECORD_AUDIO},
-                          7001
-                      );
+                  // SHAMNA_RUNTIME_MEDIA_PERMISSION_V1
+                  if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                      java.util.ArrayList<String> missing = new java.util.ArrayList<>();
+                      if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
+                              != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                          missing.add(android.Manifest.permission.RECORD_AUDIO);
+                      }
+                      if (checkSelfPermission(android.Manifest.permission.CAMERA)
+                              != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                          missing.add(android.Manifest.permission.CAMERA);
+                      }
+                      if (!missing.isEmpty()) {
+                          requestPermissions(missing.toArray(new String[0]), 7001);
+                      }
                   }
               '''
               src = src[:insert_after] + "\n" + runtime + src[insert_after:]
@@ -768,7 +775,7 @@ jobs:
               raise SystemExit("onPermissionRequest closing brace not found")
 
           method = r'''public void onPermissionRequest(final android.webkit.PermissionRequest request) {
-                          // SHAMNA_WEBVIEW_MIC_PERMISSION_V3
+                          // SHAMNA_WEBVIEW_MEDIA_PERMISSION_V4
                           if (request == null) return;
                           runOnUiThread(() -> {
                               try {
@@ -801,7 +808,109 @@ jobs:
           src = src[:sp] + method + src[close_brace+1:]
 
           p.write_text(src, encoding="utf-8")
-          print("Microphone permissions patched")
+          print("Camera and microphone permissions patched")
+          PY
+
+      - name: Add draggable translucent refresh button
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path("app/src/main/java/com/shamna/ai/MainActivity.java")
+          src = p.read_text(encoding="utf-8")
+
+          if "SHAMNA_DRAGGABLE_REFRESH_V1" not in src:
+              needle = "webView = findViewById(R.id.webView);"
+              if needle not in src:
+                  raise SystemExit("WebView initialization not found")
+
+              code = r'''
+                  // SHAMNA_DRAGGABLE_REFRESH_V1
+                  try {
+                      android.view.View content = findViewById(android.R.id.content);
+                      if (content instanceof android.widget.FrameLayout) {
+                          final android.widget.FrameLayout refreshFrame =
+                              (android.widget.FrameLayout) content;
+
+                          final android.widget.TextView refreshButton =
+                              new android.widget.TextView(this);
+                          refreshButton.setText("↻");
+                          refreshButton.setTextSize(24f);
+                          refreshButton.setTextColor(android.graphics.Color.argb(235, 255, 255, 255));
+                          refreshButton.setGravity(android.view.Gravity.CENTER);
+                          refreshButton.setClickable(true);
+                          refreshButton.setFocusable(true);
+                          refreshButton.setAlpha(0.82f);
+                          refreshButton.setElevation(9990f);
+
+                          final float density = getResources().getDisplayMetrics().density;
+                          final int buttonSize = Math.round(46f * density);
+
+                          android.graphics.drawable.GradientDrawable bg =
+                              new android.graphics.drawable.GradientDrawable();
+                          bg.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+                          bg.setColor(android.graphics.Color.argb(150, 18, 92, 74));
+                          bg.setStroke(
+                              Math.max(1, Math.round(1.2f * density)),
+                              android.graphics.Color.argb(185, 255, 255, 255)
+                          );
+                          refreshButton.setBackground(bg);
+
+                          android.widget.FrameLayout.LayoutParams lp =
+                              new android.widget.FrameLayout.LayoutParams(buttonSize, buttonSize);
+                          lp.gravity = android.view.Gravity.RIGHT | android.view.Gravity.CENTER_VERTICAL;
+                          lp.rightMargin = Math.round(8f * density);
+                          refreshFrame.addView(refreshButton, lp);
+
+                          final float[] downRaw = new float[2];
+                          final float[] downXY = new float[2];
+                          final boolean[] dragged = new boolean[1];
+
+                          refreshButton.setOnTouchListener((v, event) -> {
+                              switch (event.getActionMasked()) {
+                                  case android.view.MotionEvent.ACTION_DOWN:
+                                      downRaw[0] = event.getRawX();
+                                      downRaw[1] = event.getRawY();
+                                      downXY[0] = v.getX();
+                                      downXY[1] = v.getY();
+                                      dragged[0] = false;
+                                      return true;
+
+                                  case android.view.MotionEvent.ACTION_MOVE:
+                                      float dx = event.getRawX() - downRaw[0];
+                                      float dy = event.getRawY() - downRaw[1];
+                                      if (Math.hypot(dx, dy) > 6f * density) dragged[0] = true;
+
+                                      float nx = downXY[0] + dx;
+                                      float ny = downXY[1] + dy;
+                                      float maxX = Math.max(0f, refreshFrame.getWidth() - v.getWidth());
+                                      float maxY = Math.max(0f, refreshFrame.getHeight() - v.getHeight());
+
+                                      v.setX(Math.max(0f, Math.min(nx, maxX)));
+                                      v.setY(Math.max(0f, Math.min(ny, maxY)));
+                                      return true;
+
+                                  case android.view.MotionEvent.ACTION_UP:
+                                      if (!dragged[0]) {
+                                          try {
+                                              webView.reload();
+                                          } catch (Exception ignored) {}
+                                      }
+                                      return true;
+
+                                  case android.view.MotionEvent.ACTION_CANCEL:
+                                      return true;
+                              }
+                              return false;
+                          });
+                      }
+                  } catch (Exception ignored) {}
+              '''
+              src = src.replace(needle, needle + "\n" + code, 1)
+
+          p.write_text(src, encoding="utf-8")
+          print("Draggable translucent refresh button added")
           PY
 
       - name: Add premium gold corner covers
@@ -949,7 +1058,7 @@ jobs:
                           float density = getResources().getDisplayMetrics().density;
 
                           // About 15% larger than the approved mockup corner treatment.
-                          int cornerSize = Math.round(38.11f * density);
+                          int cornerSize = Math.round(38.4911f * density);
 
                           int[] cornerKinds = new int[] {
                               GoldCornerView.TOP_LEFT,
@@ -1142,6 +1251,9 @@ jobs:
                   webView.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null);
                   settings.setCacheMode(android.webkit.WebSettings.LOAD_DEFAULT);
                   settings.setLoadsImagesAutomatically(true);
+                  // SHAMNA_FAST_ACCESS_V1
+                  settings.setDomStorageEnabled(true);
+                  settings.setDatabaseEnabled(true);
               '''
               src = src.replace(needle, needle + "\n" + code, 1)
 
