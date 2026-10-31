@@ -495,7 +495,7 @@ jobs:
           print("Legacy storage compatibility added; Android 10+ remains permissionless via MediaStore")
           PY
 
-      - name: Fix location camera and microphone permissions
+      - name: Add explained camera microphone location and storage permissions
         shell: bash
         run: |
           python3 - <<'PY'
@@ -508,7 +508,11 @@ jobs:
               '<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />',
               '<uses-permission android:name="android.permission.CAMERA" />',
               '<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />',
-              '<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />'
+              '<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />',
+              '<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />',
+              '<uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />',
+              '<uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />',
+              '<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />'
           ]
           manifest_open = ms.find(">")
           if manifest_open < 0:
@@ -521,78 +525,223 @@ jobs:
           p = Path("app/src/main/java/com/shamna/ai/MainActivity.java")
           src = p.read_text(encoding="utf-8")
 
-          # Find the first real setContentView call without regex escaping hazards.
-          sc = src.find("setContentView(")
-          if sc < 0:
-              raise SystemExit("setContentView call not found")
-          semi = src.find(";", sc)
-          if semi < 0:
-              raise SystemExit("setContentView terminator not found")
-          insert_after = semi + 1
-
-          if "SHAMNA_RUNTIME_MEDIA_LOCATION_PERMISSION_V2" not in src:
-              runtime = r'''
-                  // SHAMNA_RUNTIME_MEDIA_LOCATION_PERMISSION_V2
-                  if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                      java.util.ArrayList<String> missing = new java.util.ArrayList<>();
-                      if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
-                              != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                          missing.add(android.Manifest.permission.RECORD_AUDIO);
-                      }
-                      if (checkSelfPermission(android.Manifest.permission.CAMERA)
-                              != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                          missing.add(android.Manifest.permission.CAMERA);
-                      }
-                      if (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
-                              != android.content.pm.PackageManager.PERMISSION_GRANTED
-                              && checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION)
-                              != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                          missing.add(android.Manifest.permission.ACCESS_FINE_LOCATION);
-                          missing.add(android.Manifest.permission.ACCESS_COARSE_LOCATION);
-                      }
-                      if (!missing.isEmpty()) {
-                          requestPermissions(missing.toArray(new String[0]), 7001);
-                      }
-                  }
-              '''
-              src = src[:insert_after] + "\n" + runtime + src[insert_after:]
-
-          # Enable geolocation in WebView settings.
+          # Enable WebView geolocation.
           settings_marker = "WebSettings settings = webView.getSettings();"
-          if settings_marker in src and "SHAMNA_WEBVIEW_GEOLOCATION_V1" not in src:
+          if settings_marker in src and "SHAMNA_WEBVIEW_GEOLOCATION_EXPLAINED_V1" not in src:
               geo_settings = r'''
-                  // SHAMNA_WEBVIEW_GEOLOCATION_V1
+                  // SHAMNA_WEBVIEW_GEOLOCATION_EXPLAINED_V1
                   settings.setGeolocationEnabled(true);
               '''
               src = src.replace(settings_marker, settings_marker + "\n" + geo_settings, 1)
 
-          # Replace the existing WebChromeClient onPermissionRequest implementation
-          # instead of adding a second override.
+          # Do not keep the older automatic batch permission request. We now ask
+          # each permission category sequentially with a clear explanation first.
+          old_marker = "// SHAMNA_RUNTIME_MEDIA_LOCATION_PERMISSION_V2"
+          old_pos = src.find(old_marker)
+          if old_pos >= 0:
+              # Locate the enclosing "if (Build.VERSION...)" block starting immediately before marker.
+              start = src.rfind("if (android.os.Build.VERSION.SDK_INT", 0, old_pos)
+              if start >= 0:
+                  brace = src.find("{", start)
+                  depth = 0
+                  end = -1
+                  for i in range(brace, len(src)):
+                      if src[i] == "{":
+                          depth += 1
+                      elif src[i] == "}":
+                          depth -= 1
+                          if depth == 0:
+                              end = i + 1
+                              break
+                  if end > start:
+                      src = src[:start] + src[end:]
+
+          # Insert the permission explanation flow after setContentView.
+          if "SHAMNA_EXPLAINED_PERMISSION_FLOW_V1" not in src:
+              sc = src.find("setContentView(")
+              if sc < 0:
+                  raise SystemExit("setContentView call not found")
+              semi = src.find(";", sc)
+              if semi < 0:
+                  raise SystemExit("setContentView terminator not found")
+
+              flow_call = r'''
+                  // SHAMNA_EXPLAINED_PERMISSION_FLOW_V1
+                  if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                      getWindow().getDecorView().postDelayed(() -> shamnaAskCameraPermission(), 700);
+                  }
+              '''
+              src = src[:semi+1] + "\n" + flow_call + src[semi+1:]
+
+              # Add helper methods immediately before onBackPressed.
+              method_anchor = "    @Override\n    public void onBackPressed()"
+              ma = src.find(method_anchor)
+              if ma < 0:
+                  raise SystemExit("onBackPressed anchor not found")
+
+              helpers = r'''
+              // ===== SHAMNA_EXPLAINED_PERMISSION_HELPERS_V1 =====
+              private static final int SHAMNA_REQ_CAMERA = 7101;
+              private static final int SHAMNA_REQ_MIC = 7102;
+              private static final int SHAMNA_REQ_LOCATION = 7103;
+              private static final int SHAMNA_REQ_STORAGE = 7104;
+
+              private void shamnaExplainPermission(
+                      String title,
+                      String message,
+                      final Runnable onContinue,
+                      final Runnable onSkip) {
+                  try {
+                      new android.app.AlertDialog.Builder(this)
+                          .setTitle(title)
+                          .setMessage(message)
+                          .setCancelable(false)
+                          .setPositiveButton("متابعة", (dialog, which) -> onContinue.run())
+                          .setNegativeButton("ليس الآن", (dialog, which) -> onSkip.run())
+                          .show();
+                  } catch (Exception e) {
+                      onContinue.run();
+                  }
+              }
+
+              private void shamnaAskCameraPermission() {
+                  if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M
+                          || checkSelfPermission(android.Manifest.permission.CAMERA)
+                          == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                      shamnaAskMicrophonePermission();
+                      return;
+                  }
+                  shamnaExplainPermission(
+                      "إذن الكاميرا",
+                      "يحتاج Shamna AI إلى إذن الكاميرا حتى تتمكن من التقاط الصور مباشرة من داخل الأداة وإرسالها للتحليل أو الاستخدام عند اختيارك لذلك.",
+                      () -> requestPermissions(
+                          new String[]{android.Manifest.permission.CAMERA},
+                          SHAMNA_REQ_CAMERA
+                      ),
+                      () -> shamnaAskMicrophonePermission()
+                  );
+              }
+
+              private void shamnaAskMicrophonePermission() {
+                  if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M
+                          || checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
+                          == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                      shamnaAskLocationPermission();
+                      return;
+                  }
+                  shamnaExplainPermission(
+                      "إذن الميكروفون",
+                      "يحتاج Shamna AI إلى إذن الميكروفون حتى تتمكن من تسجيل الرسائل الصوتية واستخدام المحادثة أو الإدخال الصوتي داخل الأداة.",
+                      () -> requestPermissions(
+                          new String[]{android.Manifest.permission.RECORD_AUDIO},
+                          SHAMNA_REQ_MIC
+                      ),
+                      () -> shamnaAskLocationPermission()
+                  );
+              }
+
+              private void shamnaAskLocationPermission() {
+                  if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M
+                          || checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
+                          == android.content.pm.PackageManager.PERMISSION_GRANTED
+                          || checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION)
+                          == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                      shamnaAskStoragePermission();
+                      return;
+                  }
+                  shamnaExplainPermission(
+                      "إذن الموقع",
+                      "يحتاج Shamna AI إلى إذن الموقع حتى تتمكن الميزات التي تعتمد على مكانك من معرفة موقعك الحالي وتقديم نتائج وخدمات محلية أكثر دقة عندما تطلب ذلك.",
+                      () -> requestPermissions(
+                          new String[]{
+                              android.Manifest.permission.ACCESS_FINE_LOCATION,
+                              android.Manifest.permission.ACCESS_COARSE_LOCATION
+                          },
+                          SHAMNA_REQ_LOCATION
+                      ),
+                      () -> shamnaAskStoragePermission()
+                  );
+              }
+
+              private String[] shamnaStoragePermissions() {
+                  if (android.os.Build.VERSION.SDK_INT >= 33) {
+                      return new String[]{
+                          android.Manifest.permission.READ_MEDIA_IMAGES,
+                          android.Manifest.permission.READ_MEDIA_VIDEO,
+                          android.Manifest.permission.READ_MEDIA_AUDIO
+                      };
+                  }
+                  if (android.os.Build.VERSION.SDK_INT >= 29) {
+                      return new String[]{android.Manifest.permission.READ_EXTERNAL_STORAGE};
+                  }
+                  return new String[]{
+                      android.Manifest.permission.READ_EXTERNAL_STORAGE,
+                      android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+                  };
+              }
+
+              private boolean shamnaHasStoragePermission() {
+                  if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M) {
+                      return true;
+                  }
+                  String[] perms = shamnaStoragePermissions();
+                  for (String perm : perms) {
+                      if (checkSelfPermission(perm)
+                              != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                          return false;
+                      }
+                  }
+                  return true;
+              }
+
+              private void shamnaAskStoragePermission() {
+                  if (shamnaHasStoragePermission()) return;
+                  shamnaExplainPermission(
+                      "إذن التخزين والوسائط",
+                      "يحتاج Shamna AI إلى إذن الوصول إلى الصور والفيديو والصوت/التخزين حتى تتمكن من اختيار الوسائط من جهازك والتعامل معها، وليتمكن التطبيق من حفظ الصور والملفات التي تنزلها باستخدام آليات Android المخصصة للتنزيل.",
+                      () -> requestPermissions(
+                          shamnaStoragePermissions(),
+                          SHAMNA_REQ_STORAGE
+                      ),
+                      () -> {}
+                  );
+              }
+
+              private void shamnaContinuePermissionFlow(int requestCode) {
+                  if (requestCode == SHAMNA_REQ_CAMERA) {
+                      shamnaAskMicrophonePermission();
+                  } else if (requestCode == SHAMNA_REQ_MIC) {
+                      shamnaAskLocationPermission();
+                  } else if (requestCode == SHAMNA_REQ_LOCATION) {
+                      shamnaAskStoragePermission();
+                  }
+              }
+
+'''
+              src = src[:ma] + helpers + src[ma:]
+
+          # Replace WebChrome permission handling so page-level camera/mic requests
+          # respect the Android permissions already explained to the user.
           sig = "public void onPermissionRequest"
           sp = src.find(sig)
           if sp < 0:
               raise SystemExit("Existing onPermissionRequest method not found")
           open_brace = src.find("{", sp)
-          if open_brace < 0:
-              raise SystemExit("onPermissionRequest opening brace not found")
           depth = 0
           close_brace = -1
-          i = open_brace
-          while i < len(src):
-              ch = src[i]
-              if ch == "{":
+          for i in range(open_brace, len(src)):
+              if src[i] == "{":
                   depth += 1
-              elif ch == "}":
+              elif src[i] == "}":
                   depth -= 1
                   if depth == 0:
                       close_brace = i
                       break
-              i += 1
           if close_brace < 0:
               raise SystemExit("onPermissionRequest closing brace not found")
 
           method = r'''public void onPermissionRequest(final android.webkit.PermissionRequest request) {
-                          // SHAMNA_WEBVIEW_MEDIA_PERMISSION_V4
+                          // SHAMNA_WEBVIEW_MEDIA_PERMISSION_EXPLAINED_V1
                           if (request == null) return;
                           runOnUiThread(() -> {
                               try {
@@ -624,17 +773,15 @@ jobs:
                       }'''
           src = src[:sp] + method + src[close_brace+1:]
 
-          # Add geolocation handling to the same WebChromeClient.
-          if "SHAMNA_GEOLOCATION_PROMPT_V1" not in src:
+          # Add geolocation callback if absent.
+          if "SHAMNA_GEOLOCATION_PROMPT_EXPLAINED_V1" not in src:
               chrome_marker = "webView.setWebChromeClient(new WebChromeClient() {"
               cp = src.find(chrome_marker)
               if cp < 0:
-                  raise SystemExit("WebChromeClient block not found for geolocation")
+                  raise SystemExit("WebChromeClient block not found")
               brace = src.find("{", cp)
-              if brace < 0:
-                  raise SystemExit("WebChromeClient opening brace not found")
               geo_method = r'''
-                  // SHAMNA_GEOLOCATION_PROMPT_V1
+                  // SHAMNA_GEOLOCATION_PROMPT_EXPLAINED_V1
                   @Override
                   public void onGeolocationPermissionsShowPrompt(
                           String origin,
@@ -649,8 +796,27 @@ jobs:
               '''
               src = src[:brace+1] + "\n" + geo_method + src[brace+1:]
 
+          # Extend the existing permission result handler without duplicating it.
+          result_sig = "public void onRequestPermissionsResult"
+          rp = src.find(result_sig)
+          if rp < 0:
+              raise SystemExit("onRequestPermissionsResult not found")
+          result_open = src.find("{", rp)
+          insert = r'''
+              // SHAMNA_EXPLAINED_PERMISSION_RESULT_V1
+              if (requestCode == SHAMNA_REQ_CAMERA
+                      || requestCode == SHAMNA_REQ_MIC
+                      || requestCode == SHAMNA_REQ_LOCATION
+                      || requestCode == SHAMNA_REQ_STORAGE) {
+                  shamnaContinuePermissionFlow(requestCode);
+                  return;
+              }
+          '''
+          if "SHAMNA_EXPLAINED_PERMISSION_RESULT_V1" not in src:
+              src = src[:result_open+1] + "\n" + insert + src[result_open+1:]
+
           p.write_text(src, encoding="utf-8")
-          print("Location, camera and microphone permissions patched")
+          print("Explained camera/microphone/location/storage permission flow applied")
           PY
 
       - name: Add draggable translucent refresh button
