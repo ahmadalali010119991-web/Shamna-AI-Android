@@ -781,7 +781,9 @@ jobs:
                       }
 
               '''
-              src = src[:sp] + geo_method + src[sp:]
+              override_pos = src.rfind("@Override", 0, sp)
+              insert_pos = override_pos if override_pos >= 0 and sp - override_pos < 120 else sp
+              src = src[:insert_pos] + geo_method + src[insert_pos:]
               sp += len(geo_method)
           open_brace = src.find("{", sp)
           if open_brace < 0:
