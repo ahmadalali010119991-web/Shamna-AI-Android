@@ -717,7 +717,7 @@ jobs:
                   }
               }
 
-'''
+          '''
               src = src[:ma] + helpers + src[ma:]
 
           # Replace WebChrome permission handling so page-level camera/mic requests
