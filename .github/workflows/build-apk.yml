@@ -505,11 +505,7 @@ jobs:
                               while ((n = in.read(buffer)) != -1) out.write(buffer, 0, n);
                               out.flush();
                           }
-                          return androidx.core.content.FileProvider.getUriForFile(
-                              MainActivity.this,
-                              getPackageName() + ".fileprovider",
-                              dest
-                          );
+                          return android.net.Uri.fromFile(dest);
                       }
 
                       private void openUri(android.net.Uri uri, String mime) {
