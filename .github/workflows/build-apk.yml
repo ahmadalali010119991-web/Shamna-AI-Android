@@ -135,9 +135,8 @@ jobs:
           p = Path("app/src/main/java/com/shamna/ai/MainActivity.java")
           s = p.read_text(encoding="utf-8")
 
-          # Keep keyboard handling purely native. Previous versions injected a
-          # second full JavaScript interception layer here, recursively into
-          # iframes, which could overload/crash the WebView renderer.
+          # Keep keyboard handling purely native. The old implementation also
+          # injected a second full interception layer into the page and frames.
           if "SHAMNA_KEYBOARD_RESIZE" not in s:
               m = re.search(r'(^\s*setContentView\s*\([^;]+\);\s*$)', s, flags=re.M)
               if not m:
@@ -152,7 +151,7 @@ jobs:
               s = s[:m.end()] + "\n" + native + s[m.end():]
 
           p.write_text(s, encoding="utf-8")
-          print("Keyboard handling kept native-only; duplicate JS/frame injection removed")
+          print("Keyboard handling simplified to native-only")
           PY
 
       - name: Fix WebView downloads
@@ -496,7 +495,7 @@ jobs:
           print("Legacy storage compatibility added; Android 10+ remains permissionless via MediaStore")
           PY
 
-      - name: Fix camera and microphone permissions
+      - name: Fix location camera and microphone permissions
         shell: bash
         run: |
           python3 - <<'PY'
@@ -531,9 +530,9 @@ jobs:
               raise SystemExit("setContentView terminator not found")
           insert_after = semi + 1
 
-          if "SHAMNA_RUNTIME_MEDIA_PERMISSION_V1" not in src:
+          if "SHAMNA_RUNTIME_MEDIA_LOCATION_PERMISSION_V2" not in src:
               runtime = r'''
-                  // SHAMNA_RUNTIME_MEDIA_PERMISSION_V1
+                  // SHAMNA_RUNTIME_MEDIA_LOCATION_PERMISSION_V2
                   if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
                       java.util.ArrayList<String> missing = new java.util.ArrayList<>();
                       if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
@@ -558,33 +557,21 @@ jobs:
               '''
               src = src[:insert_after] + "\n" + runtime + src[insert_after:]
 
+          # Enable geolocation in WebView settings.
+          settings_marker = "WebSettings settings = webView.getSettings();"
+          if settings_marker in src and "SHAMNA_WEBVIEW_GEOLOCATION_V1" not in src:
+              geo_settings = r'''
+                  // SHAMNA_WEBVIEW_GEOLOCATION_V1
+                  settings.setGeolocationEnabled(true);
+              '''
+              src = src.replace(settings_marker, settings_marker + "\n" + geo_settings, 1)
+
           # Replace the existing WebChromeClient onPermissionRequest implementation
           # instead of adding a second override.
           sig = "public void onPermissionRequest"
           sp = src.find(sig)
           if sp < 0:
               raise SystemExit("Existing onPermissionRequest method not found")
-
-          if "SHAMNA_GEOLOCATION_PROMPT_STABLE_V1" not in src:
-              geo_method = r'''
-                      // SHAMNA_GEOLOCATION_PROMPT_STABLE_V1
-                      @Override
-                      public void onGeolocationPermissionsShowPrompt(
-                              String origin,
-                              android.webkit.GeolocationPermissions.Callback callback) {
-                          boolean granted = android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M
-                              || checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
-                                  == android.content.pm.PackageManager.PERMISSION_GRANTED
-                              || checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION)
-                                  == android.content.pm.PackageManager.PERMISSION_GRANTED;
-                          callback.invoke(origin, granted, false);
-                      }
-
-              '''
-              override_pos = src.rfind("@Override", 0, sp)
-              insert_pos = override_pos if override_pos >= 0 and sp - override_pos < 120 else sp
-              src = src[:insert_pos] + geo_method + src[insert_pos:]
-              sp += len(geo_method)
           open_brace = src.find("{", sp)
           if open_brace < 0:
               raise SystemExit("onPermissionRequest opening brace not found")
@@ -637,8 +624,33 @@ jobs:
                       }'''
           src = src[:sp] + method + src[close_brace+1:]
 
+          # Add geolocation handling to the same WebChromeClient.
+          if "SHAMNA_GEOLOCATION_PROMPT_V1" not in src:
+              chrome_marker = "webView.setWebChromeClient(new WebChromeClient() {"
+              cp = src.find(chrome_marker)
+              if cp < 0:
+                  raise SystemExit("WebChromeClient block not found for geolocation")
+              brace = src.find("{", cp)
+              if brace < 0:
+                  raise SystemExit("WebChromeClient opening brace not found")
+              geo_method = r'''
+                  // SHAMNA_GEOLOCATION_PROMPT_V1
+                  @Override
+                  public void onGeolocationPermissionsShowPrompt(
+                          String origin,
+                          android.webkit.GeolocationPermissions.Callback callback) {
+                      boolean granted = android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M
+                          || checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
+                              == android.content.pm.PackageManager.PERMISSION_GRANTED
+                          || checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION)
+                              == android.content.pm.PackageManager.PERMISSION_GRANTED;
+                      callback.invoke(origin, granted, false);
+                  }
+              '''
+              src = src[:brace+1] + "\n" + geo_method + src[brace+1:]
+
           p.write_text(src, encoding="utf-8")
-          print("Camera and microphone permissions patched")
+          print("Location, camera and microphone permissions patched")
           PY
 
       - name: Add draggable translucent refresh button
@@ -779,21 +791,30 @@ jobs:
                   return v * getResources().getDisplayMetrics().density;
               }
 
+              // Only the painted triangle itself blocks touches. The transparent
+              // half of this square remains fully touch-through to the WebView.
               private boolean isInsideTriangle(float x, float y) {
                   final float w = getWidth();
                   final float h = getHeight();
                   if (w <= 0 || h <= 0) return false;
+
                   switch (corner) {
-                      case TOP_LEFT: return (x / w) + (y / h) <= 1f;
-                      case TOP_RIGHT: return ((w - x) / w) + (y / h) <= 1f;
-                      case BOTTOM_LEFT: return (x / w) + ((h - y) / h) <= 1f;
-                      default: return ((w - x) / w) + ((h - y) / h) <= 1f;
+                      case TOP_LEFT:
+                          return (x / w) + (y / h) <= 1f;
+                      case TOP_RIGHT:
+                          return ((w - x) / w) + (y / h) <= 1f;
+                      case BOTTOM_LEFT:
+                          return (x / w) + ((h - y) / h) <= 1f;
+                      default:
+                          return ((w - x) / w) + ((h - y) / h) <= 1f;
                   }
               }
 
               @Override
               public boolean dispatchTouchEvent(android.view.MotionEvent event) {
-                  if (!isInsideTriangle(event.getX(), event.getY())) return false;
+                  if (!isInsideTriangle(event.getX(), event.getY())) {
+                      return false;
+                  }
                   return super.dispatchTouchEvent(event);
               }
 
@@ -1104,41 +1125,16 @@ jobs:
                   webView.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null);
                   settings.setCacheMode(android.webkit.WebSettings.LOAD_DEFAULT);
                   settings.setLoadsImagesAutomatically(true);
-                  settings.setGeolocationEnabled(true);
                   // SHAMNA_FAST_ACCESS_V1
                   settings.setDomStorageEnabled(true);
+                  settings.setDatabaseEnabled(true);
               '''
               src = src.replace(needle, needle + "\n" + code, 1)
 
           # Show the page as soon as Chromium commits visible content instead of
           # keeping the loading overlay up until every subresource finishes.
           if "SHAMNA_COMMIT_VISIBLE_V1" not in src:
-              needle = "webView.setWebViewClient(new WebViewClient() {
-                  // SHAMNA_RENDERER_RECOVERY_V1
-                  @Override
-                  public boolean onRenderProcessGone(
-                          android.webkit.WebView view,
-                          android.webkit.RenderProcessGoneDetail detail) {
-                      try {
-                          android.view.ViewGroup parent =
-                              (android.view.ViewGroup) view.getParent();
-                          if (parent != null) parent.removeView(view);
-                          view.destroy();
-                      } catch (Exception ignored) {}
-
-                      runOnUiThread(() -> {
-                          try {
-                              android.content.Intent intent = getIntent();
-                              intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NO_ANIMATION);
-                              finish();
-                              overridePendingTransition(0, 0);
-                              startActivity(intent);
-                              overridePendingTransition(0, 0);
-                          } catch (Exception ignored) {}
-                      });
-                      return true;
-                  }
-"
+              needle = "webView.setWebViewClient(new WebViewClient() {"
               cp = src.find(needle)
               if cp < 0:
                   raise SystemExit("WebViewClient block not found")
