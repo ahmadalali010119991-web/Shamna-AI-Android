@@ -130,13 +130,14 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import json
           import re
 
           p = Path("app/src/main/java/com/shamna/ai/MainActivity.java")
           s = p.read_text(encoding="utf-8")
 
-          # Ensure the activity always resizes for the soft keyboard.
+          # Keep keyboard handling purely native. Previous versions injected a
+          # second full JavaScript interception layer here, recursively into
+          # iframes, which could overload/crash the WebView renderer.
           if "SHAMNA_KEYBOARD_RESIZE" not in s:
               m = re.search(r'(^\s*setContentView\s*\([^;]+\);\s*$)', s, flags=re.M)
               if not m:
@@ -150,209 +151,8 @@ jobs:
               """
               s = s[:m.end()] + "\n" + native + s[m.end():]
 
-          # Inject a compact mobile layout fix after each page finishes loading.
-          if "SHAMNA_KEYBOARD_WEB_FIX" not in s:
-              js = r"""
-          (function(){
-            const TOP = window;
-
-            function install(w){
-              try{
-                if(!w || w.__shamnaNativeV5) return;
-                w.__shamnaNativeV5 = true;
-                const d = w.document;
-                const bridge = w.ShamnaNative || TOP.ShamnaNative;
-                if(!d || !bridge) return;
-
-                const blobMap = new Map();
-
-                try{
-                  const c = w.URL.createObjectURL.bind(w.URL);
-                  w.URL.createObjectURL = function(obj){
-                    const u = c(obj);
-                    try{ blobMap.set(u,obj); }catch(_){}
-                    return u;
-                  };
-                }catch(_){}
-
-                function isExternal(u){
-                  try{
-                    const x = new w.URL(u, w.location.href);
-                    return (x.protocol==='http:' || x.protocol==='https:') &&
-                      x.hostname!=='perchance.org' &&
-                      !x.hostname.endsWith('.perchance.org');
-                  }catch(_){ return false; }
-                }
-
-                async function asData(u){
-                  if(u.startsWith('data:')){
-                    return {data:u,mime:(u.match(/^data:([^;,]+)/)||[])[1]||''};
-                  }
-                  let bl = blobMap.get(u);
-                  if(!bl){
-                    const r = await w.fetch(u);
-                    bl = await r.blob();
-                  }
-                  const data = await new Promise((ok,no)=>{
-                    const fr = new w.FileReader();
-                    fr.onload=()=>ok(fr.result);
-                    fr.onerror=no;
-                    fr.readAsDataURL(bl);
-                  });
-                  return {data,mime:bl.type||''};
-                }
-
-                function fileName(mime, preferred){
-                  if(preferred) return preferred;
-                  let ext='';
-                  if(mime==='application/pdf') ext='.pdf';
-                  else if(mime==='image/png') ext='.png';
-                  else if(mime==='image/jpeg') ext='.jpg';
-                  else if(mime==='image/webp') ext='.webp';
-                  return 'Shamna-AI-'+Date.now()+ext;
-                }
-
-                async function nativeSave(url, preferred, mime, openAfter){
-                  try{
-                    const x = await asData(url);
-                    bridge.saveDataUrl(x.data,fileName(mime||x.mime,preferred),mime||x.mime,!!openAfter);
-                    return true;
-                  }catch(e){
-                    try{ console.error('Shamna nativeSave',e); }catch(_){}
-                    return false;
-                  }
-                }
-
-                function findFileUrl(root){
-                  let el=root;
-                  for(let i=0;i<10 && el;i++,el=el.parentElement){
-                    const nodes=[el].concat(Array.from(el.querySelectorAll ? el.querySelectorAll('a,img,object,embed,source') : []));
-                    for(const n of nodes){
-                      const vals=[
-                        n.href,n.src,n.data,
-                        n.getAttribute&&n.getAttribute('href'),
-                        n.getAttribute&&n.getAttribute('src'),
-                        n.getAttribute&&n.getAttribute('data'),
-                        n.getAttribute&&n.getAttribute('data-url'),
-                        n.getAttribute&&n.getAttribute('data-download'),
-                        n.getAttribute&&n.getAttribute('data-src')
-                      ].filter(Boolean);
-                      for(const v of vals){
-                        if(typeof v==='string' && (v.startsWith('blob:')||v.startsWith('data:'))) return v;
-                      }
-                    }
-                  }
-                  if(blobMap.size) return Array.from(blobMap.keys()).pop();
-                  return '';
-                }
-
-                d.addEventListener('click',function(e){
-                  try{
-                    const a=e.target && e.target.closest ? e.target.closest('a') : null;
-                    if(a){
-                      const href=a.href||a.getAttribute('href')||'';
-                      if(isExternal(href)){
-                        e.preventDefault();
-                        e.stopImmediatePropagation();
-                        bridge.openBrowser(href);
-                        return;
-                      }
-                      if(href.startsWith('blob:')||href.startsWith('data:')){
-                        e.preventDefault();
-                        e.stopImmediatePropagation();
-                        const txt=(a.textContent||'').trim();
-                        nativeSave(href,a.getAttribute('download')||'','',/فتح|open/i.test(txt));
-                        return;
-                      }
-                    }
-
-                    const btn=e.target && e.target.closest ? e.target.closest('button,[role="button"],a') : null;
-                    if(!btn) return;
-                    const txt=(btn.textContent||'').replace(/\s+/g,' ').trim();
-                    if(/تحميل|تنزيل|download|حفظ/i.test(txt) || /فتح|open/i.test(txt)){
-                      const u=findFileUrl(btn);
-                      if(u){
-                        e.preventDefault();
-                        e.stopImmediatePropagation();
-                        const openAfter=/فتح|open/i.test(txt) && !/تحميل|تنزيل|download|حفظ/i.test(txt);
-                        const mime=/pdf/i.test(txt)?'application/pdf':(/صورة|image/i.test(txt)?'image/png':'');
-                        nativeSave(u,'',mime,openAfter);
-                      }
-                    }
-                  }catch(err){
-                    try{ console.error('Shamna click intercept',err); }catch(_){}
-                  }
-                },true);
-
-                const oldOpen=w.open;
-                w.open=function(url,target,features){
-                  try{
-                    if(typeof url==='string'){
-                      if(isExternal(url)){
-                        bridge.openBrowser(url);
-                        return null;
-                      }
-                      if(url.startsWith('blob:')||url.startsWith('data:')){
-                        nativeSave(url,'','',true);
-                        return null;
-                      }
-                    }
-                  }catch(_){}
-                  return oldOpen ? oldOpen.call(w,url,target,features) : null;
-                };
-
-                try{
-                  const oldClick=w.HTMLAnchorElement.prototype.click;
-                  w.HTMLAnchorElement.prototype.click=function(){
-                    try{
-                      const href=this.href||this.getAttribute('href')||'';
-                      if(isExternal(href)){
-                        bridge.openBrowser(href);
-                        return;
-                      }
-                      if(href.startsWith('blob:')||href.startsWith('data:')){
-                        nativeSave(href,this.getAttribute('download')||'','',false);
-                        return;
-                      }
-                    }catch(_){}
-                    return oldClick.call(this);
-                  };
-                }catch(_){}
-
-                function scanFrames(){
-                  try{
-                    d.querySelectorAll('iframe').forEach(fr=>{
-                      try{
-                        const cw=fr.contentWindow;
-                        if(cw) install(cw);
-                        fr.addEventListener('load',()=>{ try{ install(fr.contentWindow); }catch(_){} },{once:false});
-                      }catch(_){}
-                    });
-                  }catch(_){}
-                }
-
-                scanFrames();
-                try{
-                  new w.MutationObserver(scanFrames).observe(d.documentElement||d,{childList:true,subtree:true});
-                }catch(_){}
-              }catch(_){}
-            }
-
-            install(TOP);
-          })();
-          """
-              java_literal = json.dumps(js, ensure_ascii=False)
-
-              old = "                progressBar.setVisibility(View.GONE);"
-              if old not in s:
-                  raise SystemExit("Could not find onPageFinished progress line")
-              replacement = old + """
-                  // SHAMNA_KEYBOARD_WEB_FIX
-                  view.postDelayed(() -> view.evaluateJavascript(""" + java_literal + """, null), 250);"""
-              s = s.replace(old, replacement, 1)
-
           p.write_text(s, encoding="utf-8")
-          print("Keyboard/chat UX fix applied successfully")
+          print("Keyboard handling kept native-only; duplicate JS/frame injection removed")
           PY
 
       - name: Fix WebView downloads
@@ -1307,14 +1107,38 @@ jobs:
                   settings.setGeolocationEnabled(true);
                   // SHAMNA_FAST_ACCESS_V1
                   settings.setDomStorageEnabled(true);
-                  settings.setDatabaseEnabled(true);
               '''
               src = src.replace(needle, needle + "\n" + code, 1)
 
           # Show the page as soon as Chromium commits visible content instead of
           # keeping the loading overlay up until every subresource finishes.
           if "SHAMNA_COMMIT_VISIBLE_V1" not in src:
-              needle = "webView.setWebViewClient(new WebViewClient() {"
+              needle = "webView.setWebViewClient(new WebViewClient() {
+                  // SHAMNA_RENDERER_RECOVERY_V1
+                  @Override
+                  public boolean onRenderProcessGone(
+                          android.webkit.WebView view,
+                          android.webkit.RenderProcessGoneDetail detail) {
+                      try {
+                          android.view.ViewGroup parent =
+                              (android.view.ViewGroup) view.getParent();
+                          if (parent != null) parent.removeView(view);
+                          view.destroy();
+                      } catch (Exception ignored) {}
+
+                      runOnUiThread(() -> {
+                          try {
+                              android.content.Intent intent = getIntent();
+                              intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NO_ANIMATION);
+                              finish();
+                              overridePendingTransition(0, 0);
+                              startActivity(intent);
+                              overridePendingTransition(0, 0);
+                          } catch (Exception ignored) {}
+                      });
+                      return true;
+                  }
+"
               cp = src.find(needle)
               if cp < 0:
                   raise SystemExit("WebViewClient block not found")
