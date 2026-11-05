@@ -1,0 +1,85 @@
+name: Hasibat delayed update announcement
+
+on:
+  push:
+    branches:
+      - hasibat-al-lira
+    paths:
+      - hasibat-release-pending.json
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hasibat-update-announcements
+  cancel-in-progress: true
+
+jobs:
+  publish-after-30-minutes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    steps:
+      - name: Check out release metadata
+        uses: actions/checkout@v4
+        with:
+          ref: hasibat-al-lira
+
+      - name: Record triggering release and wait until eligibility
+        id: wait
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, datetime as dt, os, time
+          with open('hasibat-release-pending.json',encoding='utf-8') as f:
+              pending=json.load(f)
+          code=int(pending['versionCode'])
+          published=dt.datetime.fromisoformat(pending['releasedAt'].replace('Z','+00:00'))
+          assert published.tzinfo is not None
+          ready=published.timestamp()+1800
+          wait=max(0,ready-time.time())
+          if wait>3600:
+              raise ValueError('Release time unexpectedly far in future')
+          with open(os.environ['GITHUB_OUTPUT'],'a') as out:
+              out.write(f"version_code={code}\n")
+          print(f"Version {code}: delay remaining {wait:.0f} seconds")
+          if wait>0:time.sleep(wait)
+          PY
+
+      - name: Publish metadata for the newest version
+        shell: bash
+        env:
+          TRIGGER_VERSION_CODE: ${{ steps.wait.outputs.version_code }}
+        run: |
+          set -euo pipefail
+          git fetch origin hasibat-al-lira
+          git checkout -B hasibat-al-lira origin/hasibat-al-lira
+          python3 - <<'PY'
+          import datetime as dt, json, os, pathlib, time
+          pending=json.loads(pathlib.Path('hasibat-release-pending.json').read_text('utf-8'))
+          current=json.loads(pathlib.Path('hasibat-update.json').read_text('utf-8'))
+          code=int(pending['versionCode'])
+          triggered=int(os.environ['TRIGGER_VERSION_CODE'])
+          ready=dt.datetime.fromisoformat(pending['releasedAt'].replace('Z','+00:00')).timestamp()+1800
+          if code!=triggered or time.time()<ready or code<=int(current.get('versionCode',0)):
+              print('No update published (newer release pending, release still in delay period, or already published).')
+          else:
+              manifest={
+                'versionCode':code,
+                'versionName':str(pending['versionName']),
+                'required':bool(pending.get('required',False)),
+                'requiresUninstall':bool(pending.get('requiresUninstall',False)),
+                'url':'https://dallalna.com/install',
+                'message':str(pending.get('message','يتوفر إصدار أحدث من حاسبة الليرة السورية.'))
+              }
+              pathlib.Path('hasibat-update.json').write_text(
+                  json.dumps(manifest,ensure_ascii=False,indent=2)+'\n',encoding='utf-8'
+              )
+              print('Published version',code)
+          PY
+          git diff --exit-code -- hasibat-update.json && exit 0 || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add hasibat-update.json
+          git commit -m "Publish Hasibat update after 30-minute delay"
+          git push origin hasibat-al-lira
