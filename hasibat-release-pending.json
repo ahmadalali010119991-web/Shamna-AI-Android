@@ -1,9 +1,9 @@
 {
-  "versionCode": 10,
-  "versionName": "1.6.0",
-  "releasedAt": "2026-11-05T23:09:39Z",
+  "versionCode": 11,
+  "versionName": "1.7.0",
+  "releasedAt": "2026-11-05T23:36:34Z",
   "required": false,
   "requiresUninstall": false,
   "url": "https://dallalna.com/install",
-  "message": "الإصدار 1.6.0: إشعارات شرعية صامتة، تحية صباحية يومية، وفوائد متفرقة مع بقاء الحاسبة والذهب والكتب."
+  "message": "الإصدار 1.7.0: طلب الإذن تلقائيًا وتحكم كامل بإشعارات الأذكار والتنبيهات بالتحديثات حتى عند إغلاق التطبيق."
 }
