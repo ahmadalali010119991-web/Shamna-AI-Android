@@ -83,10 +83,9 @@ def inspect(apk):
     signature_output = subprocess.check_output(
         [android_tool("apksigner"), "verify", "--print-certs", str(apk)],
         text=True, stderr=subprocess.STDOUT, timeout=60)
-    certs = re.findall(
-        r"(?m)^(?:(?:V[234](?:\\.\\d+)? Signer|Signer #\\d+): certificate|Signer #\\d+ certificate) SHA-256 digest:\\s*([a-fA-F0-9]{64})\\s*$",
-        signature_output
-    )
+    # The CLI output differs across Android Build Tools (Signer #1 vs V3.0 Signer).
+    # Treat all advertised signer certificate digests as security-critical.
+    certs = re.findall(r"certificate SHA-256 digest:\s*([a-fA-F0-9]{64})", signature_output)
     if not certs or any(value.lower() != EXPECTED_CERT_SHA256 for value in certs) or "Signer #2" in signature_output:
         raise RuntimeError("BLOCKED: publisher signing certificate differs from the installed Shamna QA APK")
     return code, name
