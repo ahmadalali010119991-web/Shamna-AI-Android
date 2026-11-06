@@ -1,0 +1,49 @@
+name: Automatically detect published Shamna AI updates
+
+on:
+  schedule:
+    - cron: "4,9,14,19,24,29,34,39,44,49,54,59 * * * *"
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/shamna-sync-published.yml
+      - scripts/sync_shamna_from_dallalna.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: signed-shamna-update-publication
+  cancel-in-progress: false
+
+jobs:
+  sync-shamna:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure Android APK verification tools exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v aapt >/dev/null; then
+            BT="$(find "$ANDROID_HOME/build-tools" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)"
+            echo "$BT" >> "$GITHUB_PATH"
+          fi
+          python3 -m py_compile scripts/sync_shamna_from_dallalna.py
+      - name: Detect and validate newly published Shamna APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/sync_shamna_from_dallalna.py
+          if git diff --quiet -- shamna-update.json; then
+            echo "No newer verified release. Existing update manifest remains unchanged."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add shamna-update.json
+          git commit -m "Publish newer verified Shamna Android APK automatically"
+          git push origin HEAD:main
