@@ -3,7 +3,8 @@ name: Detect published Hasibat APK and sync updates
 
 on:
   schedule:
-    - cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"
+    # Canonical five-minute schedule, on the default branch. GitHub may delay or skip cron ticks.
+    - cron: "*/5 * * * *"
   workflow_dispatch:
   push:
     branches: [main]
