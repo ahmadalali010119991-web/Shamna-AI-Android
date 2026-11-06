@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Automatically publish only verified newer Shamna APKs already hosted on Dallalna.
+"""Automatically publish only newer signed Shamna QA APKs already hosted on Dallalna.
 
 The script is fail-closed. It never uploads APKs or mutates the Dallalna site.
 Do not remove its certificate check to work around a signing-key mismatch.
@@ -93,6 +93,9 @@ def inspect(apk):
 def main():
     current = json.loads(MANIFEST.read_text("utf-8"))
     url = find_shamna_apk()
+    print(f"Current approved version: {current.get('versionName')} "
+          f"(code {current.get('versionCode')}); Dallalna APK URL changed: "
+          f"{bool(url and url != current.get('apkUrl'))}")
     if not url or url == current.get("apkUrl"):
         print("No changed Shamna APK URL; automatic monitoring continues.")
         return
