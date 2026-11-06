@@ -90,6 +90,12 @@ def inspect_apk(path):
 def main():
     existing=json.loads(REPO_FILE.read_text(encoding="utf-8"))
     url=discover_link()
+    # Dallalna publishes each APK at a new immutable, UUID-based storage URL.
+    # Re-check the public listing automatically on every run, but do not
+    # download the same 12 MB APK hundreds of times per day.
+    if url == existing.get("apkUrl") and int(existing.get("versionCode", 0)) > 0:
+        print("Dallalna APK unchanged; automatic monitoring is active. No full download needed.")
+        return
     with tempfile.TemporaryDirectory() as directory:
         candidate=pathlib.Path(directory)/"candidate.apk"
         digest,size=download_apk(url,candidate)
