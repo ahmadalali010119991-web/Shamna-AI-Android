@@ -27,6 +27,7 @@ import android.provider.Settings;
 import android.widget.Toast;
 
 import org.json.JSONObject;
+import org.json.JSONArray;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
@@ -45,6 +46,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class ShamnaUpdateManager {
     private static final String MANIFEST_URL =
         "https://raw.githubusercontent.com/ahmadalali010119991-web/Shamna-AI-Android/main/shamna-update.json";
+    private static final String DALLALNA_RELEASE_URL =
+        "https://ftzmeimurgsqzvmcahhs.supabase.co/rest/v1/app_downloads?select=name,file_url,version";
+    // Public Supabase anon key exposed in the Dallalna website. Not a privileged secret.
+    private static final String DALLALNA_PUBLIC_KEY =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0em1laW11cmdzcXp2bWNhaGhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxMTg0NzMsImV4cCI6MjA5MTY5NDQ3M30.8kLjeKnDSlqcb0oqtVOmDKBImpyS8EN2PzJlbZxef8w";
     private static final String PREFERENCES = "shamna_native_update_v1";
     private static final String CHANNEL = "shamna_app_updates";
     private static final long CHECK_INTERVAL_MS = 5L * 60 * 1000;
@@ -64,6 +70,7 @@ public final class ShamnaUpdateManager {
 
     private static final class Release {
         long code;
+        boolean direct;
         String version;
         String apkUrl;
         String sha256;
@@ -147,6 +154,12 @@ public final class ShamnaUpdateManager {
         lastCheck = now;
         new Thread(() -> {
             try {
+                // Fast path: read the Dallalna public published APK entry directly.
+                // GitHub remains the verified metadata fallback; its scheduled
+                // tasks can be delayed by GitHub and must not block discovery.
+                Release release = null;
+                try { release = queryPublishedRelease(); } catch (Exception ignored) {}
+                if (release == null) {
                 HttpURLConnection c = (HttpURLConnection) new URL(MANIFEST_URL).openConnection();
                 c.setConnectTimeout(12000);
                 c.setReadTimeout(12000);
@@ -160,12 +173,14 @@ public final class ShamnaUpdateManager {
                     bytes = readLimited(input, 12000);
                 } finally { c.disconnect(); }
                 JSONObject json = new JSONObject(new String(bytes, "UTF-8"));
-                Release release = parseRelease(json);
-                if (release == null || release.code <= installedCode()) return;
+                release = parseRelease(json);
+                }
+                if (release == null || !isNewerRelease(release)) return;
+                final Release ready = release;
                 main.post(() -> {
                     if (activity.isFinishing() || activity.isDestroyed()) return;
-                    lastRelease = release;
-                    showUpdateNotice(release);
+                    lastRelease = ready;
+                    showUpdateNotice(ready);
                 });
             } catch (Exception ignored) {
                 // Network failure never blocks Shamna AI or makes an old build "latest".
@@ -173,6 +188,98 @@ public final class ShamnaUpdateManager {
                 IN_FLIGHT.set(false);
             }
         }, "ShamnaUpdateCheck").start();
+    }
+
+
+    /** Compare dotted numeric release names by component, never lexicographically. */
+    private static int compareVersions(String a, String b) {
+        if (a == null || b == null ||
+            !a.matches("[0-9]+(\\.[0-9]+){1,3}") ||
+            !b.matches("[0-9]+(\\.[0-9]+){1,3}")) return Integer.MIN_VALUE;
+        try {
+            String[] aa = a.split("\\."), bb = b.split("\\.");
+            int count = Math.max(aa.length, bb.length);
+            for (int i = 0; i < count; i++) {
+                long av = i < aa.length ? Long.parseLong(aa[i]) : 0;
+                long bv = i < bb.length ? Long.parseLong(bb[i]) : 0;
+                if (av != bv) return av > bv ? 1 : -1;
+            }
+            return 0;
+        } catch (NumberFormatException ex) { return Integer.MIN_VALUE; }
+    }
+
+    private String installedVersionName() {
+        try {
+            PackageInfo info = activity.getPackageManager().getPackageInfo(activity.getPackageName(), 0);
+            return info.versionName;
+        } catch (Exception ignored) { return null; }
+    }
+
+    private boolean isNewerRelease(Release r) {
+        if (r == null) return false;
+        if (!r.direct) return r.code > installedCode();
+        return r.code > installedCode()
+            && compareVersions(r.version, installedVersionName()) > 0;
+    }
+
+    private static boolean isTrustedApkUrl(String url) {
+        try {
+            Uri uri = Uri.parse(url);
+            return "https".equals(uri.getScheme())
+                && "ftzmeimurgsqzvmcahhs.supabase.co".equals(uri.getHost())
+                && uri.getUserInfo() == null && uri.getPort() == -1
+                && uri.getQuery() == null && uri.getFragment() == null
+                && uri.getPath() != null
+                && uri.getPath().startsWith("/storage/v1/object/public/site-assets/")
+                && uri.getPath().endsWith(".apk");
+        } catch (Exception ex) { return false; }
+    }
+
+    /** Guest query, same public source as Dallalna's /install page. */
+    private Release queryPublishedRelease() throws Exception {
+        long code = installedCode();
+        if (code == Long.MAX_VALUE || code < 1 || code >= 999999L) return null;
+        HttpURLConnection c = (HttpURLConnection) new URL(DALLALNA_RELEASE_URL).openConnection();
+        c.setConnectTimeout(10000);
+        c.setReadTimeout(10000);
+        c.setInstanceFollowRedirects(false);
+        c.setRequestProperty("apikey", DALLALNA_PUBLIC_KEY);
+        c.setRequestProperty("Authorization", "Bearer " + DALLALNA_PUBLIC_KEY);
+        c.setRequestProperty("Accept", "application/json");
+        c.setRequestProperty("Cache-Control", "no-cache");
+        byte[] bytes;
+        try {
+            if (c.getResponseCode() != 200) return null;
+            try (InputStream input = c.getInputStream()) {
+                bytes = readLimited(input, 300000);
+            }
+        } finally { c.disconnect(); }
+        JSONArray data = new JSONArray(new String(bytes, "UTF-8"));
+        JSONObject entry = null;
+        for (int i = 0; i < data.length(); i++) {
+            JSONObject row = data.optJSONObject(i);
+            if (row == null) continue;
+            String name = row.optString("name", "");
+            if (name.contains("شامنا") || name.toLowerCase(Locale.ROOT).contains("shamna")) {
+                if (entry != null) return null; // Ambiguous listing; fail closed.
+                entry = row;
+            }
+        }
+        if (entry == null) return null;
+        String version = entry.optString("version", "").trim();
+        String url = entry.optString("file_url", "");
+        if (compareVersions(version, installedVersionName()) <= 0 || !isTrustedApkUrl(url)) {
+            return null;
+        }
+        Release r = new Release();
+        r.code = code + 1; // Minimum expected build; actual number is verified from the APK.
+        r.direct = true;
+        r.version = version;
+        r.apkUrl = url;
+        r.message = "تحديث شامنا AI " + version + " متوفر على دلّالنا. اضغط لتنزيله وتثبيته فوق نسختك الحالية.";
+        r.sha256 = ""; // Public listing has no SHA-256. Actual signed APK is verified before install.
+        r.size = 0;
+        return r;
     }
 
     private Release parseRelease(JSONObject data) {
@@ -203,7 +310,7 @@ public final class ShamnaUpdateManager {
     }
 
     private void showUpdateNotice(Release release) {
-        if (release.code <= installedCode() || promptVisible || !visible) return;
+        if (!isNewerRelease(release) || promptVisible || !visible) return;
         if (promptingVersion == release.code) return;
         promptingVersion = release.code;
         promptVisible = true;
@@ -246,7 +353,7 @@ public final class ShamnaUpdateManager {
     }
 
     private void downloadRelease(Release r) {
-        if (r.code <= installedCode()) return;
+        if (!isNewerRelease(r)) return;
         try {
             String name = "Shamna-AI-" + r.version + ".apk";
             File target = new File(activity.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), name);
@@ -264,7 +371,8 @@ public final class ShamnaUpdateManager {
             long id = dm.enqueue(req);
             preferences.edit().putLong("download_id", id)
                 .putLong("download_code", r.code).putString("download_version", r.version)
-                .putString("download_sha", r.sha256).putString("download_file", target.getAbsolutePath())
+                .putString("download_sha", r.sha256).putBoolean("download_direct", r.direct)
+                .putString("download_file", target.getAbsolutePath())
                 .apply();
             Toast.makeText(activity, "بدأ تنزيل تحديث شامنا AI " + r.version, Toast.LENGTH_LONG).show();
         } catch (Exception ex) {
@@ -304,7 +412,12 @@ public final class ShamnaUpdateManager {
                 byte[] b = new byte[65536]; int read;
                 while ((read = in.read(b)) != -1) digest.update(b, 0, read);
             }
-            if (!toHex(digest.digest()).equals(expected)) throw new SecurityException("wrong file hash");
+            String actual = toHex(digest.digest());
+            // When the release comes directly from Dallalna, its public index
+            // does not carry a checksum. The Android signing certificate and
+            // installed package identity below remain mandatory.
+            if (!expected.isEmpty() && !actual.equals(expected))
+                throw new SecurityException("wrong file hash");
             PackageManager pm = activity.getPackageManager();
             int flags = Build.VERSION.SDK_INT >= 28 ? PackageManager.GET_SIGNING_CERTIFICATES : PackageManager.GET_SIGNATURES;
             PackageInfo apk = pm.getPackageArchiveInfo(f.getAbsolutePath(), flags);
@@ -312,7 +425,11 @@ public final class ShamnaUpdateManager {
             if (apk == null || !activity.getPackageName().equals(apk.packageName)) throw new SecurityException("wrong package");
             long fileCode = Build.VERSION.SDK_INT >= 28 ? apk.getLongVersionCode() : apk.versionCode;
             long oldCode = Build.VERSION.SDK_INT >= 28 ? installed.getLongVersionCode() : installed.versionCode;
-            if (fileCode != candidateCode || fileCode <= oldCode) throw new SecurityException("outdated APK");
+            boolean direct = preferences.getBoolean("download_direct", false);
+            if (fileCode <= oldCode || (direct ? fileCode < candidateCode : fileCode != candidateCode))
+                throw new SecurityException("outdated APK");
+            String advertised = preferences.getString("download_version", "");
+            if (!advertised.equals(apk.versionName)) throw new SecurityException("APK version name mismatch");
             Signature[] current = Build.VERSION.SDK_INT >= 28
                 ? installed.signingInfo.getApkContentsSigners() : installed.signatures;
             Signature[] incoming = Build.VERSION.SDK_INT >= 28
@@ -361,7 +478,8 @@ public final class ShamnaUpdateManager {
 
     private void clearDownload() {
         preferences.edit().remove("download_id").remove("download_code")
-            .remove("download_sha").remove("download_file").remove("download_version").apply();
+            .remove("download_sha").remove("download_direct")
+            .remove("download_file").remove("download_version").apply();
     }
 
     private static byte[] readLimited(InputStream in, int maximum) throws Exception {
