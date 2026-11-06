@@ -145,8 +145,8 @@ jobs:
               if b"shamna-qa-update.json" not in new.read("classes4.dex"):
                   raise SystemExit("Missing update fallback")
               if b"ShamnaApkVersionProbe" not in new.read("classes4.dex"):
-              raise SystemExit("Missing ZIP manifest version detector")
-          if b"DALLALNA_RELEASE_URL" not in new.read("classes4.dex"):
+                  raise SystemExit("Missing ZIP manifest version detector")
+              if b"DALLALNA_RELEASE_URL" not in new.read("classes4.dex"):
                   raise SystemExit("Missing live Dallalna source")
           PY
           zipalign -f -p 4 qa-v1.5-unsigned.apk qa-v1.5-aligned-unsigned.apk
