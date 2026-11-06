@@ -53,7 +53,7 @@ public final class ShamnaUpdateManager {
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0em1laW11cmdzcXp2bWNhaGhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxMTg0NzMsImV4cCI6MjA5MTY5NDQ3M30.8kLjeKnDSlqcb0oqtVOmDKBImpyS8EN2PzJlbZxef8w";
     private static final String PREFERENCES = "shamna_native_update_v1";
     private static final String CHANNEL = "shamna_app_updates";
-    private static final long CHECK_INTERVAL_MS = 5L * 60 * 1000;
+    private static final long CHECK_INTERVAL_MS = 60L * 1000;
     private static final AtomicBoolean IN_FLIGHT = new AtomicBoolean(false);
     private static ShamnaUpdateManager instance;
 
