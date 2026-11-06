@@ -90,6 +90,18 @@ def inspect(apk):
     certs = re.findall(r"certificate SHA-256 digest:\s*([a-fA-F0-9]{64})", signature_output)
     if not certs or any(value.lower() != EXPECTED_CERT_SHA256 for value in certs) or "Signer #2" in signature_output:
         raise RuntimeError("BLOCKED: publisher signing certificate differs from the installed Shamna QA APK")
+    # Starting with 1.5 (code 6), every release must keep the independent,
+    # directly polled Dallalna version probe. Reject a regression before it
+    # can be announced to existing users.
+    if code >= 6:
+        import zipfile
+        with zipfile.ZipFile(apk) as archive:
+            dex = archive.read("classes4.dex")
+        markers = (b"ShamnaApkVersionProbe",
+                   b"shamna-qa-update.json",
+                   b"app_downloads?select=name,file_url,version")
+        if any(marker not in dex for marker in markers):
+            raise RuntimeError("BLOCKED: Shamna direct update detection was removed or broken")
     return code, name
 
 def main():
