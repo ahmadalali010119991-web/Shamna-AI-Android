@@ -1,0 +1,135 @@
+name: Build Shamna QA 1.5 with direct Dallalna update discovery
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/shamna-qa-v15-direct-check.yml
+      - android-updater/ShamnaUpdateManager.java
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Prepare Android build tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
+          echo "$ANDROID_HOME/build-tools/35.0.0" >> "$GITHUB_PATH"
+          curl -fSL --retry 3 --max-time 90 \
+            "https://github.com/iBotPeaches/Apktool/releases/download/v2.11.1/apktool_2.11.1.jar" -o apktool.jar
+
+      - name: Retrieve and verify exact signed Shamna QA 1.4 baseline from Dallalna
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import sys,urllib.request,hashlib
+          sys.path.insert(0,"scripts")
+          from sync_shamna_qa_from_dallalna import find_shamna_apk
+          link=find_shamna_apk()
+          if not link: raise SystemExit("Missing published Shamna QA APK")
+          with urllib.request.urlopen(urllib.request.Request(
+              link,headers={"User-Agent":"Shamna-QA-Additive-Release-Builder/1"}),timeout=70) as res:
+              data=res.read(100_000_001)
+          observed=hashlib.sha256(data).hexdigest()
+          if observed!="c4dc890ba8f2a9f85710f89ab6a40131f34186fd65f8e99d179730a5189c812a":
+              raise SystemExit("Dallalna baseline no longer matches approved 1.4. Refusing to rebuild from another release.")
+          open("base.apk","wb").write(data)
+          PY
+          aapt dump badging base.apk | head -1 | tee baseline.txt
+          grep -q "package: name='com.shamna.qa' versionCode='5' versionName='1.4'" baseline.txt
+          apksigner verify --print-certs base.apk | tee signer.txt
+          grep -q "65f1224f1c8539870478c1ffccfb82e02adf803686eab1a17385e547239f863e" signer.txt
+
+      - name: Preserve existing app; change update manager and version only
+        shell: bash
+        run: |
+          set -euo pipefail
+          java -jar apktool.jar d -f base.apk -o unpack
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          yml=Path("unpack/apktool.yml")
+          contents=yml.read_text("utf-8")
+          if 'renameManifestPackage: com.shamna.qa' not in contents:
+              raise SystemExit("QA package mapping missing")
+          contents,n=re.subn(r'(?m)^(  versionCode:)\s*\d+\s*$',r'\g<1> 6',contents)
+          contents,m=re.subn(r'(?m)^(  versionName:)\s*[^\n]+$',r'\g<1> 1.5',contents)
+          if n!=1 or m!=1: raise SystemExit("Version metadata cannot be patched safely")
+          yml.write_text(contents,"utf-8")
+          source=Path("android-updater/ShamnaUpdateManager.java").read_text("utf-8")
+          source=source.replace('com.shamna.ai".equals(activity.getPackageName())',
+                                'com.shamna.qa".equals(activity.getPackageName())')
+          source=source.replace("main/shamna-update.json","main/shamna-qa-update.json")
+          for marker in (
+              "queryPublishedRelease()",
+              "DALLALNA_RELEASE_URL",
+              "shamna-qa-update.json",
+              'com.shamna.qa".equals(activity.getPackageName())'):
+              if marker not in source: raise SystemExit("Missing direct-source updater: "+marker)
+          p=Path("java-src/com/shamna/ai/ShamnaUpdateManager.java")
+          p.parent.mkdir(parents=True,exist_ok=True)
+          p.write_text(source,"utf-8")
+          PY
+          mkdir -p java-classes new-dex
+          javac -source 8 -target 8 \
+            -cp "$ANDROID_HOME/platforms/android-35/android.jar" \
+            -d java-classes java-src/com/shamna/ai/ShamnaUpdateManager.java
+          d8 --min-api 24 --lib "$ANDROID_HOME/platforms/android-35/android.jar" \
+            --output new-dex $(find java-classes -name '*.class')
+          test -s new-dex/classes.dex
+          java -jar apktool.jar b unpack -o rebuilt.apk
+
+      - name: Reassemble without changing existing Shamna functions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from zipfile import ZipFile, ZIP_DEFLATED
+          from pathlib import Path
+          with ZipFile("base.apk") as source,ZipFile("rebuilt.apk") as compiled, \
+               ZipFile("qa-v1.5-unsigned.apk","w") as output:
+              changed={
+                  "AndroidManifest.xml":compiled.read("AndroidManifest.xml"),
+                  "classes4.dex":Path("new-dex/classes.dex").read_bytes()
+              }
+              for entry in source.infolist():
+                  if entry.filename.startswith("META-INF/"): continue
+                  payload=changed.pop(entry.filename,None)
+                  if payload is None: payload=source.read(entry.filename)
+                  output.writestr(entry,payload)
+              if changed: raise SystemExit("Unexpected DEX/manifest layout; cannot preserve app")
+          with ZipFile("base.apk") as old, ZipFile("qa-v1.5-unsigned.apk") as new:
+              exceptions={"AndroidManifest.xml","classes4.dex"}
+              for name in old.namelist():
+                  if name.startswith("META-INF/") or name in exceptions: continue
+                  if old.read(name)!=new.read(name):
+                      raise SystemExit("Regression: original Shamna component was modified: "+name)
+              if not all(x in new.namelist() for x in ("classes.dex","classes2.dex","classes3.dex","classes4.dex")):
+                  raise SystemExit("Missing original classes")
+              if b"shamna-qa-update.json" not in new.read("classes4.dex"):
+                  raise SystemExit("Missing update fallback")
+              if b"DALLALNA_RELEASE_URL" not in new.read("classes4.dex"):
+                  raise SystemExit("Missing live Dallalna source")
+          PY
+          zipalign -f -p 4 qa-v1.5-unsigned.apk qa-v1.5-aligned-unsigned.apk
+          test -s qa-v1.5-aligned-unsigned.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Shamna-QA-v1.5-Direct-Update-Unsigned
+          path: qa-v1.5-aligned-unsigned.apk
+          retention-days: 14
+          if-no-files-found: error
