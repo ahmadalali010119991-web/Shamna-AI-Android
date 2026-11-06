@@ -1,11 +1,11 @@
 {
-  "versionCode": 15,
-  "versionName": "1.8.2",
+  "versionCode": 16,
+  "versionName": "1.8.3",
   "required": false,
   "requiresUninstall": false,
   "url": "https://dallalna.com/install",
-  "apkUrl": "https://ftzmeimurgsqzvmcahhs.supabase.co/storage/v1/object/public/site-assets/b240bd5a-6536-42a3-8453-f309d1a053f1/cea2197d-3b36-4ed7-abc1-0004acc300a1.apk",
-  "apkSha256": "fcb3645260f4e69991444f9546255d85d8b94dbb69a22f55160484fa712ffb3b",
+  "apkUrl": "https://ftzmeimurgsqzvmcahhs.supabase.co/storage/v1/object/public/site-assets/b240bd5a-6536-42a3-8453-f309d1a053f1/c5105b3e-b134-4903-ac83-fb0c82aa9f2e.apk",
+  "apkSha256": "b37a48dd63159198ab4a026cd5c3cb67053427c6004ba49942865c726582b2db",
   "apkSize": 11769398,
-  "message": "الإصدار 1.8.2 متاح الآن: عرض رقم الإصدار المثبت بجانب تحديثات التطبيق. اضغط «تحميل التحديث» لتنزيله وتثبيته فوق الإصدار الحالي دون حذف البيانات."
+  "message": "الإصدار 1.8.3 متاح الآن. تحديث تجريبي برقم إصدار جديد دون أي تغييرات في الوظائف أو التصميم. اضغط «تحميل التحديث» ثم أكّد تثبيته فوق النسخة الحالية."
 }
