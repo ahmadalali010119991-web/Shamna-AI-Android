@@ -1,0 +1,41 @@
+name: Hasibat fallback automatic APK release reconciliation
+
+on:
+  # Secondary independent schedule, staggered away from the primary five-minute monitor.
+  # GitHub schedules are best effort; no exact notification latency is guaranteed.
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hasibat-published-update-sync
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check out Hasibat release metadata and sync code
+        uses: actions/checkout@v4
+        with:
+          ref: hasibat-al-lira
+          persist-credentials: true
+
+      - name: Inspect currently published Dallalna APK and announce verified upgrades
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/sync_hasibat_from_dallalna.py
+          if git diff --quiet -- hasibat-update.json; then
+            echo "Dallalna release matches the public update manifest."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add hasibat-update.json
+          git commit -m "Backup automatic sync of Dallalna Hasibat signed APK"
+          git push origin HEAD:hasibat-al-lira
