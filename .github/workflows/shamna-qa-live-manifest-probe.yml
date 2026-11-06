@@ -1,0 +1,58 @@
+name: Test live Dallalna APK header version probing
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/shamna-qa-live-manifest-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Read only 256KiB of actual published Shamna APK via HTTPS Range
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,urllib.request
+          from pathlib import Path
+          url=json.loads(Path("shamna-qa-update.json").read_text())["apkUrl"]
+          if not url.startswith("https://ftzmeimurgsqzvmcahhs.supabase.co/storage/v1/object/public/site-assets/"):
+              raise SystemExit("Untrusted CDN URL")
+          req=urllib.request.Request(url,headers={"Range":"bytes=0-262143","Accept-Encoding":"identity"})
+          with urllib.request.urlopen(req,timeout=35) as res:
+              status=res.status
+              b=res.read(262144)
+          print("HTTP status:",status,"probe bytes:",len(b))
+          if status not in (200,206) or len(b)<8000:raise SystemExit("Header range not supported")
+          Path("prefix.bin").write_bytes(b)
+          PY
+          mkdir -p classes
+          javac -d classes android-updater/ShamnaApkVersionProbe.java
+          cat > LiveProbe.java <<'JAVA'
+          import com.shamna.ai.ShamnaApkVersionProbe;
+          import java.nio.file.*;
+          public class LiveProbe {
+              public static void main(String[] args)throws Exception{
+                  ShamnaApkVersionProbe.Version v=ShamnaApkVersionProbe.inspectPrefix(
+                      Files.readAllBytes(Path.of("prefix.bin")));
+                  if(v==null||!"com.shamna.qa".equals(v.packageName)||
+                     v.versionCode!=5||!"1.4".equals(v.versionName))
+                     throw new IllegalStateException("Live CDN ZIP prefix cannot reveal current APK version");
+                  System.out.println("PASS live Supabase APK Range detection: "+
+                      v.packageName+" "+v.versionName+" code="+v.versionCode);
+              }
+          }
+          JAVA
+          javac -cp classes LiveProbe.java
+          java -cp .:classes LiveProbe
