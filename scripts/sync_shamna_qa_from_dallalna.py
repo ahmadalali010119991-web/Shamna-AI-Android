@@ -52,6 +52,8 @@ def find_shamna_apk():
         return None
     if len(matches) != 1:
         raise RuntimeError("Ambiguous Shamna downloads in Dallalna listing")
+    print("Dallalna published QA listing:", matches[0].get("name"),
+          "displayed version:", matches[0].get("version"))
     url = matches[0].get("file_url") or ""
     parsed = urllib.parse.urlsplit(url)
     if not (
