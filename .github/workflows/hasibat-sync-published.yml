@@ -36,6 +36,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 --version
+          python3 -m py_compile scripts/sync_hasibat_from_dallalna.py
           python3 scripts/sync_hasibat_from_dallalna.py
           if git diff --quiet -- hasibat-update.json; then
             echo "No newer signed release published on Dallalna."
