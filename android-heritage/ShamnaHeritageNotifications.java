@@ -54,8 +54,10 @@ public final class ShamnaHeritageNotifications {
     private static final int ALARM_REQUEST = 8412;
     private static final int NOTIFICATION_BASE = 84120;
     private static final int PERMISSION_REQUEST = 8421;
-    private static final long MIN_INTERVAL_MS = 3L * 60 * 60 * 1000;
-    private static final long MAX_INTERVAL_MS = 8L * 60 * 60 * 1000;
+    // One planned notification each clock hour, at a fixed offset.
+    // Actual delivery is subject to Android Doze/battery scheduling.
+    private static final long HOUR_MS = 60L * 60 * 1000;
+    private static final int MINUTE_WITHIN_HOUR = 5; // Calculator uses :35 so both do not alert together.
     private static final String SOUND_AUTHORITY = PACKAGE + ".heritage.audio";
     private static final String SOUND_NAME = "shamna_heritage_chime.wav";
     private static final Random RAND = new Random();
@@ -96,52 +98,70 @@ public final class ShamnaHeritageNotifications {
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
-    /** Schedule randomly, about 1–3 notifications/day, avoiding night-time. */
+    /** Every hour at the same local-clock minute; content order is shuffled. */
     private static synchronized void scheduleNext(Context c, boolean alwaysReschedule) {
-        android.content.SharedPreferences preferences = c.getSharedPreferences(PREF,0);
-        long now = System.currentTimeMillis();
-        long previous = preferences.getLong("next_at",0L);
-        if (!alwaysReschedule && previous > now + 30_000L &&
-            previous < now + 20L*60*60*1000) return;
-        long span = MAX_INTERVAL_MS - MIN_INTERVAL_MS;
-        long delay = MIN_INTERVAL_MS + (long)(RAND.nextDouble() * span);
-        // First notification should not immediately interrupt opening the app.
-        if (!preferences.getBoolean("started",false)) {
-            delay = 75L * 60 * 1000 + (long)(RAND.nextDouble()*150L*60*1000);
-        }
-        long target = now + delay;
-        Calendar next = Calendar.getInstance();
-        next.setTimeInMillis(target);
-        int hour = next.get(Calendar.HOUR_OF_DAY);
-        if (hour < 9 || hour >= 21) {
-            if (hour >= 21) next.add(Calendar.DAY_OF_MONTH,1);
-            next.set(Calendar.HOUR_OF_DAY,9);
-            next.set(Calendar.MINUTE,15+RAND.nextInt(106)); // 09:15–11:00
-            next.set(Calendar.SECOND,RAND.nextInt(60));
-            next.set(Calendar.MILLISECOND,0);
-            target=next.getTimeInMillis();
-        }
-        AlarmManager alarm = (AlarmManager)c.getSystemService(Context.ALARM_SERVICE);
-        if (alarm == null) return;
+        android.content.SharedPreferences prefs=c.getSharedPreferences(PREF,0);
+        long now=System.currentTimeMillis();
+        Calendar next=Calendar.getInstance();
+        next.setTimeInMillis(now);
+        next.set(Calendar.MINUTE,MINUTE_WITHIN_HOUR);
+        next.set(Calendar.SECOND,0);
+        next.set(Calendar.MILLISECOND,0);
+        if (next.getTimeInMillis() <= now + 15_000L) next.add(Calendar.HOUR_OF_DAY,1);
+        long target=next.getTimeInMillis();
+        long previous=prefs.getLong("next_at",0L);
+        if (!alwaysReschedule && Math.abs(previous-target) < 30_000L) return;
+        AlarmManager alarm=(AlarmManager)c.getSystemService(Context.ALARM_SERVICE);
+        if (alarm==null) return;
         PendingIntent pi=alarmIntent(c);
-        if (Build.VERSION.SDK_INT >= 23) {
-            // Inexact, Doze-safe. No special exact-alarm permission required.
+        // setAndAllowWhileIdle is inexact; we never demand restricted exact-alarm access.
+        if (Build.VERSION.SDK_INT>=23)
             alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,target,pi);
-        } else {
-            alarm.set(AlarmManager.RTC_WAKEUP,target,pi);
-        }
-        preferences.edit().putLong("next_at",target)
-            .putBoolean("started",true).apply();
+        else alarm.set(AlarmManager.RTC_WAKEUP,target,pi);
+        prefs.edit().putLong("next_at",target).putBoolean("started",true).apply();
     }
 
-    private static ShamnaHeritageFacts.Fact nextFact(Context c) {
+    /** Shuffle-bag: every one of the 79 notices is shown before any repeats. */
+    private static synchronized ShamnaHeritageFacts.Fact nextFact(Context c) {
         android.content.SharedPreferences prefs=c.getSharedPreferences(PREF,0);
         int total=ShamnaHeritageFacts.ITEMS.length;
-        int last=prefs.getInt("last_index",-1);
-        int next=RAND.nextInt(total);
-        if (last>=0 && total>1 && next==last) next=(next+1+RAND.nextInt(total-1))%total;
-        prefs.edit().putInt("last_index",next).apply();
-        return ShamnaHeritageFacts.ITEMS[next];
+        if (total<1) throw new IllegalStateException("No heritage notice content");
+        String bag=prefs.getString("shuffled_bag","");
+        String[] remaining=bag.isEmpty()?new String[0]:bag.split(",");
+        int chosen=-1;
+        String nextBag;
+        try {
+            if (remaining.length>0) {
+                chosen=Integer.parseInt(remaining[0]);
+                if (chosen<0||chosen>=total)throw new NumberFormatException("Invalid index");
+                nextBag=bag.substring(remaining[0].length());
+                if (nextBag.startsWith(",")) nextBag=nextBag.substring(1);
+            } else {
+                int[] shuffled=new int[total];
+                for (int i=0;i<total;i++)shuffled[i]=i;
+                for (int i=total-1;i>0;i--) {
+                    int j=RAND.nextInt(i+1),tmp=shuffled[i];
+                    shuffled[i]=shuffled[j];shuffled[j]=tmp;
+                }
+                int last=prefs.getInt("last_index",-1);
+                if (total>1 && shuffled[0]==last) {
+                    int tmp=shuffled[0];shuffled[0]=shuffled[1];shuffled[1]=tmp;
+                }
+                chosen=shuffled[0];
+                StringBuilder buffer=new StringBuilder();
+                for (int i=1;i<total;i++) {
+                    if(i>1)buffer.append(',');
+                    buffer.append(shuffled[i]);
+                }
+                nextBag=buffer.toString();
+            }
+        } catch (Exception badBag) {
+            prefs.edit().remove("shuffled_bag").apply();
+            chosen=RAND.nextInt(total);
+            nextBag="";
+        }
+        prefs.edit().putString("shuffled_bag",nextBag).putInt("last_index",chosen).apply();
+        return ShamnaHeritageFacts.ITEMS[chosen];
     }
 
     private static void ensureNotificationChannel(Context c) {
@@ -151,7 +171,7 @@ public final class ShamnaHeritageNotifications {
         NotificationChannel channel=new NotificationChannel(
             CHANNEL,"ومضات من التراث والحضارة الإسلامية",
             NotificationManager.IMPORTANCE_DEFAULT);
-        channel.setDescription("معلومة تاريخية موثقة في أوقات متنوعة، بصوت رقيق قصير");
+        channel.setDescription("إشعار معرفي كل ساعة بصوت رقيق قصير");
         channel.setShowBadge(false);
         channel.enableVibration(false);
         Uri sound=Uri.parse("content://"+SOUND_AUTHORITY+"/"+SOUND_NAME);
@@ -206,13 +226,13 @@ public final class ShamnaHeritageNotifications {
             if (intent==null || !ACTION_SHOW.equals(intent.getAction()))return;
             long now=System.currentTimeMillis();
             android.content.SharedPreferences prefs=c.getSharedPreferences(PREF,0);
-            long last=prefs.getLong("last_sent",0);
-            // Deduplicate delivery if Android retransmits, and avoid nighttime.
-            Calendar clock=Calendar.getInstance();
-            int hour=clock.get(Calendar.HOUR_OF_DAY);
-            if (now-last>MIN_INTERVAL_MS && hour>=9 && hour<21) {
+            // Android may redeliver an alarm: at most one notice per clock hour.
+            long hourBucket=now/HOUR_MS;
+            long lastBucket=prefs.getLong("last_hour_bucket",-1L);
+            if (lastBucket!=hourBucket) {
                 notifyFact(c);
-                prefs.edit().putLong("last_sent",now).apply();
+                prefs.edit().putLong("last_hour_bucket",hourBucket)
+                    .putLong("last_sent",now).apply();
             }
             scheduleNext(c,true);
         }
