@@ -266,18 +266,36 @@ public final class ShamnaUpdateManager {
             }
         }
         if (entry == null) return null;
-        String version = entry.optString("version", "").trim();
+        // Dallalna's public app_downloads listing currently has version=null.
+        // Read the real APK manifest using a bounded HTTP Range request once
+        // per changed immutable asset URL. Do not trust a manually typed label.
         String url = entry.optString("file_url", "");
-        if (compareVersions(version, installedVersionName()) <= 0 || !isTrustedApkUrl(url)) {
-            return null;
+        if (!isTrustedApkUrl(url)) return null;
+        long publishedCode=0;
+        String publishedName="";
+        String cached = preferences.getString("probe_url", "");
+        if (url.equals(cached)) {
+            publishedCode = preferences.getLong("probe_code", 0);
+            publishedName = preferences.getString("probe_name", "");
+        } else {
+            ShamnaApkVersionProbe.Version version = ShamnaApkVersionProbe.inspectRemote(url);
+            if (version == null || !activity.getPackageName().equals(version.packageName))
+                return null; // Wrong package, missing manifest or unavailable Range.
+            publishedCode=version.versionCode;
+            publishedName=version.versionName;
+            preferences.edit().putString("probe_url",url)
+                .putLong("probe_code",publishedCode).putString("probe_name",publishedName)
+                .apply();
         }
+        if (publishedCode <= code || compareVersions(publishedName, installedVersionName()) <= 0)
+            return null;
         Release r = new Release();
-        r.code = code + 1; // Minimum expected build; actual number is verified from the APK.
+        r.code = publishedCode;
         r.direct = true;
-        r.version = version;
+        r.version = publishedName;
         r.apkUrl = url;
-        r.message = "تحديث شامنا AI " + version + " متوفر على دلّالنا. اضغط لتنزيله وتثبيته فوق نسختك الحالية.";
-        r.sha256 = ""; // Public listing has no SHA-256. Actual signed APK is verified before install.
+        r.message = "تحديث شامنا AI " + publishedName + " متوفر على دلّالنا. اضغط لتنزيله وتثبيته فوق نسختك الحالية.";
+        r.sha256 = ""; // The Android package and original signer are verified before installation.
         r.size = 0;
         return r;
     }
@@ -426,7 +444,7 @@ public final class ShamnaUpdateManager {
             long fileCode = Build.VERSION.SDK_INT >= 28 ? apk.getLongVersionCode() : apk.versionCode;
             long oldCode = Build.VERSION.SDK_INT >= 28 ? installed.getLongVersionCode() : installed.versionCode;
             boolean direct = preferences.getBoolean("download_direct", false);
-            if (fileCode <= oldCode || (direct ? fileCode < candidateCode : fileCode != candidateCode))
+            if (fileCode <= oldCode || fileCode != candidateCode)
                 throw new SecurityException("outdated APK");
             String advertised = preferences.getString("download_version", "");
             if (!advertised.equals(apk.versionName)) throw new SecurityException("APK version name mismatch");
