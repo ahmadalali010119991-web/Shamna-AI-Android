@@ -109,7 +109,16 @@ def main():
                 out.write(data); h.update(data)
         if count < 10000 or apk.open("rb").read(4) != b"PK\x03\x04":
             raise RuntimeError("Invalid Android APK file")
-        code, name = inspect(apk)
+        try:
+            code, name = inspect(apk)
+        except RuntimeError as exc:
+            if "package is com.shamna.qa" in str(exc):
+                # QA is a separate installed package. Do not advertise it as an
+                # update for the official app, but keep the scheduled monitor alive.
+                print("::warning::Dallalna currently hosts the Shamna QA package. "
+                      "Official updates remain blocked until a signed com.shamna.ai APK is published.")
+                return
+            raise
     if code <= int(current.get("versionCode", 0)):
         print(f"Published Shamna APK {name} is not newer; nothing to announce.")
         return
