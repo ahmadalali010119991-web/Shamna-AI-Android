@@ -1,8 +1,11 @@
 {
-  "versionCode": 9,
-  "versionName": "1.5.0",
+  "versionCode": 12,
+  "versionName": "1.7.1",
   "required": false,
   "requiresUninstall": false,
   "url": "https://dallalna.com/install",
-  "message": "إضافة اليورو وأسعار الذهب ونظام التنبيه بالتحديثات."
+  "apkUrl": "https://ftzmeimurgsqzvmcahhs.supabase.co/storage/v1/object/public/site-assets/b240bd5a-6536-42a3-8453-f309d1a053f1/ae7a223c-3119-4961-800c-925919d117f4.apk",
+  "apkSha256": "ddc8ae50ae3bef7625750ceacfc928ae580d428ed3c9fa1959a46e5b2662ef58",
+  "apkSize": 11759010,
+  "message": "الإصدار 1.7.1: إصلاح جذري لقارئ الكتب، وتسريع فتح الصفحات، وتحسين التصفح والتكبير وحفظ آخر صفحة، دون تغيير أي ميزة أخرى."
 }
