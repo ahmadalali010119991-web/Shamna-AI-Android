@@ -1,4 +1,5 @@
 name: Detect published Hasibat APK and sync updates
+# Verify the exact APK signature; never announce unsigned or mismatched builds.
 
 on:
   schedule:
