@@ -51,10 +51,10 @@ def discover_link():
         # from the published site itself rather than requiring manual intervention.
         print("Public Dallalna API key changed or listing unavailable; retrying via site bundle:", first_error,file=sys.stderr)
         html=get(HOME_PAGE).decode("utf-8","replace")
-        match=re.search(r'<script[^>]*\\bsrc="(/assets/index-[a-zA-Z0-9_-]+\\.js)"',html)
+        match=re.search(r'<script[^>]*\bsrc="(/assets/index-[a-zA-Z0-9_-]+\.js)"',html)
         if not match:raise RuntimeError("Cannot find public site bundle")
         js=get("https://dallalna.com"+match.group(1),maximum=7_000_000).decode("utf-8","replace")
-        m=re.search(r'const\\s+\\w+="(https://'+re.escape(SUPABASE_HOST)+r')",\\w+="(eyJ[^"]+)"',js)
+        m=re.search(r'const\s+\w+="(https://'+re.escape(SUPABASE_HOST)+r')",\w+="(eyJ[^"]+)"',js)
         if not m:raise RuntimeError("Cannot discover the public read-only site client")
         row=public_listing(m.group(2))
     if row.get("id") and row["id"]!=APP_RECORD_ID:
