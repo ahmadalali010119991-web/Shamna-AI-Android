@@ -1,0 +1,39 @@
+name: Transfer verified Hasibat 1.8 build delta
+
+on:
+  push:
+    branches:
+      - hasibat-al-lira
+    paths:
+      - .github/workflows/hasibat-build-transfer.yml
+      - hasibat-build/v180-dex-part-05.b64
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pack-build-delta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: hasibat-al-lira
+      - name: Reassemble release-only DEX patch and binary manifest patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat hasibat-build/v180-dex-part-0{1,2,3,4,5}.b64 | base64 --decode > v180-dex.patch
+          base64 --decode < hasibat-build/v180-manifest.patch.b64 > v180-manifest.patch
+          echo "1891d15db7ca45b189914a3559a3c19c84715b527c2dae1dc2769ad656bdaf84  v180-dex.patch" | sha256sum --check
+          echo "97b34ef2ccbfb47af521bcd2d4b64655f455498d7974f20ad2db7948303069c8  v180-manifest.patch" | sha256sum --check
+          stat -c '%n %s bytes' v180-*.patch
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hasibat-v180-build-delta
+          path: |
+            v180-dex.patch
+            v180-manifest.patch
+          if-no-files-found: error
+          retention-days: 1
