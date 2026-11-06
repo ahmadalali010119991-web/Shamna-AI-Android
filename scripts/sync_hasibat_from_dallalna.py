@@ -101,6 +101,10 @@ def inspect_apk(path):
     if not cert or cert.group(1).lower()!=CERT_SHA256:
         raise RuntimeError('APK signer did not match pinned Hasibat certificate')
     if "Signer #2" in output:raise RuntimeError("Unexpected APK signer")
+    # Enforce consistency of all six native update checks with the signed APK build.
+    # Prevents the 1.8.7 defect: old hardcoded version 18 while manifest says 20.
+    from verify_hasibat_native_version_guard import verify_update_guards
+    verify_update_guards(path,code)
     return code,version
 
 def main():
