@@ -1,0 +1,60 @@
+name: Build Hasibat 1.8.10 hourly 79-quote notices (no calculator changes)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/hasibat-1810-heritage-hourly.yml
+      - android-heritage/**
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Prepare Android build tools and retrieve the exact signed 1.8.9 release
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
+          echo "$ANDROID_HOME/build-tools/35.0.0" >> "$GITHUB_PATH"
+          curl -fSL --retry 3 --max-time 90 \
+            https://github.com/iBotPeaches/Apktool/releases/download/v2.11.1/apktool_2.11.1.jar -o apktool.jar
+          python3 - <<'PY'
+          import urllib.request,hashlib
+          url="https://ftzmeimurgsqzvmcahhs.supabase.co/storage/v1/object/public/site-assets/b240bd5a-6536-42a3-8453-f309d1a053f1/ca9a5a74-ec08-4610-b7f3-b24c5def0c15.apk"
+          req=urllib.request.Request(url,headers={"User-Agent":"Hasibat-Heritage-Additive-Builder/1"})
+          with urllib.request.urlopen(req,timeout=90) as r:
+              data=r.read(15_000_000)
+          expected="00630b6141ae028db61c9649df907c482c57a7386ad1d032cea3e6392c5a0b81"
+          if hashlib.sha256(data).hexdigest()!=expected:
+              raise SystemExit("Refusing to patch unverified Hasibat APK")
+          open("base-hasibat.apk","wb").write(data)
+          print("PASS: signed Hasibat 1.8.9 baseline hash",expected)
+          PY
+          test -s base-hasibat.apk
+
+      - name: Build and independently verify incremental calculator notifications update
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile android-heritage/build_hasibat_hourly_1810.py
+          python3 android-heritage/build_hasibat_hourly_1810.py
+          test -s Hasibat-v1.8.10-Hourly-Unsigned.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Hasibat-1.8.10-Hourly-79-Facts-Unsigned
+          path: Hasibat-v1.8.10-Hourly-Unsigned.apk
+          retention-days: 14
+          if-no-files-found: error
