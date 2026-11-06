@@ -2,6 +2,15 @@ name: Build Shamna AI APK
 
 on:
   workflow_dispatch:
+    inputs:
+      release_version_code:
+        description: "Optional Android versionCode for a new official update; must increase"
+        required: false
+        type: string
+      release_version_name:
+        description: "Optional Android versionName for a new official update"
+        required: false
+        type: string
   push:
     branches:
       - main
@@ -1345,6 +1354,34 @@ jobs:
           test -f app/build.gradle
           test -f app/src/main/AndroidManifest.xml
           echo "Required Android project files found"
+
+      - name: Set optional explicit Android release version
+        shell: bash
+        env:
+          REQUESTED_CODE: ${{ inputs.release_version_code }}
+          REQUESTED_NAME: ${{ inputs.release_version_name }}
+        run: |
+          set -euo pipefail
+          if [ -z "$REQUESTED_CODE" ] && [ -z "$REQUESTED_NAME" ]; then
+            echo "Development build: using project-defined version."
+            exit 0
+          fi
+          python3 - <<'PY'
+          import os,re,pathlib
+          code,name=os.environ['REQUESTED_CODE'],os.environ['REQUESTED_NAME']
+          if not code.isdecimal() or int(code)<31 or int(code)>1000000:
+              raise SystemExit("Release build needs versionCode >=31")
+          if not re.fullmatch(r'[0-9A-Za-z._-]{1,24}',name):
+              raise SystemExit("Invalid release versionName")
+          path=pathlib.Path('app/build.gradle')
+          original=path.read_text('utf-8')
+          output,n=re.subn(r'\bversionCode\s+\d+', 'versionCode '+code, original, count=1)
+          output,m=re.subn(r'\bversionName\s+["\x27][^"\x27]+["\x27]', 'versionName "'+name+'"', output, count=1)
+          if n!=1 or m!=1:
+              raise SystemExit("Cannot safely update Gradle version fields")
+          path.write_text(output,'utf-8')
+          print('Configured release build '+name+' (versionCode '+code+')')
+          PY
 
       - name: Build debug APK
         shell: bash
