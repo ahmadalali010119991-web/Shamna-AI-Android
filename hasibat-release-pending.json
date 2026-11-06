@@ -1,9 +1,9 @@
 {
-  "versionCode": 11,
-  "versionName": "1.7.0",
-  "releasedAt": "2026-11-05T23:36:34Z",
+  "versionCode": 12,
+  "versionName": "1.7.1",
+  "releasedAt": "2026-11-06T00:02:07Z",
   "required": false,
   "requiresUninstall": false,
   "url": "https://dallalna.com/install",
-  "message": "الإصدار 1.7.0: طلب الإذن تلقائيًا وتحكم كامل بإشعارات الأذكار والتنبيهات بالتحديثات حتى عند إغلاق التطبيق."
+  "message": "الإصدار 1.7.1: تحسين قراءة الكتابين والتصفح والتنقل بين الصفحات داخل التطبيق، مع التحديث المباشر فوق النسخة السابقة."
 }
