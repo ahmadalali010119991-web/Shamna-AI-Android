@@ -81,9 +81,9 @@ def inspect_apk(path):
     if code<1 or code>1_000_000 or not re.fullmatch(r"[0-9A-Za-z._-]{1,24}",version):
         raise RuntimeError("Invalid APK release number")
     output=run(tool_path("apksigner"),"verify","--print-certs",str(path))
-    cert=re.search(r"Signer #1 certificate SHA-256 digest:\s*([0-9a-fA-F]+)",output)
+    cert=re.search(r"(?:Signer #1|V[234] Signer): certificate SHA-256 digest:\s*([0-9a-fA-F]+)",output)
     if not cert or cert.group(1).lower()!=CERT_SHA256:
-        raise RuntimeError('Unexpected APK signer certificate digest: '+(cert.group(1).lower() if cert else 'none')+'; apksigner says: '+repr(output[:700]))
+        raise RuntimeError('APK signer did not match pinned Hasibat certificate')
     if "Signer #2" in output:raise RuntimeError("Unexpected APK signer")
     return code,version
 
