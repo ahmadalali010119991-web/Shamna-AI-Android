@@ -1,12 +1,7 @@
 name: Build Shamna QA 1.5 with direct Dallalna update discovery
 
+# Release 1.5 is complete. Rebuilding is manual only; baseline 1.4 is immutable.
 on:
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/shamna-qa-v15-direct-check.yml
-      - android-updater/ShamnaUpdateManager.java
-      - android-updater/ShamnaApkVersionProbe.java
   workflow_dispatch:
 
 permissions:
