@@ -84,6 +84,7 @@ def inspect(apk):
         [android_tool("apksigner"), "verify", "--print-certs", str(apk)],
         text=True, stderr=subprocess.STDOUT, timeout=60)
     cert = re.search(r"Signer #1 certificate SHA-256 digest:\s*([a-fA-F0-9]+)", signature_output)
+    if cert is None: print("Apksigner public certificate output:",repr(signature_output[:1600]))
     if not cert or cert.group(1).lower() != EXPECTED_CERT_SHA256 or "Signer #2" in signature_output:
         raise RuntimeError(f"BLOCKED: QA signer unexpected; observed={(cert.group(1).lower() if cert else 'none')}; expected={EXPECTED_CERT_SHA256}; multiple={'Signer #2' in signature_output}")
     return code, name
