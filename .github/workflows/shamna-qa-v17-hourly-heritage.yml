@@ -1,0 +1,50 @@
+name: Build Shamna QA 1.7 hourly heritage notices
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/shamna-qa-v17-hourly-heritage.yml
+      - android-heritage/**
+permissions:
+  contents: read
+  actions: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android tools and original verified unsigned Shamna 1.6
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
+          echo "$ANDROID_HOME/build-tools/35.0.0" >> "$GITHUB_PATH"
+          curl -fSL --retry 3 --max-time 90 \
+            https://github.com/iBotPeaches/Apktool/releases/download/v2.11.1/apktool_2.11.1.jar -o apktool.jar
+          mkdir -p baseline
+          gh run download 42281497435 --repo "$GITHUB_REPOSITORY" \
+            --name Shamna-QA-v1.6-Additive-Heritage-Unsigned --dir baseline
+          cp baseline/Shamna-AI-v1.6-Heritage-Aligned-Unsigned.apk base-shamna.apk
+          test -s base-shamna.apk
+      - name: Compile 79 facts and fixed hourly scheduling without changing app content
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile android-heritage/build_shamna_hourly_17.py
+          python3 android-heritage/build_shamna_hourly_17.py
+          test -s Shamna-AI-v1.7-Hourly-Aligned-Unsigned.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Shamna-QA-1.7-Hourly-79-Facts-Unsigned
+          path: Shamna-AI-v1.7-Hourly-Aligned-Unsigned.apk
+          retention-days: 14
+          if-no-files-found: error
