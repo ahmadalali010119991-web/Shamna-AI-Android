@@ -79,8 +79,11 @@ jobs:
 
           manifest=Path('unpack/AndroidManifest.xml')
           xml=manifest.read_text('utf-8')
-          if 'package="com.shamna.qa"' not in xml:
-              raise SystemExit("Source APK package changed unexpectedly")
+          # Apktool represents the original QA application using its base
+          # Java namespace; the renameManifestPackage in apktool.yml restores
+          # the installed com.shamna.qa package on rebuild.
+          if 'package="com.shamna.ai"' not in xml:
+              raise SystemExit("Unexpected source namespace during QA decoding")
           for permission in ['android.permission.REQUEST_INSTALL_PACKAGES','android.permission.POST_NOTIFICATIONS']:
               if f'android:name="{permission}"' not in xml:
                   xml=xml.replace('<application',f'<uses-permission android:name="{permission}"/>\n    <application',1)
@@ -88,6 +91,8 @@ jobs:
 
           yml=Path('unpack/apktool.yml')
           y=yml.read_text('utf-8')
+          if 'renameManifestPackage: com.shamna.qa' not in y:
+              raise SystemExit("Apktool QA package remapping lost; refusing build")
           y,n=re.subn(r'(?m)^(  versionCode:)\s*\d+\s*$',r'\g<1> 4',y)
           y,m=re.subn(r'(?m)^(  versionName:)\s*[^\n]+$',r'\g<1> 1.3',y)
           if n!=1 or m!=1: raise SystemExit("Unable to update version metadata")
