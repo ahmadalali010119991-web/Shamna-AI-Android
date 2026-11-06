@@ -1,0 +1,42 @@
+name: Publish independent Hasibat APK release 1.8.2
+
+on:
+  push:
+    branches:
+      - hasibat-al-lira
+    paths:
+      - .github/workflows/hasibat-independent-release-182.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  mirror-182:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download and verify the existing signed v1.8.2 release APK
+        shell: bash
+        env:
+          SOURCE_APK: https://ftzmeimurgsqzvmcahhs.supabase.co/storage/v1/object/public/site-assets/b240bd5a-6536-42a3-8453-f309d1a053f1/cea2197d-3b36-4ed7-abc1-0004acc300a1.apk
+          EXPECTED_SHA256: fcb3645260f4e69991444f9546255d85d8b94dbb69a22f55160484fa712ffb3b
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          curl --proto '=https' --tlsv1.2 -fSL --retry 3 --max-time 110 "$SOURCE_APK" -o release/Hasibat-AlLira-v1.8.2.apk
+          echo "$EXPECTED_SHA256  release/Hasibat-AlLira-v1.8.2.apk" | sha256sum -c -
+          file release/Hasibat-AlLira-v1.8.2.apk
+      - name: Create independent release on GitHub
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view hasibat-v1.8.2 >/dev/null 2>&1; then
+            gh release upload hasibat-v1.8.2 release/Hasibat-AlLira-v1.8.2.apk --clobber
+          else
+            gh release create hasibat-v1.8.2 release/Hasibat-AlLira-v1.8.2.apk --title "حاسبة الليرة السورية 1.8.2" --notes "نسخة Android APK أصلية موقعة. هذا رابط إصدار مستقل عن دلالنا؛ التحميل والتثبيت عبر أندرويد، دون إزالة الإصدار السابق." --latest=false
+          fi
+          gh release view hasibat-v1.8.2 --json url,assets --jq '{url:.url, assets:[.assets[].url]}'
