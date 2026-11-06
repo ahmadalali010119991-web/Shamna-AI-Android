@@ -10,6 +10,7 @@ manifest = Path("app/src/main/AndroidManifest.xml")
 if not main.exists() or not manifest.exists():
     raise SystemExit("Missing original Android project; refusing to create a different app")
 shutil.copyfile("android-updater/ShamnaUpdateManager.java", target)
+shutil.copyfile("android-updater/ShamnaApkVersionProbe.java", main.with_name("ShamnaApkVersionProbe.java"))
 src = main.read_text("utf-8")
 marker = "SHAMNA_NATIVE_UPDATE_INIT"
 if marker not in src:
