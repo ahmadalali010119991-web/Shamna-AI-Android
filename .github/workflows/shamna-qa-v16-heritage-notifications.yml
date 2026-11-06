@@ -1,0 +1,60 @@
+name: Build Shamna QA 1.6 with additive Islamic heritage notifications
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/shamna-qa-v16-heritage-notifications.yml
+      - android-heritage/**
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  heritage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android SDK and apktool
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
+          echo "$ANDROID_HOME/build-tools/35.0.0" >> "$GITHUB_PATH"
+          curl -fSL --retry 3 --max-time 90 \
+            "https://github.com/iBotPeaches/Apktool/releases/download/v2.11.1/apktool_2.11.1.jar" -o apktool.jar
+
+      - name: Retrieve audited Shamna 1.5 byte-identical build
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p reference
+          gh run download 42276764293 --repo "$GITHUB_REPOSITORY" \
+            --name Shamna-QA-v1.5-Direct-Update-Unsigned --dir reference
+          cp reference/qa-v1.5-aligned-unsigned.apk base.apk
+          test -s base.apk
+
+      - name: Build native random reminders, standalone full-text reader and gentle chime
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile android-heritage/build_additive_heritage.py
+          python3 android-heritage/build_additive_heritage.py
+          test -s Shamna-AI-v1.6-Heritage-Aligned-Unsigned.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Shamna-QA-v1.6-Additive-Heritage-Unsigned
+          path: Shamna-AI-v1.6-Heritage-Aligned-Unsigned.apk
+          retention-days: 14
+          if-no-files-found: error
