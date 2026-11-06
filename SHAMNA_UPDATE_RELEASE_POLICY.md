@@ -1,3 +1,16 @@
+## Shamna QA 1.4 failure and definitive client-side repair (2026-11-06)
+
+- Incident: User uploaded 1.4 to Dallalna. Older Shamna QA 1.3 did not announce it because the GitHub `shamna-qa-update.json` manifest was still 1.2; GitHub's scheduled workflow had not executed promptly. Its manual verification run then found the published 1.4 (code 5, signed QA), updated the manifest automatically via its own commit, and confirmed SHA-256 `c4dc890ba8f2a9f85710f89ab6a40131f34186fd65f8e99d179730a5189c812a`.
+- Dallalna's public `app_downloads` entry has `version=null`. It cannot be used to infer Android versionCode; **never rely on a manually entered Dallalna version label**.
+- Fixed version: signed compatible `com.shamna.qa` 1.5 (code 6). The native update manager directly queries the public Dallalna listing on launch/resume and every **60 seconds while the Activity is active**. It detects new UUID APK URLs and uses a 256-KiB HTTP Range probe to read the actual binary AndroidManifest `package/versionCode/versionName` without downloading the whole release. The result is cached by URL. GitHub verified metadata remains the fallback.
+- ZIP and binary manifest decoder is in `android-updater/ShamnaApkVersionProbe.java`; the GitHub release-build workflow validates the real 1.4 published APK header using the same compiled Java parser.
+- Both official and QA workflows include the additive probe component; old app UI/download/camera/microphone/data are preserved. Version 1.5 was signed with the original **QA 1.2–1.4** signing key and its V2/V3 signature, package `com.shamna.qa`, and code 6 were verified. All assets except AndroidManifest.xml and updater classes4.dex are byte-for-byte identical to 1.4.
+- On download, Android `PackageManager` checks the new APK package, **exact** versionCode/versionName claimed from the published binary manifest, and exact currently installed signing identity. Same-or-older releases cannot install. User approval through Android package installer remains mandatory.
+- The GitHub release sync now rejects all code >= 6 unless APK contains `ShamnaApkVersionProbe`, `shamna-qa-update.json` fallback and the direct Dallalna lookup. The signer, name, and package checks remain mandatory.
+- Limit: fully backgrounded/killed apps cannot be promised instant push from a local polling timer. True immediate closed-app notifications require a real push backend (e.g. FCM), a server publishing trigger and Android notification permission. Do not claim that the minute check delivers closed-app push.
+- Upgrade path: 1.3/1.4 can only read GitHub metadata, so users may need to open them after the scheduled sync; 1.5 is the first release with **independent direct** Dallalna monitoring. Verify on a real phone before broad release.
+- Do not publish the QA private signing key or password to this public repository.
+
 ## Current device-compatible Shamna QA application (verified 2026-11-06)
 
 - User-provided installed reference APK: package `com.shamna.qa`, versionName `1.2`, versionCode `3`, SHA-256 `e4f5df841b6293abce75cbed5ecbc88148e80e80bbea545cb2082229b89cb423`.
