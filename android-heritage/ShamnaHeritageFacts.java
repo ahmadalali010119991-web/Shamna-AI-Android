@@ -12,7 +12,7 @@ public final class ShamnaHeritageFacts {
             return text + (source.isEmpty() ? "" : "\n\nللمطالعة: " + source);
         }
     }
-    public static final Fact[] ITEMS = {
+    private static final Fact[] ORIGINAL = {
         new Fact("الخوارزمي وعلم الجبر",
             "صنّف محمد بن موسى الخوارزمي كتاب «الجبر والمقابلة»، ورتّب فيه طرق معالجة المعادلات وشرح تطبيقاتها في المواريث والمعاملات ومساحة الأرض. كانت المعادلات معروفة قبل عصره؛ وأهمية عمله أنه قدّمها في بناء علمي منظم أثّر في تاريخ الرياضيات.",
             "كتاب الجبر والمقابلة؛ جامعة أكسفورد: تاريخ الجبر في الرياضيات الإسلامية."),
@@ -101,4 +101,14 @@ public final class ShamnaHeritageFacts {
             "تأمل معرفي: قد يكون أثر كتاب عظيمًا لا لأنه أعطى القارئ أجوبة جاهزة، بل لأنه علّمه التمييز بين السؤال الجيد والسؤال المضلل. من علامات القراءة النافعة أن تزداد قدرتك على فحص الأدلة لا مجرد حفظ العبارات.",
             "")
     };
+
+    /** 29 retained original facts + 50 selected image quotes; never erase prior items. */
+    public static final Fact[] ITEMS = merge(ORIGINAL, ShamnaHeritageSelectedFacts.ITEMS);
+    private static Fact[] merge(Fact[] left, Fact[] right) {
+        Fact[] together = new Fact[left.length + right.length];
+        System.arraycopy(left, 0, together, 0, left.length);
+        System.arraycopy(right, 0, together, left.length, right.length);
+        if (together.length != 79) throw new IllegalStateException("Expected 79 distinct notices");
+        return together;
+    }
 }
