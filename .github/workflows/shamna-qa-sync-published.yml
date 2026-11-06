@@ -1,0 +1,45 @@
+name: Detect signed Shamna QA updates published on Dallalna
+
+on:
+  schedule:
+    - cron: "4,9,14,19,24,29,34,39,44,49,54,59 * * * *"
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/shamna-qa-sync-published.yml
+      - scripts/sync_shamna_qa_from_dallalna.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: shamna-qa-publish-signed-updates
+  cancel-in-progress: false
+
+jobs:
+  synchronize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate monitor code
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/sync_shamna_qa_from_dallalna.py
+      - name: Publish newer QA build only after verifying exact APK signature and version
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/sync_shamna_qa_from_dallalna.py
+          if git diff --quiet -- shamna-qa-update.json; then
+            echo "No newer correctly signed com.shamna.qa APK on Dallalna."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add shamna-qa-update.json
+          git commit -m "Automatically announce verified Shamna QA in-place update"
+          git push origin HEAD:main
