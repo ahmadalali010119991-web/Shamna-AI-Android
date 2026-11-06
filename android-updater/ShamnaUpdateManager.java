@@ -97,7 +97,7 @@ public final class ShamnaUpdateManager {
         };
         IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
         if (Build.VERSION.SDK_INT >= 33) {
-            activity.registerReceiver(downloadedReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+            activity.registerReceiver(downloadedReceiver, filter, Context.RECEIVER_EXPORTED);
         } else {
             activity.registerReceiver(downloadedReceiver, filter);
         }
@@ -250,6 +250,9 @@ public final class ShamnaUpdateManager {
         try {
             String name = "Shamna-AI-" + r.version + ".apk";
             File target = new File(activity.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), name);
+            if (target.exists() && !target.delete()) {
+                throw new IllegalStateException("Cannot replace previous incomplete download");
+            }
             DownloadManager dm = (DownloadManager) activity.getSystemService(Context.DOWNLOAD_SERVICE);
             if (dm == null) throw new IllegalStateException("DownloadManager missing");
             DownloadManager.Request req = new DownloadManager.Request(Uri.parse(r.apkUrl));
