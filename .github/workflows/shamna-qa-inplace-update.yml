@@ -1,12 +1,8 @@
 name: Build minimal additive Shamna QA in-place update candidate
 
+# Archived one-time builder for 1.2 -> 1.3; do not rebuild it on newer sources.
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/shamna-qa-inplace-update.yml
-      - android-updater/ShamnaUpdateManager.java
 
 permissions:
   contents: read
