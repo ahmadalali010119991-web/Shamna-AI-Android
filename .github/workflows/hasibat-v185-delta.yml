@@ -1,0 +1,38 @@
+name: Assemble Hasibat v1.8.5 signed-release delta
+
+on:
+  push:
+    branches: [hasibat-al-lira]
+    paths:
+      - .github/workflows/hasibat-v185-delta.yml
+      - hasibat-build/v185-dex-03.b64
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deliver-verified-delta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: hasibat-al-lira
+      - name: Verify build patches
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat hasibat-build/v185-dex-0{1,2,3}.b64 | base64 -d > v185-dex.patch
+          base64 -d < hasibat-build/v185-manifest.patch.b64 > v185-manifest.patch
+          echo 'c112bd85705b321f5bc68679dc2e2ec86e75b437ee20d2763057d07a7d7b77b7  v185-dex.patch' | sha256sum -c
+          echo '6b42e7a7467ae935d0c87ce57e0c960059d77d60e980f2cc6112000aa67e8d95  v185-manifest.patch' | sha256sum -c
+          stat -c '%n %s bytes' v185-*.patch
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hasibat-v185-source-delta
+          path: |
+            v185-dex.patch
+            v185-manifest.patch
+          retention-days: 2
+          if-no-files-found: error
