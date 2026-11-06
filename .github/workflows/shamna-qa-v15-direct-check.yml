@@ -6,6 +6,7 @@ on:
     paths:
       - .github/workflows/shamna-qa-v15-direct-check.yml
       - android-updater/ShamnaUpdateManager.java
+      - android-updater/ShamnaApkVersionProbe.java
   workflow_dispatch:
 
 permissions:
@@ -82,11 +83,13 @@ jobs:
           p=Path("java-src/com/shamna/ai/ShamnaUpdateManager.java")
           p.parent.mkdir(parents=True,exist_ok=True)
           p.write_text(source,"utf-8")
+          helper=Path("java-src/com/shamna/ai/ShamnaApkVersionProbe.java")
+          helper.write_text(Path("android-updater/ShamnaApkVersionProbe.java").read_text("utf-8"),"utf-8")
           PY
           mkdir -p java-classes new-dex
           javac -source 8 -target 8 \
             -cp "$ANDROID_HOME/platforms/android-35/android.jar" \
-            -d java-classes java-src/com/shamna/ai/ShamnaUpdateManager.java
+            -d java-classes java-src/com/shamna/ai/ShamnaUpdateManager.java java-src/com/shamna/ai/ShamnaApkVersionProbe.java
           d8 --min-api 24 --lib "$ANDROID_HOME/platforms/android-35/android.jar" \
             --output new-dex $(find java-classes -name '*.class')
           test -s new-dex/classes.dex
@@ -121,7 +124,9 @@ jobs:
                   raise SystemExit("Missing original classes")
               if b"shamna-qa-update.json" not in new.read("classes4.dex"):
                   raise SystemExit("Missing update fallback")
-              if b"DALLALNA_RELEASE_URL" not in new.read("classes4.dex"):
+              if b"ShamnaApkVersionProbe" not in new.read("classes4.dex"):
+              raise SystemExit("Missing ZIP manifest version detector")
+          if b"DALLALNA_RELEASE_URL" not in new.read("classes4.dex"):
                   raise SystemExit("Missing live Dallalna source")
           PY
           zipalign -f -p 4 qa-v1.5-unsigned.apk qa-v1.5-aligned-unsigned.apk
