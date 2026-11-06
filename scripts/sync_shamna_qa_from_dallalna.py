@@ -83,10 +83,12 @@ def inspect(apk):
     signature_output = subprocess.check_output(
         [android_tool("apksigner"), "verify", "--print-certs", str(apk)],
         text=True, stderr=subprocess.STDOUT, timeout=60)
-    cert = re.search(r"Signer #1 certificate SHA-256 digest:\s*([a-fA-F0-9]+)", signature_output)
-    if cert is None: print("Apksigner public certificate output:",repr(signature_output[:1600]))
-    if not cert or cert.group(1).lower() != EXPECTED_CERT_SHA256 or "Signer #2" in signature_output:
-        raise RuntimeError(f"BLOCKED: QA signer unexpected; observed={(cert.group(1).lower() if cert else 'none')}; expected={EXPECTED_CERT_SHA256}; multiple={'Signer #2' in signature_output}")
+    certs = re.findall(
+        r"(?m)^(?:(?:V[234](?:\\.\\d+)? Signer|Signer #\\d+): certificate|Signer #\\d+ certificate) SHA-256 digest:\\s*([a-fA-F0-9]{64})\\s*$",
+        signature_output
+    )
+    if not certs or any(value.lower() != EXPECTED_CERT_SHA256 for value in certs) or "Signer #2" in signature_output:
+        raise RuntimeError("BLOCKED: publisher signing certificate differs from the installed Shamna QA APK")
     return code, name
 
 def main():
