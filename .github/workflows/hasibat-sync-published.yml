@@ -3,8 +3,9 @@ name: Detect published Hasibat APK and sync updates
 
 on:
   schedule:
-    # Canonical five-minute schedule, on the default branch. GitHub may delay or skip cron ticks.
-    - cron: "*/5 * * * *"
+    # Automatic recurring check every five minutes, away from hour-boundary load spikes.
+    # GitHub scheduled jobs are best-effort, so a second staggered monitor is configured.
+    - cron: "4,9,14,19,24,29,34,39,44,49,54,59 * * * *"
   workflow_dispatch:
   push:
     branches: [main]
