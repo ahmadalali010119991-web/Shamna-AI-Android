@@ -279,6 +279,12 @@ public final class ShamnaHeritageNotifications {
             button.topMargin=dp(12);
             layout.addView(close,button);
             setContentView(layout);
+            // Bound the dialog to a readable height so even long sources
+            // remain scrollable; never navigate into the main Shamna WebView.
+            android.util.DisplayMetrics metrics=getResources().getDisplayMetrics();
+            int width=Math.min(metrics.widthPixels-dp(28),dp(580));
+            int height=(int)(metrics.heightPixels*0.76f);
+            getWindow().setLayout(width,height);
         }
         private int dp(int d) {return (int)(d*getResources().getDisplayMetrics().density+0.5f);}
     }
