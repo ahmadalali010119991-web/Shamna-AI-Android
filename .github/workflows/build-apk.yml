@@ -1328,6 +1328,15 @@ jobs:
           print("Startup rendering performance patch applied")
           PY
 
+      - name: Apply native Shamna app updates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 android-updater/patch_shamna_project.py
+          grep -q 'SHAMNA_NATIVE_UPDATE_INIT' app/src/main/java/com/shamna/ai/MainActivity.java
+          test -f app/src/main/java/com/shamna/ai/ShamnaUpdateManager.java
+          grep -q 'android.permission.REQUEST_INSTALL_PACKAGES' app/src/main/AndroidManifest.xml
+
       - name: Verify project files
         shell: bash
         run: |
