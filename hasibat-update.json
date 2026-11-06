@@ -1,11 +1,11 @@
 {
-  "versionCode": 12,
-  "versionName": "1.7.1",
+  "versionCode": 15,
+  "versionName": "1.8.2",
   "required": false,
   "requiresUninstall": false,
   "url": "https://dallalna.com/install",
-  "apkUrl": "https://ftzmeimurgsqzvmcahhs.supabase.co/storage/v1/object/public/site-assets/b240bd5a-6536-42a3-8453-f309d1a053f1/ae7a223c-3119-4961-800c-925919d117f4.apk",
-  "apkSha256": "ddc8ae50ae3bef7625750ceacfc928ae580d428ed3c9fa1959a46e5b2662ef58",
-  "apkSize": 11759010,
-  "message": "الإصدار 1.7.1: إصلاح جذري لقارئ الكتب، وتسريع فتح الصفحات، وتحسين التصفح والتكبير وحفظ آخر صفحة، دون تغيير أي ميزة أخرى."
+  "apkUrl": "https://ftzmeimurgsqzvmcahhs.supabase.co/storage/v1/object/public/site-assets/b240bd5a-6536-42a3-8453-f309d1a053f1/cea2197d-3b36-4ed7-abc1-0004acc300a1.apk",
+  "apkSha256": "fcb3645260f4e69991444f9546255d85d8b94dbb69a22f55160484fa712ffb3b",
+  "apkSize": 11769398,
+  "message": "الإصدار 1.8.2 متاح الآن: عرض رقم الإصدار المثبت بجانب تحديثات التطبيق. اضغط «تحميل التحديث» لتنزيله وتثبيته فوق الإصدار الحالي دون حذف البيانات."
 }
