@@ -1,10 +1,10 @@
 {
-  "versionCode": 3,
-  "versionName": "1.2",
+  "versionCode": 5,
+  "versionName": "1.4",
   "required": false,
   "requiresUninstall": false,
-  "apkUrl": "",
-  "apkSha256": "",
-  "apkSize": 0,
-  "message": "تطبيق شامنا AI محدّث حتى إصدار 1.2."
+  "apkUrl": "https://ftzmeimurgsqzvmcahhs.supabase.co/storage/v1/object/public/site-assets/b240bd5a-6536-42a3-8453-f309d1a053f1/5d8e5b29-d040-4cc8-8d29-202e22c1900e.apk",
+  "apkSha256": "c4dc890ba8f2a9f85710f89ab6a40131f34186fd65f8e99d179730a5189c812a",
+  "apkSize": 321095,
+  "message": "يتوفر الإصدار 1.4 من شامنا AI. يمكنك تنزيله وتثبيته فوق النسخة الحالية دون حذف بياناتك."
 }
