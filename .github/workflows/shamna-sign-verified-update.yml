@@ -1,0 +1,89 @@
+name: Sign Shamna AI in-place update (official key only)
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_run_id:
+        description: "Successful Build Shamna AI APK workflow run ID"
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  official-update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download the exact previously compiled debug artifact
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_RUN_ID: ${{ inputs.build_run_id }}
+        run: |
+          set -euo pipefail
+          [[ "$BUILD_RUN_ID" =~ ^[0-9]+$ ]] || { echo "Invalid workflow run"; exit 1; }
+          mkdir -p unsigned
+          gh run download "$BUILD_RUN_ID" --repo "${{ github.repository }}" --name Shamna-AI-APK --dir unsigned
+          test -s unsigned/Shamna-AI.apk
+
+      - name: Sign with the original production certificate
+        shell: bash
+        env:
+          SHAMNA_RELEASE_KEYSTORE_BASE64: ${{ secrets.SHAMNA_RELEASE_KEYSTORE_BASE64 }}
+          SHAMNA_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.SHAMNA_RELEASE_KEYSTORE_PASSWORD }}
+          SHAMNA_RELEASE_KEY_ALIAS: ${{ secrets.SHAMNA_RELEASE_KEY_ALIAS }}
+          SHAMNA_RELEASE_KEY_PASSWORD: ${{ secrets.SHAMNA_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in SHAMNA_RELEASE_KEYSTORE_BASE64 SHAMNA_RELEASE_KEYSTORE_PASSWORD SHAMNA_RELEASE_KEY_ALIAS SHAMNA_RELEASE_KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing official signing credential: $name. Never use the test or ephemeral Android Debug key."
+              exit 1
+            fi
+          done
+          umask 077
+          mkdir -p secure-key
+          trap 'rm -rf secure-key' EXIT
+          printf '%s' "$SHAMNA_RELEASE_KEYSTORE_BASE64" | base64 -d > secure-key/original.jks
+          BT="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+          AAPT="$BT/aapt"
+          APKSIGNER="$BT/apksigner"
+          test -x "$AAPT"
+          test -x "$APKSIGNER"
+          "$APKSIGNER" sign --ks secure-key/original.jks \
+            --ks-key-alias "$SHAMNA_RELEASE_KEY_ALIAS" \
+            --ks-pass env:SHAMNA_RELEASE_KEYSTORE_PASSWORD \
+            --key-pass env:SHAMNA_RELEASE_KEY_PASSWORD \
+            --out Shamna-AI-official-signed.apk unsigned/Shamna-AI.apk
+          "$APKSIGNER" verify --print-certs Shamna-AI-official-signed.apk > signer-output.txt
+          CERT="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' signer-output.txt | head -1 | tr 'A-F' 'a-f')"
+          EXPECTED="16d9d351e4da9f6bfa175adbecd337a35ac6ff6b9b1bbec3291ec956fc431dcf"
+          if [ "$CERT" != "$EXPECTED" ]; then
+            echo "::error::The signer differs from the preserved original Shamna APK. No upgrade can be promised."
+            exit 1
+          fi
+          "$AAPT" dump badging Shamna-AI-official-signed.apk | head -1 | tee package-info.txt
+          grep -q "package: name='com.shamna.ai'" package-info.txt
+          python3 - <<'PY'
+          import re
+          line=open('package-info.txt').read()
+          m=re.search(r"versionCode='(\d+)'",line)
+          if not m or int(m.group(1))<=30:
+              raise SystemExit("APK build version must be increased above archived Shamna versionCode 30")
+          print("Verified package, new versionCode and original signer. No uninstall required.")
+          PY
+          sha256sum Shamna-AI-official-signed.apk > Shamna-AI-official-signed.apk.sha256
+
+      - name: Upload production candidate for on-device in-place upgrade test
+        uses: actions/upload-artifact@v4
+        with:
+          name: Shamna-AI-Official-Signed-Update
+          path: |
+            Shamna-AI-official-signed.apk
+            Shamna-AI-official-signed.apk.sha256
+          retention-days: 14
+          if-no-files-found: error
