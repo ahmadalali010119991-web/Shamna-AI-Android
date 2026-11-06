@@ -75,7 +75,8 @@ def inspect(apk):
         text=True, timeout=60)
     m = re.search(r"package: name='([^']+)' versionCode='(\d+)' versionName='([^']+)'", badging)
     if not m or m.group(1) != PACKAGE:
-        raise RuntimeError("APK package identity does not match the installed Shamna app")
+        found = m.group(1) if m else "unreadable"
+        raise RuntimeError(f"BLOCKED: Dallalna Shamna APK package is {found}; expected {PACKAGE}. Publish the official correctly signed application, not a QA build.")
     code, name = int(m.group(2)), m.group(3)
     if not (0 < code < 1_000_000) or not re.fullmatch(r"[\w.-]{1,24}", name):
         raise RuntimeError("Invalid Android release version")
