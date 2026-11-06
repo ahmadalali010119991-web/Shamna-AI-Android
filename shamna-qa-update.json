@@ -1,10 +1,10 @@
 {
-  "versionCode": 5,
-  "versionName": "1.4",
+  "versionCode": 8,
+  "versionName": "1.7",
   "required": false,
   "requiresUninstall": false,
-  "apkUrl": "https://ftzmeimurgsqzvmcahhs.supabase.co/storage/v1/object/public/site-assets/b240bd5a-6536-42a3-8453-f309d1a053f1/5d8e5b29-d040-4cc8-8d29-202e22c1900e.apk",
-  "apkSha256": "c4dc890ba8f2a9f85710f89ab6a40131f34186fd65f8e99d179730a5189c812a",
-  "apkSize": 321095,
-  "message": "يتوفر الإصدار 1.4 من شامنا AI. يمكنك تنزيله وتثبيته فوق النسخة الحالية دون حذف بياناتك."
+  "apkUrl": "https://ftzmeimurgsqzvmcahhs.supabase.co/storage/v1/object/public/site-assets/b240bd5a-6536-42a3-8453-f309d1a053f1/feab9c52-7e29-42ef-b4c7-d0de7cd55411.apk",
+  "apkSha256": "bc13911d83e2939c40cdebe45210c80cd4a5a33cfa966e38397c81ff15b11dd9",
+  "apkSize": 378517,
+  "message": "يتوفر الإصدار 1.7 من شامنا AI. يمكنك تنزيله وتثبيته فوق النسخة الحالية دون حذف بياناتك."
 }
