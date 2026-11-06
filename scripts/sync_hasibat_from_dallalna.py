@@ -21,6 +21,10 @@ REPO_FILE=pathlib.Path("hasibat-update.json")
 HOME_PAGE="https://dallalna.com/install"
 SUPABASE_HOST="ftzmeimurgsqzvmcahhs.supabase.co"
 APP_NAME="حاسبة الليرة"
+# This is the PUBLIC anon key embedded in the distributed 1.8.5 APK, not a service-role secret.
+# Use it to query the public listing directly, without downloading a large website bundle.
+PUBLIC_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0em1laW11cmdzcXp2bWNhaGhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxMTg0NzMsImV4cCI6MjA5MTY5NDQ3M30.8kLjeKnDSlqcb0oqtVOmDKBImpyS8EN2PzJlbZxef8w"
+APP_RECORD_ID="5fef4e74-8cd4-4b82-a74b-6dd40e678107"
 
 def get(url, headers=None, maximum=9_000_000):
     req=urllib.request.Request(url,headers={"User-Agent":"Hasibat-Release-Monitor/1.0",**(headers or {})})
@@ -30,20 +34,32 @@ def get(url, headers=None, maximum=9_000_000):
         if len(result)>maximum:raise RuntimeError("Document too large")
         return result
 
-def discover_link():
-    html=get(HOME_PAGE).decode("utf-8","replace")
-    match=re.search(r'<script[^>]*\bsrc="(/assets/index-[a-zA-Z0-9_-]+\.js)"',html)
-    if not match:raise RuntimeError("Cannot find public site bundle")
-    js=get("https://dallalna.com"+match.group(1),maximum=7_000_000).decode("utf-8","replace")
-    m=re.search(r'const\s+\w+="(https://'+re.escape(SUPABASE_HOST)+r')",\w+="(eyJ[^"]+)"',js)
-    if not m:raise RuntimeError("Cannot discover the public read-only site client")
-    base,key=m.group(1),m.group(2)
-    endpoint=(base+"/rest/v1/app_downloads?select=name,file_url,version"
+def public_listing(key):
+    base="https://"+SUPABASE_HOST
+    endpoint=(base+"/rest/v1/app_downloads?select=id,name,file_url,version"
              +"&name=eq."+urllib.parse.quote(APP_NAME,safe=""))
     rows=json.loads(get(endpoint,headers={"apikey":key,"Authorization":"Bearer "+key},maximum=200_000))
     matches=[r for r in rows if r.get("name")==APP_NAME]
-    if len(matches)!=1:raise RuntimeError("No unique Hasibat entry on Dallalna")
-    url=matches[0].get("file_url") or ""
+    if len(matches)!=1:raise RuntimeError("No unique Hasibat entry in public Dallalna listing")
+    return matches[0]
+
+def discover_link():
+    try:
+        row=public_listing(PUBLIC_ANON_KEY)
+    except Exception as first_error:
+        # Recovery path if Dallalna rotates its public key: discover a fresh key
+        # from the published site itself rather than requiring manual intervention.
+        print("Public Dallalna API key changed or listing unavailable; retrying via site bundle:", first_error,file=sys.stderr)
+        html=get(HOME_PAGE).decode("utf-8","replace")
+        match=re.search(r'<script[^>]*\\bsrc="(/assets/index-[a-zA-Z0-9_-]+\\.js)"',html)
+        if not match:raise RuntimeError("Cannot find public site bundle")
+        js=get("https://dallalna.com"+match.group(1),maximum=7_000_000).decode("utf-8","replace")
+        m=re.search(r'const\\s+\\w+="(https://'+re.escape(SUPABASE_HOST)+r')",\\w+="(eyJ[^"]+)"',js)
+        if not m:raise RuntimeError("Cannot discover the public read-only site client")
+        row=public_listing(m.group(2))
+    if row.get("id") and row["id"]!=APP_RECORD_ID:
+        print("WARNING: public Dallalna listing ID differs from the ID in shipped Hasibat 1.8.5 APK",file=sys.stderr)
+    url=row.get("file_url") or ""
     parsed=urllib.parse.urlsplit(url)
     if parsed.scheme!="https" or parsed.hostname!=SUPABASE_HOST or not parsed.path.startswith(
         "/storage/v1/object/public/site-assets/") or not parsed.path.endswith(".apk") or parsed.query or parsed.fragment:
