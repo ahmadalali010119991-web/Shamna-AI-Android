@@ -1,17 +1,13 @@
-name: Transfer verified Hasibat 1.8 build delta
-
+name: Transfer verified Hasibat 1.8.2 build delta
 on:
   push:
-    branches:
-      - hasibat-al-lira
+    branches: [hasibat-al-lira]
     paths:
       - .github/workflows/hasibat-build-transfer.yml
-      - hasibat-build/v180-dex-part-05.b64
+      - hasibat-build/v182-dex.patch.b64
   workflow_dispatch:
-
 permissions:
   contents: read
-
 jobs:
   pack-build-delta:
     runs-on: ubuntu-latest
@@ -20,23 +16,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: hasibat-al-lira
-      - name: Reassemble release-only DEX patch and binary manifest patch
+      - name: Assemble verified v1.8.2 delta
         shell: bash
         run: |
           set -euo pipefail
-          cat hasibat-build/v180-dex-part-0{1,2,3,4,5}.b64 | base64 --decode > v180-dex.patch
-          base64 --decode < hasibat-build/v180-manifest.patch.b64 > v180-manifest.patch
-          cat hasibat-build/v180-fix-part{1,2}.b64 | base64 --decode > v180-fix.patch
-          echo "1891d15db7ca45b189914a3559a3c19c84715b527c2dae1dc2769ad656bdaf84  v180-dex.patch" | sha256sum --check
-          echo "97b34ef2ccbfb47af521bcd2d4b64655f455498d7974f20ad2db7948303069c8  v180-manifest.patch" | sha256sum --check
-          echo "1c9628ed544e946e6cd7367230f41b8b5f4d1ca436264ba5b3e9d93e9dcdd4de  v180-fix.patch" | sha256sum --check
-          stat -c '%n %s bytes' v180-*.patch
+          base64 --decode < hasibat-build/v182-dex.patch.b64 > v182-dex.patch
+          base64 --decode < hasibat-build/v182-manifest.patch.b64 > v182-manifest.patch
+          echo '104cb80b7cb925869af6f0a242c806dfcbc695be3d2e76738cc6906ae2c21785  v182-dex.patch' | sha256sum --check
+          echo 'e36f8ce9829bd674d42c5fab9eb762b8f7a678a98b94a5ed37811cfe66c49796  v182-manifest.patch' | sha256sum --check
       - uses: actions/upload-artifact@v4
         with:
-          name: hasibat-v180-build-delta
+          name: hasibat-v182-build-delta
           path: |
-            v180-dex.patch
-            v180-manifest.patch
-            v180-fix.patch
+            v182-dex.patch
+            v182-manifest.patch
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 2
