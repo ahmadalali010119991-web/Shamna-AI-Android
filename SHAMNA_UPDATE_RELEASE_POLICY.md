@@ -1,3 +1,15 @@
+## Current device-compatible Shamna QA application (verified 2026-11-06)
+
+- User-provided installed reference APK: package `com.shamna.qa`, versionName `1.2`, versionCode `3`, SHA-256 `e4f5df841b6293abce75cbed5ecbc88148e80e80bbea545cb2082229b89cb423`.
+- Original QA signing certificate SHA-256 `65f1224f1c8539870478c1ffccfb82e02adf803686eab1a17385e547239f863e` matches the privately held test signing keystore from the owner's earlier source archive. Never commit or publish that private keystore.
+- A minimal additive QA update `1.3` (versionCode `4`) was built from the exact baseline; only binary AndroidManifest.xml, hooked classes2.dex, and added classes4.dex differ. All other files are preserved byte-for-byte; signature V2 and V3 verified against the original QA signing certificate.
+- Existing 1.2 has **no built-in self-update bridge**, so upgrading 1.2→1.3 requires one manual APK installation. Once 1.3 is installed, newer correctly signed QA versions can be announced inside the app via the separate `shamna-qa-update.json` metadata channel.
+- `.github/workflows/shamna-qa-sync-published.yml` checks Dallalna automatically using `scripts/sync_shamna_qa_from_dallalna.py`, pins the *QA* signing certificate and package, and never treats a same-or-older version as newer.
+- Initial sync was verified by GitHub Actions run 42272501866: the published QA 1.2 was correctly recognized as not newer, so no fake update was announced. The five-minute schedule remains best-effort and is not guaranteed exactly every five minutes.
+- Do not confuse this **working QA in-place upgrade path** with the separate production-named package `com.shamna.ai`. The latter still requires independent access to its own original signing key; the QA key cannot update it.
+- Test the signed QA 1.3 APK on the actual device, including preservation of existing local data. Then upload a newly signed QA 1.4 to Dallalna and confirm autonomous discovery and installation.
+- Future signed QA APKs MUST keep `com.shamna.qa`, the same signer certificate, an increased versionCode, all existing features, and pass rollback/regression checks. No uninstall.
+
 # Shamna AI — Automatic Android updates and in-place installation
 
 ## Implemented app-side update flow
