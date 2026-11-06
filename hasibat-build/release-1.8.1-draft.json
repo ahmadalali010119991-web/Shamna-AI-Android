@@ -1,0 +1,11 @@
+{
+  "versionCode": 14,
+  "versionName": "1.8.1",
+  "required": false,
+  "requiresUninstall": false,
+  "url": "https://dallalna.com/install",
+  "apkSha256": "726c1992558f755422e8957dd7995cffe1f9801ce78d0ea36f63a930fdbdee1e",
+  "apkSize": 11769011,
+  "message": "إصدار تجريبي 1.8.1 لاختبار إشعار التحديث والتنزيل من داخل التطبيق، دون تغييرات وظيفية.",
+  "note": "Draft only. Publish only after APK is hosted at Dallalna and apkUrl points to that exact signed file."
+}
