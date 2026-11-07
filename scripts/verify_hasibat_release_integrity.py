@@ -64,6 +64,27 @@ def trusted_url(url: str, version_name: str) -> bool:
         return False
 
 
+def legacy_trusted_url(url: str) -> bool:
+    """Mirror the unchangeable InAppUpdater.trustedApkUrl() in installed 1.8.11/1.8.12.
+
+    Publishing a valid APK to a newer Vercel endpoint is insufficient: legacy
+    installations reject that host/path and disable their own update button.
+    """
+    try:
+        x = urllib.parse.urlsplit(url)
+        if (x.scheme != "https" or not x.netloc or x.username is not None
+                or x.password is not None or x.port is not None or x.fragment
+                or x.query or not x.path.endswith(".apk")):
+            return False
+        if x.hostname in ("dallalna.com", "www.dallalna.com"):
+            return x.path.startswith(("/downloads/", "/install/"))
+        if x.hostname == "ftzmeimurgsqzvmcahhs.supabase.co":
+            return x.path.startswith("/storage/v1/object/public/site-assets/")
+        return False
+    except ValueError:
+        return False
+
+
 def find_tool(name: str) -> str:
     direct = os.environ.get(name.upper() + "_BIN")
     if direct and os.path.isfile(direct) and os.access(direct, os.X_OK):
@@ -97,7 +118,11 @@ def verify(manifest_path: pathlib.Path) -> None:
     size = data.get("apkSize")
     require(isinstance(code, int) and code >= 26, "Outdated versionCode")
     require(bool(re.fullmatch(r"\d+(?:\.\d+){2,3}", version)), "Invalid versionName")
-    require(isinstance(url, str) and trusted_url(url, version), "Untrusted URL: the installed app would disable the update button")
+    require(isinstance(url, str) and (trusted_url(url, version) or legacy_trusted_url(url)),
+            "Untrusted release URL in latest app")
+    require(legacy_trusted_url(url),
+            "LEGACY INSTALLS BLOCKED: 1.8.11/1.8.12 reject this APK host/path; publish under"
+            " dallalna.com/downloads/*.apk or the original approved Supabase storage, then update the manifest")
     require(isinstance(sha, str) and bool(re.fullmatch(r"[0-9a-f]{64}", sha)), "Invalid SHA256")
     require(isinstance(size, int) and 500000 < size <= MAX_APK_BYTES, "Invalid APK size")
     require(data.get("requiresUninstall") is False, "Breaking migration: requiresUninstall must be false")
