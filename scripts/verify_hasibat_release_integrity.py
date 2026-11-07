@@ -136,7 +136,10 @@ def verify(manifest_path: pathlib.Path) -> None:
         signatures = run(find_tool("apksigner"), "verify", "--verbose", "--print-certs", str(apk))
         require("Verified using v2 scheme (APK Signature Scheme v2): true" in signatures, "APK is not v2 signed")
         match = re.search(r"Signer #1 certificate SHA-256 digest:\s*([0-9a-fA-F]+)", signatures)
-        require(bool(match) and match.group(1).lower() == ORIGINAL_SIGNER, "Original signing certificate mismatch")
+        require(bool(match) and match.group(1).lower() == ORIGINAL_SIGNER,
+                "Original signing certificate mismatch (observed=%s, expected=%s; output=%s)" %
+                (match.group(1) if match else "<no regex match>", ORIGINAL_SIGNER,
+                 signatures[-700:].replace("\\n", " ")[:700]))
         require("Signer #2" not in signatures, "Unexpected additional signer")
 
         with zipfile.ZipFile(apk) as z:
