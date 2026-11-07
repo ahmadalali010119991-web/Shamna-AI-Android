@@ -135,12 +135,15 @@ def verify(manifest_path: pathlib.Path) -> None:
 
         signatures = run(find_tool("apksigner"), "verify", "--verbose", "--print-certs", str(apk))
         require("Verified using v2 scheme (APK Signature Scheme v2): true" in signatures, "APK is not v2 signed")
-        match = re.search(r"Signer #1 certificate SHA-256 digest:\s*([0-9a-fA-F]+)", signatures)
+        match = re.search(r"(?:Signer #1|V[234] Signer): certificate SHA-256 digest:\s*([0-9a-fA-F]{64})", signatures)
         require(bool(match) and match.group(1).lower() == ORIGINAL_SIGNER,
                 "Original signing certificate mismatch (observed=%s, expected=%s; output=%s)" %
                 (match.group(1) if match else "<no regex match>", ORIGINAL_SIGNER,
                  signatures[:1700].replace("\\n", " ")[:1700]))
         require("Signer #2" not in signatures, "Unexpected additional signer")
+        signer_count = re.search(r"Number of signers:\s*(\d+)", signatures)
+        if signer_count:
+            require(signer_count.group(1) == "1", "APK has an unexpected number of signers")
 
         with zipfile.ZipFile(apk) as z:
             require(z.testzip() is None, "APK contains corrupted ZIP members")
