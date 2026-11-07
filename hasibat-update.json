@@ -1,11 +1,11 @@
 {
-  "versionCode": 25,
-  "versionName": "1.8.12",
+  "versionCode": 26,
+  "versionName": "1.8.13",
   "required": false,
   "requiresUninstall": false,
-  "url": "https://midan-al-khabar.vercel.app/api/news?verified=hasibat1812",
-  "apkUrl": "https://midan-al-khabar.vercel.app/api/news?verified=hasibat1812",
-  "apkSha256": "31d76a57e198746456325146c7ffe2bfbeef608156d5fbd151e4b06063d16328",
-  "apkSize": 11927842,
-  "message": "تحديث حاسبة الليرة 1.8.12 متاح. يعالج استجابة أزرار تنزيل التطبيقات ويحافظ على ميزات الحاسبة السابقة. اضغط «تحميل التحديث» للتنزيل والتثبيت فوق النسخة الحالية دون حذفها."
+  "url": "https://midan-al-khabar.vercel.app/api/news?verified=hasibat1813",
+  "apkUrl": "https://midan-al-khabar.vercel.app/api/news?verified=hasibat1813",
+  "apkSha256": "fdb3cfc4b2a1a636166bb6dd0de3beae1790a3cbb6ead334bda75eda2df813d1",
+  "apkSize": 11928130,
+  "message": "تحديث حاسبة الليرة 1.8.13: إصلاح التحقق من روابط APK الرسمية، وتحسين رسائل أخطاء التحديث مع استمرار فحص سلامة الملف والتوقيع. ثبّت التحديث فوق الإصدار الحالي دون حذفه."
 }
