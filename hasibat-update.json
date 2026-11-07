@@ -1,11 +1,11 @@
 {
-  "versionCode": 22,
-  "versionName": "1.8.9",
+  "versionCode": 25,
+  "versionName": "1.8.12",
   "required": false,
   "requiresUninstall": false,
-  "url": "https://dallalna.com/install",
-  "apkUrl": "https://ftzmeimurgsqzvmcahhs.supabase.co/storage/v1/object/public/site-assets/b240bd5a-6536-42a3-8453-f309d1a053f1/ca9a5a74-ec08-4610-b7f3-b24c5def0c15.apk",
-  "apkSha256": "00630b6141ae028db61c9649df907c482c57a7386ad1d032cea3e6392c5a0b81",
-  "apkSize": 11871433,
-  "message": "تحديث حاسبة الليرة السورية 1.8.9 جاهز. اضغط «تحميل التحديث» للتنزيل داخل التطبيق، ثم أكّد التثبيت فوق النسخة الحالية."
+  "url": "https://midan-al-khabar.vercel.app/api/news?verified=hasibat1812",
+  "apkUrl": "https://midan-al-khabar.vercel.app/api/news?verified=hasibat1812",
+  "apkSha256": "31d76a57e198746456325146c7ffe2bfbeef608156d5fbd151e4b06063d16328",
+  "apkSize": 11927842,
+  "message": "تحديث حاسبة الليرة 1.8.12 متاح. يعالج استجابة أزرار تنزيل التطبيقات ويحافظ على ميزات الحاسبة السابقة. اضغط «تحميل التحديث» للتنزيل والتثبيت فوق النسخة الحالية دون حذفها."
 }
