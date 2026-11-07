@@ -68,10 +68,6 @@ def find_tool(name: str) -> str:
     direct = os.environ.get(name.upper() + "_BIN")
     if direct and os.path.isfile(direct) and os.access(direct, os.X_OK):
         return direct
-    import shutil
-    tool = shutil.which(name)
-    if tool:
-        return tool
     for home in filter(None, (os.environ.get("ANDROID_HOME"), os.environ.get("ANDROID_SDK_ROOT"))):
         path = pathlib.Path(home) / "build-tools"
         if path.exists():
@@ -79,6 +75,10 @@ def find_tool(name: str) -> str:
                 tool_path = v / name
                 if tool_path.is_file() and os.access(tool_path, os.X_OK):
                     return str(tool_path)
+    import shutil
+    tool = shutil.which(name)
+    if tool:
+        return tool
     raise RuntimeError("Android SDK build tool not found: " + name)
 
 
@@ -139,7 +139,7 @@ def verify(manifest_path: pathlib.Path) -> None:
         require(bool(match) and match.group(1).lower() == ORIGINAL_SIGNER,
                 "Original signing certificate mismatch (observed=%s, expected=%s; output=%s)" %
                 (match.group(1) if match else "<no regex match>", ORIGINAL_SIGNER,
-                 signatures[-700:].replace("\\n", " ")[:700]))
+                 signatures[:1700].replace("\\n", " ")[:1700]))
         require("Signer #2" not in signatures, "Unexpected additional signer")
 
         with zipfile.ZipFile(apk) as z:
