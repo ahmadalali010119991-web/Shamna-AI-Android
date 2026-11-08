@@ -1,0 +1,44 @@
+name: Publish Hasibat 1.8.15 signed icon update
+
+on:
+  push:
+    branches: [hasibat-al-lira]
+    paths: [.github/workflows/hasibat-icon-release-1815.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish-verified-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download signed APK and verify SHA-256
+        shell: bash
+        env:
+          PAGE_URL: https://tmpfiles.org/wBA751OYHnni/hasibat-allira-1.8.15-new-icon-signed.apk
+          EXPECTED_SHA256: a6e9fa2d200c2f98e628b9db58e21d09df9b88fb98edaf66125207da960ffb66
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          curl --proto '=https' --tlsv1.2 -fLsS --retry 3 --max-time 60 "$PAGE_URL" -o /tmp/hasibat-release-page.html
+          APK_URL="$(grep -oE 'https://tmpfiles.org/dl/[^"]+\.apk' /tmp/hasibat-release-page.html | head -n 1)"
+          test -n "$APK_URL"
+          curl --proto '=https' --tlsv1.2 -fLsS --retry 3 --max-time 120 "$APK_URL" -o release/Hasibat-AlLira-v1.8.15.apk
+          echo "$EXPECTED_SHA256  release/Hasibat-AlLira-v1.8.15.apk" | sha256sum -c -
+          file release/Hasibat-AlLira-v1.8.15.apk
+          test "$(stat -c %s release/Hasibat-AlLira-v1.8.15.apk)" -eq 11830432
+      - name: Publish independent signed release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if gh release view hasibat-v1.8.15 >/dev/null 2>&1; then
+            gh release upload hasibat-v1.8.15 release/Hasibat-AlLira-v1.8.15.apk --clobber
+          else
+            gh release create hasibat-v1.8.15 release/Hasibat-AlLira-v1.8.15.apk --title "حاسبة الليرة 1.8.15 — الأيقونة الجديدة" --notes "إصدار موقع بالشهادة الأصلية، يحافظ على ميزات إصدار 1.8.14 بما فيها المحروقات. تم استبدال أيقونة أندرويد وشعار الواجهة الداخلية، مع زيادة versionCode إلى 28. لم تُجرَ تجربة تثبيت فعلية على هاتف." --latest=false
+          fi
+          gh release view hasibat-v1.8.15 --json url,assets --jq '{url:.url, assets:[.assets[].url]}'
