@@ -1,0 +1,47 @@
+name: Publish Hasibat 1.8.16 notification icon fix
+
+on:
+  push:
+    branches:
+      - hasibat-al-lira
+    paths:
+      - .github/workflows/hasibat-notification-icon-release-1816.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish-verified-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download and verify signed 1.8.16 APK
+        shell: bash
+        env:
+          PAGE_URL: https://tmpfiles.org/wwAo5YOZsONH/hasibat-allira-v1.8.16-fixed.apk
+          EXPECTED_SHA256: dbbebc775b7383abe2f1e6250382303709a875ec206b4916c0640083eddf8d3d
+          EXPECTED_SIZE: '11883859'
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          curl --proto '=https' --tlsv1.2 -fLsS --retry 3 --max-time 60 "$PAGE_URL" -o /tmp/hasibat-1816-page.html
+          APK_URL="$(grep -oE 'https://tmpfiles.org/dl/[^"]+\.apk' /tmp/hasibat-1816-page.html | head -n 1)"
+          test -n "$APK_URL"
+          curl --proto '=https' --tlsv1.2 -fLsS --retry 3 --max-time 120 "$APK_URL" -o release/Hasibat-AlLira-v1.8.16.apk
+          echo "$EXPECTED_SHA256  release/Hasibat-AlLira-v1.8.16.apk" | sha256sum -c -
+          test "$(stat -c %s release/Hasibat-AlLira-v1.8.16.apk)" -eq "$EXPECTED_SIZE"
+          file release/Hasibat-AlLira-v1.8.16.apk
+      - name: Publish signed APK in official GitHub releases
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if gh release view hasibat-v1.8.16 >/dev/null 2>&1; then
+            gh release upload hasibat-v1.8.16 release/Hasibat-AlLira-v1.8.16.apk --clobber
+          else
+            gh release create hasibat-v1.8.16 release/Hasibat-AlLira-v1.8.16.apk --title "حاسبة الليرة 1.8.16 — إصلاح أيقونات الإشعارات" --notes "إصدار Android موقع بنفس الشهادة الأصلية. الإصلاح: أيقونة إشعارات صغيرة مناسبة لنظام أندرويد، مع الشعار الملون الجديد كأيقونة كبيرة في إشعارات التراث والتذكيرات والتحديثات. يحافظ على جميع أصول إصدار 1.8.15 وميزات المحروقات والكتب والتنزيلات. الباقة com.syrianlira.calculator، رقم البناء 29. لم يُختبر بعد على هاتف فعلي." --latest=false
+          fi
+          gh release view hasibat-v1.8.16 --json url,assets --jq '{url:.url, assets:[.assets[].url]}'
