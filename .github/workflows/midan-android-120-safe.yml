@@ -1,0 +1,53 @@
+name: Build Midan Android 1.2.0 safely
+on:
+  push:
+    branches: [midan-android-120-safe]
+    paths: ['midan-android/**', '.github/workflows/midan-android-120-safe.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - name: Checkout isolated branch
+        uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.10.2
+      - name: Install image tools
+        run: python3 -m pip install --break-system-packages Pillow
+      - name: Recover official Android source and apply additive update
+        run: python3 midan-android/build_v120.py
+      - name: Verify source identity and version
+        run: |
+          grep -F "applicationId 'com.midanalkhabar.app'" _midan/app/build.gradle
+          grep -F 'versionCode 3' _midan/app/build.gradle
+          grep -F 'versionName '\''1.2.0'\''' _midan/app/build.gradle
+          grep -F 'shareImagePng' _midan/app/src/main/java/com/midanalkhabar/app/MainActivity.java
+      - name: Build unsigned production candidate and test APK
+        run: gradle -p _midan --no-daemon assembleRelease assembleDebug --stacktrace
+      - name: Inspect outputs and archive source
+        run: |
+          find _midan/app/build/outputs/apk -type f -ls
+          (cd _midan && zip -qr ../Midan-Android-v1.2.0-Source.zip . -x '**/build/*' '.gradle/*')
+      - name: Upload unsigned APK and test package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Midan-1.2.0-UNSIGNED-NOT-FOR-PUBLICATION
+          retention-days: 30
+          if-no-files-found: error
+          path: |
+            _midan/app/build/outputs/apk/release/*.apk
+            _midan/app/build/outputs/apk/debug/*.apk
+            MIDAN_RELEASE_SAFETY.json
+            Midan-Android-v1.2.0-Source.zip
