@@ -164,7 +164,7 @@ def verify(manifest_path: pathlib.Path) -> None:
 
         signatures = run(find_tool("apksigner"), "verify", "--verbose", "--print-certs", str(apk))
         require("Verified using v2 scheme (APK Signature Scheme v2): true" in signatures, "APK is not v2 signed")
-        match = re.search(r"(?:Signer #1|V[234] Signer): certificate SHA-256 digest:\s*([0-9a-fA-F]{64})", signatures)
+        match = re.search(r"(?:Signer #1|V[234](?:\.\d+)? Signer):? certificate SHA-256 digest:\s*([0-9a-fA-F]{64})", signatures)
         require(bool(match) and match.group(1).lower() == ORIGINAL_SIGNER,
                 "Original signing certificate mismatch (observed=%s, expected=%s; output=%s)" %
                 (match.group(1) if match else "<no regex match>", ORIGINAL_SIGNER,
