@@ -1,0 +1,64 @@
+name: Hasibat 1.8.17 verified release — update guard enforced
+on:
+  push:
+    branches: [hasibat-al-lira]
+    paths: [.github/workflows/hasibat-safe-release-1817.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Check out release integrity tests
+        uses: actions/checkout@v4
+        with:
+          ref: hasibat-al-lira
+      - name: Install Android APK validation tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq aapt apksigner
+      - name: Download signed APK and check identity, signature, native guards, and assets
+        shell: bash
+        env:
+          PAGE: https://tmpfiles.org/wbAY5CS1Nxga/hasibat-allira-v1.8.17.apk
+          SHA256: ca0143e1a75518664412ad3dd90cc8dc4ec0d4b53eb11ef2e60b47e981dc6d12
+          SIGNER: ae4461cd1629197505fea7bc540c5c63bac447a40dd66fb57433962f1d8946b5
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          curl -fsSL --retry 3 --max-time 50 "$PAGE" -o /tmp/hasibat-release.html
+          APK_URL="$(grep -oE 'https://tmpfiles.org/dl/[^"]+\.apk' /tmp/hasibat-release.html | head -n 1)"
+          test -n "$APK_URL"
+          curl -fsSL --retry 3 --max-time 130 "$APK_URL" -o release/Hasibat-AlLira-v1.8.17.apk
+          echo "$SHA256  release/Hasibat-AlLira-v1.8.17.apk" | sha256sum -c -
+          test "$(stat -c %s release/Hasibat-AlLira-v1.8.17.apk)" -eq 11883859
+          aapt dump badging release/Hasibat-AlLira-v1.8.17.apk | grep -F "package: name='com.syrianlira.calculator' versionCode='30' versionName='1.8.17'"
+          apksigner verify --verbose --print-certs release/Hasibat-AlLira-v1.8.17.apk > /tmp/signature.txt
+          grep -Fx "Verified using v2 scheme (APK Signature Scheme v2): true" /tmp/signature.txt
+          grep -Fx "Verified using v3 scheme (APK Signature Scheme v3): true" /tmp/signature.txt
+          grep -Fx "Signer #1 certificate SHA-256 digest: $SIGNER" /tmp/signature.txt
+          python3 scripts/verify_hasibat_native_version_guard.py release/Hasibat-AlLira-v1.8.17.apk 30
+          python3 - <<'PY'
+          import zipfile
+          p='release/Hasibat-AlLira-v1.8.17.apk'
+          with zipfile.ZipFile(p) as z:
+              assert z.testzip() is None
+              for f in ('assets/index.html','assets/books/islam-almutab.pdf','assets/books/islam-la-yatab.pdf','assets/fuel-widget.js','assets/fuel-widget.css','res/drawable/ic_stat_notification_v1816.png','res/drawable/ic_notification_large_v1816.png'):
+                  assert f in z.namelist(), 'Missing core asset: '+f
+          print('Core content and notification assets present')
+          PY
+      - name: Publish only after all release checks pass
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view hasibat-v1.8.17 >/dev/null 2>&1; then
+            gh release upload hasibat-v1.8.17 release/Hasibat-AlLira-v1.8.17.apk --clobber
+          else
+            gh release create hasibat-v1.8.17 release/Hasibat-AlLira-v1.8.17.apk --title "حاسبة الليرة 1.8.17 — إصلاح اكتشاف التحديثات" --notes "إصلاح تعارض رقم البناء بين نظام أندرويد وملف التحديث. إصدار موقّع بالشهادة الأصلية، versionCode=30، مع الحفاظ على وظائف المحروقات والكتب والصور والإشعارات. اجتاز اختبار native_version_guard الإلزامي والتحقق من SHA-256 والتوقيع." --latest=false
+          fi
+          gh release view hasibat-v1.8.17 --json url,assets --jq '{url:.url, assets:[.assets[].url]}'
