@@ -45,6 +45,15 @@ jobs:
             -H "Content-Type: application/json" --data '{}' \
             "${BRIDGE_URL}")"
           printf '%s\n' "$response" | jq '{ok,seeded,sentNews,sentApps,pendingNews,errors}'
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            echo "Sending verified one-time app introductions"
+            curl --fail-with-body --silent --show-error --retry 2 --max-time 80 \
+              -X POST -H "Authorization: Bearer ${token}" \
+              -H "Content-Type: application/json" --data '{}' \
+              'https://dallalna-telegram-bridge.vercel.app/api/launch-apps' \
+              | jq '{ok,results}'
+          fi
+
           # Secondary 07:00/19:00 Damascus photo attempt (daily Vercel cron is primary).
           # Backend idempotency prevents duplicate images for a time slot.
           if [[ "$GITHUB_EVENT_NAME" != "push" ]]; then
