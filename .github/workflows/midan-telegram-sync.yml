@@ -5,6 +5,7 @@ name: Publish Midan news and app updates to Telegram
 # Arabic news, precise grounded location labels, native APK documents and icon cards.
 # Verify safe two-news-per-cycle scheduling and APK upload retry.
 # Run the authenticated Arabic-only handler; the push-test endpoint now delegates to it.
+# No foreign-language link previews; apps are native APK attachments with published icons.
 on:
   push:
     branches: [main]
