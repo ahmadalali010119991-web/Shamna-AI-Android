@@ -1,5 +1,8 @@
 name: Publish Midan news and app updates to Telegram
 on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/midan-telegram-sync.yml']
   schedule:
     - cron: '2,7,12,17,22,27,32,37,42,47,52,57 * * * *'
   workflow_dispatch:
@@ -23,6 +26,7 @@ jobs:
           BRIDGE_URL: https://dallalna-telegram-bridge.vercel.app/api/sync-v2
         run: |
           set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then BRIDGE_URL="https://dallalna-telegram-bridge.vercel.app/api/push-test"; fi
           if [[ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]]; then
             echo "GitHub OIDC is not available"
             exit 1
