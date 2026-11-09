@@ -72,3 +72,5 @@ jobs:
               echo "::warning::Daily exchange-image check failed; news sync remained successful."
             fi
           fi
+
+# Social button repair: align existing Telegram channel posts with @alislam_almutab_book on both platforms.
