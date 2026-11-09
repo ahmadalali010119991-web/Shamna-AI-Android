@@ -1,0 +1,35 @@
+name: Stage verified unsigned Midan APK for isolated owner signing
+on:
+  push:
+    branches: [midan-release-export-20261109]
+    paths:
+      - .github/workflows/midan-stage.yml
+permissions:
+  actions: read
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: midan-unsigned-and-apksigner
+          run-id: 42651435038
+          github-token: ${{ github.token }}
+          path: .midan-unsigned
+      - name: Validate original unsigned APK and temporary signing utility
+        run: |
+          set -euo pipefail
+          echo '821bab1b5d55c4d45e074729e61f0ac831c0fe745b003c26ff1b47c5d4adaf06  .midan-unsigned/unsigned-v1.3.2.apk' | sha256sum --check
+          echo '00ef9948f843fe395d2440ae3ef41405b8040a6d5d46493bd1902ac0ee6deae7  .midan-unsigned/apksigner.jar' | sha256sum --check
+          mkdir -p midan-staging
+          cp .midan-unsigned/unsigned-v1.3.2.apk midan-staging/unsigned-v1.3.2.apk
+          cp .midan-unsigned/apksigner.jar midan-staging/apksigner.jar
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add midan-staging/unsigned-v1.3.2.apk midan-staging/apksigner.jar
+          git commit -m 'Stage checksum-verified unsigned Midan artifact (no signing key)'
+          git push origin HEAD:midan-release-export-20261109
