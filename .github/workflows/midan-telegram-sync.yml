@@ -1,5 +1,5 @@
 name: Publish Midan news and app updates to Telegram
-# Verified sync smoke run: publish only new, source-verified updates.
+# Live Syrian field voices enabled; preserve source attribution and prevent replay.
 on:
   push:
     branches: [main]
