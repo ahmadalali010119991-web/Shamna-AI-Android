@@ -3,6 +3,7 @@ name: Publish Midan news and app updates to Telegram
 # Publish revised, source-grounded introductions for the four APK apps (once only).
 # Telegram-safe pacing enabled for news and field voices.
 # Arabic news, precise grounded location labels, native APK documents and icon cards.
+# Verify safe two-news-per-cycle scheduling and APK upload retry.
 on:
   push:
     branches: [main]
