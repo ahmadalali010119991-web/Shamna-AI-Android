@@ -1,5 +1,6 @@
 name: Publish Midan news and app updates to Telegram
 # Live Syrian field voices enabled; preserve source attribution and prevent replay.
+# Publish revised, source-grounded introductions for the four APK apps (once only).
 on:
   push:
     branches: [main]
