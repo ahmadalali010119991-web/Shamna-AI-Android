@@ -1,24 +1,24 @@
-name: Temporary Midan APK handoff
+name: Temporary Midan unsigned APK handoff
 on:
   push:
-    branches:
-      - midan-release-export-20261109
+    branches: [midan-release-export-20261109]
 jobs:
   export:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    permissions: { contents: read }
     steps:
-      - uses: actions/checkout@v4
-      - name: Validate unsigned handoff
+      - name: Fetch strictly verified unsigned build artifacts
         run: |
-          test -s .midan-handoff/unsigned-v1.3.2.apk
-          test -s .midan-handoff/apksigner.jar
-      - uses: actions/upload-artifact@v4
+          set -euo pipefail
+          mkdir -p .midan-handoff
+          curl --fail --silent --show-error --location --retry 3 --connect-timeout 15 --max-time 180 'https://sb-1aj22ht2rcl8.vercel.run/unsigned-v1.3.2.apk' -o .midan-handoff/unsigned-v1.3.2.apk
+          curl --fail --silent --show-error --location --retry 3 --connect-timeout 15 --max-time 180 'https://sb-1aj22ht2rcl8.vercel.run/apksigner.jar' -o .midan-handoff/apksigner.jar
+          echo '821bab1b5d55c4d45e074729e61f0ac831c0fe745b003c26ff1b47c5d4adaf06  .midan-handoff/unsigned-v1.3.2.apk' | sha256sum --check
+          echo '00ef9948f843fe395d2440ae3ef41405b8040a6d5d46493bd1902ac0ee6deae7  .midan-handoff/apksigner.jar' | sha256sum --check
+      - name: Export unsigned APK and signing tool (no private key)
+        uses: actions/upload-artifact@v4
         with:
           name: midan-unsigned-and-apksigner
-          path: |
-            .midan-handoff/unsigned-v1.3.2.apk
-            .midan-handoff/apksigner.jar
+          path: .midan-handoff/
           retention-days: 1
           if-no-files-found: error
