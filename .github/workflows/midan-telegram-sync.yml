@@ -4,6 +4,7 @@ name: Publish Midan news and app updates to Telegram
 # Telegram-safe pacing enabled for news and field voices.
 # Arabic news, precise grounded location labels, native APK documents and icon cards.
 # Verify safe two-news-per-cycle scheduling and APK upload retry.
+# Run the authenticated Arabic-only handler; the push-test endpoint now delegates to it.
 on:
   push:
     branches: [main]
