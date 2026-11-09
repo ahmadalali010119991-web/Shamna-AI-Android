@@ -57,7 +57,7 @@ jobs:
               -X POST -H "Authorization: Bearer ${token}" \
               -H "Content-Type: application/json" --data '{}' \
               'https://dallalna-telegram-bridge.vercel.app/api/launch-apps' \
-              | jq '{ok,results}'
+              | jq '{ok,results,socialRepair}'
           fi
 
           # Secondary 07:00/19:00 Damascus photo attempt (daily Vercel cron is primary).
