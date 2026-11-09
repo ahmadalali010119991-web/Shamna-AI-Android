@@ -45,3 +45,15 @@ jobs:
             -H "Content-Type: application/json" --data '{}' \
             "${BRIDGE_URL}")"
           printf '%s\n' "$response" | jq '{ok,seeded,sentNews,sentApps,pendingNews,errors}'
+          # Secondary 07:00/19:00 Damascus photo attempt (daily Vercel cron is primary).
+          # Backend idempotency prevents duplicate images for a time slot.
+          if [[ "$GITHUB_EVENT_NAME" != "push" ]]; then
+            if ! curl --silent --show-error --fail-with-body \
+              --retry 1 --retry-delay 4 --max-time 45 \
+              -X POST -H "Authorization: Bearer ${token}" \
+              -H "Content-Type: application/json" --data '{}' \
+              "https://dallalna-telegram-bridge.vercel.app/api/daily-v2" \
+              | jq '{ok,status,period,reason}'; then
+              echo "::warning::Daily exchange-image check failed; news sync remained successful."
+            fi
+          fi
