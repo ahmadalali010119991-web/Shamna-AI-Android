@@ -1,0 +1,26 @@
+name: Temporary Midan fast-start unsigned APK transfer
+on:
+  push:
+    branches:
+      - midan-release-export-20261109
+jobs:
+  handoff:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Fetch and verify Android build artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p handoff
+          curl --fail --silent --show-error --location --retry 4 --max-time 180 'https://sb-3ijiwe2w90wr.vercel.run/midan-faststart-1.3.3-unsigned.apk' -o handoff/midan-faststart-1.3.3-unsigned.apk
+          curl --fail --silent --show-error --location --retry 4 --max-time 180 'https://sb-3ijiwe2w90wr.vercel.run/apksigner.jar' -o handoff/apksigner.jar
+          echo 'b8a7a350628a598f4932c85da08a969f929ca42d5f5f9975fb7e08076234b061  handoff/midan-faststart-1.3.3-unsigned.apk' | sha256sum --check
+          echo '00ef9948f843fe395d2440ae3ef41405b8040a6d5d46493bd1902ac0ee6deae7  handoff/apksigner.jar' | sha256sum --check
+      - name: Transfer verified unsigned artifacts only
+        uses: actions/upload-artifact@v4
+        with:
+          name: midan-faststart-1.3.3-unsigned
+          path: handoff/
+          retention-days: 1
+          if-no-files-found: error
