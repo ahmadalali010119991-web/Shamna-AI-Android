@@ -1,0 +1,46 @@
+name: Publish Midan AlKhabar v1.3.3 signed APK
+on:
+  push:
+    branches: [midan-permanent-apk-20261109]
+
+permissions:
+  contents: write
+
+jobs:
+  publish-midan-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download and hash-check signed Midan APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fSL --retry 3 --retry-delay 2 --connect-timeout 15 --max-time 180 \
+            'https://sb-2d0rkee0g4uw.vercel.run/Midan-AlKhabar-v1.3.3.apk' \
+            -o Midan-AlKhabar-v1.3.3.apk
+          echo '33e616b365e4713ccfc5def80f0d876688186f06126757a689cb634df638c4fb  Midan-AlKhabar-v1.3.3.apk' | sha256sum --check
+          test "$(stat -c%s Midan-AlKhabar-v1.3.3.apk)" -eq 3121345
+
+      - name: Publish public direct-download release (APK only)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          cat > release-notes.txt <<'EOF'
+          ميدان الخبر — إصدار Android 1.3.3 (بناء 7)
+
+          - إصلاح انتظار الدخول المتأخر إلى التطبيق.
+          - نفس حزمة Android الأصلية ونفس شهادة توقيع التطبيق السابقة.
+          - يحتفظ بالتحديث فوق النسخة المثبتة دون حذف بيانات المستخدم.
+
+          Package: com.midanalkhabar.app
+          Version: 1.3.3 (7)
+          SHA-256: 33e616b365e4713ccfc5def80f0d876688186f06126757a689cb634df638c4fb
+          Verified APK v2 + v3 signature and original certificate.
+          EOF
+          gh release create midan-v1.3.3 Midan-AlKhabar-v1.3.3.apk \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title 'ميدان الخبر — الإصدار 1.3.3 (بناء 7)' \
+            --notes-file release-notes.txt \
+            --latest=false
