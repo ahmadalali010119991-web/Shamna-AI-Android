@@ -1,0 +1,55 @@
+name: Compile isolated Hasibat native image bridge
+on:
+  push:
+    branches: [hasibat-native-image-bridge-recovery]
+    paths:
+      - android_native_bridge/SaveActivity.java
+      - .github/workflows/hasibat-native-bridge-ci.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  compile-android-bridge:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # checkout v4.2.2
+        with:
+          persist-credentials: true
+      - name: Select Android SDK platform
+        run: |
+          set -euo pipefail
+          test -d "${ANDROID_HOME}/platforms/android-35" || "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35"
+          test -x "${ANDROID_HOME}/build-tools/35.0.0/d8" || "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" "build-tools;35.0.0"
+      - name: Compile only bridge classes and generate Dalvik DEX
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/hasibat-build/stub/com/syrianlira/calculator /tmp/hasibat-build/compiled /tmp/hasibat-build/dex
+          cat > /tmp/hasibat-build/stub/com/syrianlira/calculator/MainActivity.java <<'STUB'
+          package com.syrianlira.calculator;
+          public class MainActivity extends android.app.Activity {}
+          STUB
+          javac -encoding UTF-8 -source 8 -target 8 -cp "${ANDROID_HOME}/platforms/android-35/android.jar" \
+            -d /tmp/hasibat-build/compiled \
+            /tmp/hasibat-build/stub/com/syrianlira/calculator/MainActivity.java android_native_bridge/SaveActivity.java
+          rm /tmp/hasibat-build/compiled/com/syrianlira/calculator/MainActivity.class
+          "${ANDROID_HOME}/build-tools/35.0.0/d8" --min-api 26 \
+            --lib "${ANDROID_HOME}/platforms/android-35/android.jar" \
+            --output /tmp/hasibat-build/dex /tmp/hasibat-build/compiled/com/syrianlira/calculator/SaveActivity*.class
+          test -s /tmp/hasibat-build/dex/classes.dex
+          mkdir -p native_bridge_compiled
+          base64 -w 240 /tmp/hasibat-build/dex/classes.dex > native_bridge_compiled/classes3.dex.b64
+          sha256sum /tmp/hasibat-build/dex/classes.dex > native_bridge_compiled/classes3.sha256
+          wc -c /tmp/hasibat-build/dex/classes.dex
+          grep -q 'saveResultsImage' native_bridge_compiled/classes3.dex.b64 && exit 1 || true
+      - name: Commit source-derived DEX as reviewable text, no key or APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "hasibat-build[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add native_bridge_compiled/
+          git diff --cached --quiet && exit 0
+          git commit -m "Compile isolated native image bridge DEX for Hasibat"
+          git push
