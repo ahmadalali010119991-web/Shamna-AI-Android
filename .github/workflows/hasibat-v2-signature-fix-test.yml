@@ -1,0 +1,83 @@
+name: Verify v1.8.19 fixed v2 signature against Android official apksigner
+on:
+  push:
+    branches: [hasibat-native-image-bridge-recovery]
+    paths: [.github/workflows/hasibat-v2-signature-fix-test.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fix-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: { persist-credentials: false }
+      - name: Install official Android APK verifiers
+        run: |
+          set -euo pipefail
+          if ! command -v apksigner >/dev/null; then sudo apt-get update -qq; sudo apt-get install -y -qq apksigner aapt; fi
+      - name: Download published APK and repair only outer v2 signer framing
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          python3 - <<'PY'
+          import sys,hashlib,struct,urllib.request,zipfile,pathlib
+          sys.path.insert(0,'scripts')
+          import sync_hasibat_from_dallalna as mon
+          url=mon.discover_link()
+          inp=pathlib.Path('/tmp/bad.apk')
+          with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'Hasibat-ApkRepair/1'}),timeout=70) as res:
+            assert res.status==200
+            inp.write_bytes(res.read(20_000_000))
+          old=inp.read_bytes()
+          EXPECTED='7454afa00756eb94242ec4cd6fd44d32efb95e38853ee69ed2ae62d1708d4898'
+          assert hashlib.sha256(old).hexdigest()==EXPECTED,'Unexpected live APK; never patch blindly'
+          get4=lambda b,i:struct.unpack_from('<I',b,i)[0]
+          get8=lambda b,i:struct.unpack_from('<Q',b,i)[0]
+          p4=lambda n:struct.pack('<I',n)
+          p8=lambda n:struct.pack('<Q',n)
+          eo=old.rfind(b'PK\x05\x06'); assert eo>0
+          cd=get4(old,eo+16)
+          assert cd+get4(old,eo+12)==eo
+          assert old[cd-16:cd]==b'APK Sig Block 42'
+          size=get8(old,cd-24);start=cd-size-8
+          assert get8(old,start)==size
+          plen=get8(old,start+8);assert get4(old,start+16)==0x7109871a
+          value=old[start+20:start+16+plen]
+          assert len(value)==plen-4 and get4(value,0)+4==len(value)
+          # APK Signature Scheme v2 requires length-prefixed list OF signers,
+          # then length-prefixed signer. Original had only the latter.
+          value_fixed=p4(len(value))+value
+          pair=p8(4+len(value_fixed))+p4(0x7109871a)+value_fixed
+          new_size=len(pair)+24
+          newblock=p8(new_size)+pair+p8(new_size)+b'APK Sig Block 42'
+          neweocd=bytearray(old[eo:]);struct.pack_into('<I',neweocd,16,start+len(newblock))
+          fixed=old[:start]+newblock+old[cd:eo]+neweocd
+          assert len(fixed)==len(old)+4
+          expected_fixed='12e45d642cd00f044ed221a1fac74e6eca2cac3f32a3cf424999978b49ac9aca'
+          assert hashlib.sha256(fixed).hexdigest()==expected_fixed,'Unexpected fixed APK output'
+          dst=pathlib.Path('release/Hasibat-AlLira-v1.8.19-SIGNATURE-FIXED.apk')
+          dst.write_bytes(fixed)
+          with zipfile.ZipFile(inp) as a,zipfile.ZipFile(dst) as b:
+            assert a.namelist()==b.namelist()
+            for name in a.namelist():assert a.read(name)==b.read(name),name
+            assert b.testzip() is None
+          print('FIXED_APK_SHA256:',hashlib.sha256(fixed).hexdigest())
+          PY
+      - name: Independent official Android package and signature verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=release/Hasibat-AlLira-v1.8.19-SIGNATURE-FIXED.apk
+          apksigner verify --verbose --print-certs "$APK" > /tmp/signature.log
+          grep -Fx 'Verified using v2 scheme (APK Signature Scheme v2): true' /tmp/signature.log
+          grep -Fx 'Signer #1 certificate SHA-256 digest: ae4461cd1629197505fea7bc540c5c63bac447a40dd66fb57433962f1d8946b5' /tmp/signature.log
+          grep -F "package: name='com.syrianlira.calculator' versionCode='32' versionName='1.8.19'" <(aapt dump badging "$APK")
+          echo 'PASS: official Android apksigner verified repaired v2 signature + original certificate'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Hasibat-1.8.19-v2-signature-fixed-verified
+          path: release/Hasibat-AlLira-v1.8.19-SIGNATURE-FIXED.apk
+          retention-days: 7
