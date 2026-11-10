@@ -1,0 +1,38 @@
+name: Inspect public Hasibat rates feed shape for shared renderer
+on:
+  push:
+    branches: [hasibat-telegram-shared-renderer-20261111]
+    paths: [.github/workflows/hasibat-feed-shape-check.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect-public-schema:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Inspect rate JSON keys with no private credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import urllib.request, json
+          urls=[
+          'https://dallalna-telegram-bridge.vercel.app/api/rates-preview?mode=metadata',
+          'https://ftzmeimurgsqzvmcahhs.supabase.co/functions/v1/public-telegram-feed'
+          ]
+          for u in urls:
+            try:
+              with urllib.request.urlopen(urllib.request.Request(u,headers={'User-Agent':'HasibatRendererSchema/1.0','Accept':'application/json'}),timeout=20) as res:
+                content=res.read(200000)
+                print('ENDPOINT',u,'status',res.status,'content-type',res.headers.get('content-type'))
+              obj=json.loads(content)
+              print('ROOT_KEYS',list(obj)[:25] if isinstance(obj,dict) else 'array', 'TYPE',type(obj).__name__)
+              if isinstance(obj,dict):
+                for key in ['rows','rates','stamp','updatedAt','ageSeconds','source','data','result','timestamp','checkedAt','price']:
+                  val=obj.get(key)
+                  if isinstance(val,list):print('FIELD',key,'length',len(val),'examples',val[:5])
+                  elif isinstance(val,dict):print('FIELD',key,'keys',list(val)[:25],'sample',str(val)[:450])
+                  elif val is not None:print('FIELD',key,'value',str(val)[:180])
+            except Exception as e: print('ERROR',u,type(e).__name__,str(e)[:300])
+          PY
