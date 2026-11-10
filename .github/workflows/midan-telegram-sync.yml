@@ -50,15 +50,9 @@ jobs:
             -X POST -H "Authorization: Bearer ${token}" \
             -H "Content-Type: application/json" --data '{}' \
             "${BRIDGE_URL}")"
-          printf '%s\n' "$response" | jq '{ok,error,details,policy,newsSent,byPriority,eligibleRemaining,irrelevantSkipped,voices,errors}'
-          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
-            echo "Sending verified one-time app introductions"
-            curl --fail-with-body --silent --show-error --retry 2 --max-time 80 \
-              -X POST -H "Authorization: Bearer ${token}" \
-              -H "Content-Type: application/json" --data '{}' \
-              'https://dallalna-telegram-bridge.vercel.app/api/launch-apps' \
-              | jq '{ok,results,geographyCorrection}'
-          fi
+          printf '%s\n' "$response" | jq '{ok,status,error,seeded,sentNews,sentVoices,sentApps,pendingNews,eligibleCount,rates,errors}'
+          # APK uploads and app updates are dispatched idempotently by the minute heartbeat.
+          # Do not repost existing applications on a GitHub push.
 
           # Secondary 07:00/19:00 Damascus photo attempt (daily Vercel cron is primary).
           # Backend idempotency prevents duplicate images for a time slot.
