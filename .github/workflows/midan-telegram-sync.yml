@@ -33,7 +33,7 @@ jobs:
           BRIDGE_URL: https://dallalna-telegram-bridge.vercel.app/api/sync-v2
         run: |
           set -euo pipefail
-          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then BRIDGE_URL="https://dallalna-telegram-bridge.vercel.app/api/push-test"; fi
+          # All events use the same authenticated Syrian-first quality-checked publication engine.
           if [[ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]]; then
             echo "GitHub OIDC is not available"
             exit 1
@@ -50,7 +50,7 @@ jobs:
             -X POST -H "Authorization: Bearer ${token}" \
             -H "Content-Type: application/json" --data '{}' \
             "${BRIDGE_URL}")"
-          printf '%s\n' "$response" | jq '{ok,status,error,seeded,sentNews,sentVoices,sentApps,pendingNews,eligibleCount,rates,errors}'
+          printf '%s\n' "$response" | jq '{ok,status,error,seeded,sentNews,sentVoices,sentApps,pendingNews,eligibleCount,publicationGuard,rates,errors}'
           # APK uploads and app updates are dispatched idempotently by the minute heartbeat.
           # Do not repost existing applications on a GitHub push.
 
