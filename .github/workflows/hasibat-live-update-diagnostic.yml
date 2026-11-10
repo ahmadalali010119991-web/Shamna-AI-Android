@@ -1,0 +1,56 @@
+name: Diagnose currently published Hasibat APK without publishing
+on:
+  push:
+    branches: [hasibat-native-image-bridge-recovery]
+    paths: [.github/workflows/hasibat-live-update-diagnostic.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect-live-update:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: { persist-credentials: false }
+      - name: Install Android APK validators
+        run: |
+          set -euo pipefail
+          if ! command -v apksigner >/dev/null; then sudo apt-get update -qq; sudo apt-get install -y -qq apksigner aapt; fi
+      - name: Read published Dallalna listing and verify downloaded actual bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import sys, pathlib, urllib.request,hashlib,subprocess,re
+          sys.path.insert(0,'scripts')
+          import sync_hasibat_from_dallalna as m
+          url=m.discover_link()
+          print('LIVE_ASSET_HOST:',urllib.request.urlsplit(url).hostname)
+          print('LIVE_ASSET_PATH:',urllib.request.urlsplit(url).path)
+          f=pathlib.Path('/tmp/live-hasibat.apk')
+          req=urllib.request.Request(url,headers={'User-Agent':'HasibatDiagnostic/1'})
+          with urllib.request.urlopen(req,timeout=75) as response, f.open('wb') as out:
+            print('HTTP:',response.status,'TYPE:',response.headers.get('content-type'),'LENGTH:',response.headers.get('content-length'))
+            total=0
+            while True:
+              chunk=response.read(65536)
+              if not chunk:break
+              total+=len(chunk)
+              if total>50_000_000:raise RuntimeError('Unexpected large file')
+              out.write(chunk)
+          print('DOWNLOADED_BYTES:',f.stat().st_size)
+          print('DOWNLOADED_SHA256:',hashlib.sha256(f.read_bytes()).hexdigest())
+          print('EXPECTED_LOCAL_1819_SHA256: 7454afa00756eb94242ec4cd6fd44d32efb95e38853ee69ed2ae62d1708d4898')
+          for cmd in (['aapt','dump','badging',str(f)],['apksigner','verify','--verbose','--print-certs',str(f)]):
+            p=subprocess.run(cmd,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,timeout=80)
+            if cmd[0]=='aapt':
+              print('BADGING:',p.stdout.splitlines()[0][:300] if p.stdout else '(empty)')
+            else:
+              for line in p.stdout.splitlines():
+                if 'Verified using' in line or 'SHA-256 digest' in line or 'DOES NOT VERIFY' in line or 'ERROR' in line:
+                  print('SIGNATURE:',line[:250])
+            print(cmd[0]+'_EXIT:',p.returncode)
+            if p.returncode:raise RuntimeError(cmd[0]+' failed validation')
+          print('LIVE_DOWNLOAD_VALIDATED')
+          PY
