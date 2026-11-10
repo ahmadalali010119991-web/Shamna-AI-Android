@@ -50,7 +50,7 @@ jobs:
             -X POST -H "Authorization: Bearer ${token}" \
             -H "Content-Type: application/json" --data '{}' \
             "${BRIDGE_URL}")"
-          printf '%s\n' "$response" | jq '{ok,policy,newsSent,byPriority,eligibleRemaining,irrelevantSkipped,voices,errors}'
+          printf '%s\n' "$response" | jq '{ok,error,details,policy,newsSent,byPriority,eligibleRemaining,irrelevantSkipped,voices,errors}'
           if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
             echo "Sending verified one-time app introductions"
             curl --fail-with-body --silent --show-error --retry 2 --max-time 80 \
