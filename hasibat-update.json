@@ -1,12 +1,11 @@
 {
-  "versionCode": 30,
-  "versionName": "1.8.17",
+  "versionCode": 33,
+  "versionName": "1.8.20",
   "required": false,
   "requiresUninstall": false,
   "url": "https://dallalna.com/install",
-  "apkUrl": "https://midan-al-khabar.vercel.app/api/download?app=hasibat",
-  "originApkUrl": "https://github.com/ahmadalali010119991-web/Shamna-AI-Android/releases/download/hasibat-v1.8.17/Hasibat-AlLira-v1.8.17.apk",
-  "apkSha256": "ca0143e1a75518664412ad3dd90cc8dc4ec0d4b53eb11ef2e60b47e981dc6d12",
-  "apkSize": 11883859,
-  "message": "تحديث حاسبة الليرة السورية 1.8.17 جاهز: إصلاح اكتشاف التحديثات ومزامنة أرقام البناء، مع الحفاظ على المحروقات والكتب والإشعارات. اضغط تحميل التحديث لتثبيته فوق النسخة الحالية دون حذفها."
+  "apkUrl": "https://ftzmeimurgsqzvmcahhs.supabase.co/storage/v1/object/public/site-assets/b240bd5a-6536-42a3-8453-f309d1a053f1/cc437ecd-3406-4e12-a88a-01bf939c8948.apk",
+  "apkSha256": "aa41171979ca63d76822ac59a5d61073870b0288264be5d17fe58282e363e4bd",
+  "apkSize": 11950386,
+  "message": "تحديث حاسبة الليرة السورية 1.8.20 جاهز. اضغط «تحميل التحديث» للتنزيل داخل التطبيق، ثم أكّد التثبيت فوق النسخة الحالية."
 }
