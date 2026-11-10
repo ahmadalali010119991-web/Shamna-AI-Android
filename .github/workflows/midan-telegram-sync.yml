@@ -45,15 +45,6 @@ jobs:
             echo "Could not obtain OIDC token"
             exit 1
           fi
-          # One-time, authenticated Hasibat image integration verification.
-          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
-            curl --fail-with-body --silent --show-error --retry 2 --retry-delay 6 --max-time 95 \
-              -X POST -H "Authorization: Bearer ${token}" \
-              -H "Content-Type: application/json" --data '{}' \
-              "https://dallalna-telegram-bridge.vercel.app/api/push-test" \
-              | jq '{ok,status,slot,source,messageId,error}'
-          fi
-
           response="$(curl --fail-with-body --silent --show-error \
             --retry 2 --retry-delay 8 --max-time 120 \
             -X POST -H "Authorization: Bearer ${token}" \
