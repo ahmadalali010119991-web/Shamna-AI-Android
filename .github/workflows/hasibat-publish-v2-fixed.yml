@@ -1,0 +1,49 @@
+name: Publish verified Hasibat 1.8.19 fixed Android APK
+on:
+  push:
+    branches: [hasibat-native-image-bridge-recovery]
+    paths: [.github/workflows/hasibat-publish-v2-fixed.yml]
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish-verified:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Install Android APK verifier
+        run: |
+          set -euo pipefail
+          if ! command -v apksigner >/dev/null; then sudo apt-get update -qq; sudo apt-get install -y -qq apksigner; fi
+      - name: Download previously independently verified APK artifact
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          gh run download 42910940797 --repo "$GH_REPO" --name Hasibat-1.8.19-v2-signature-fixed-verified --dir release
+          test -f release/Hasibat-AlLira-v1.8.19-SIGNATURE-FIXED.apk
+          echo '12e45d642cd00f044ed221a1fac74e6eca2cac3f32a3cf424999978b49ac9aca  release/Hasibat-AlLira-v1.8.19-SIGNATURE-FIXED.apk' | sha256sum -c -
+          apksigner verify --verbose --print-certs release/Hasibat-AlLira-v1.8.19-SIGNATURE-FIXED.apk > /tmp/apksigner.txt
+          grep -Fx 'Verified using v2 scheme (APK Signature Scheme v2): true' /tmp/apksigner.txt
+          grep -Fx 'Signer #1 certificate SHA-256 digest: ae4461cd1629197505fea7bc540c5c63bac447a40dd66fb57433962f1d8946b5' /tmp/apksigner.txt
+      - name: Publish new immutable download without changing main or a previous release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          TAG=hasibat-v1.8.19-signature-fixed
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo 'Fixed release already exists, refusing silent replacement'; exit 1
+          fi
+          gh release create "$TAG" release/Hasibat-AlLira-v1.8.19-SIGNATURE-FIXED.apk \
+            --target hasibat-native-image-bridge-recovery \
+            --title "Hasibat 1.8.19 — Verified Android Signature Fix" \
+            --notes "Validated with official apksigner. Original package com.syrianlira.calculator; versionCode 32; original signer certificate preserved. Corrects malformed v2 signature framing in previously published 1.8.19 without changing application contents. SHA256: 12e45d642cd00f044ed221a1fac74e6eca2cac3f32a3cf424999978b49ac9aca. This is an in-place update, not a separate app. Device functional smoke tests are still recommended." \
+            --latest=false
+          gh release view "$TAG" --json url,assets --jq '{url:.url, assets:[.assets[].url]}'
