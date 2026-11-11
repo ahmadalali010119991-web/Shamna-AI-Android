@@ -21,6 +21,10 @@
       "schedule": "0 4 * * *"
     },
     {
+      "path": "/api/daily-v2?slot=09",
+      "schedule": "0 6 * * *"
+    },
+    {
       "path": "/api/daily-v2?slot=11",
       "schedule": "0 8 * * *"
     },
