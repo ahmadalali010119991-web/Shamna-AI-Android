@@ -34,8 +34,14 @@ function isGoodRotation(v){
     Number.isInteger(v.last)&&v.last>=-1&&v.last<53);
 }
 async function readJSON(path){
-  const r=await B.get(path,{access:'private'});
-  if(!r||r.statusCode!==200)return null;
+  let r;
+  try{r=await B.get(path,{access:'private'})}
+  catch(e){
+    if(e?.name==='BlobNotFoundError'||e?.status===404||e?.statusCode===404)return null;
+    throw e;
+  }
+  if(!r||r.statusCode===404)return null;
+  if(r.statusCode!==200)throw new Error('Private state HTTP '+r.statusCode);
   return JSON.parse(await new Response(r.stream).text());
 }
 async function chooseNext(){
