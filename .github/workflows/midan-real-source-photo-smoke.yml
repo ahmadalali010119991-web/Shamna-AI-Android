@@ -1,0 +1,28 @@
+name: Verify photo discovery from real source news (without channel publishing)
+on:
+  push:
+    branches: [midan-news-original-photo-20261111]
+    paths: [.github/workflows/midan-real-source-photo-smoke.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  image-fetch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with: {node-version: '22'}
+      - name: Inspect real SANA article and recover published picture
+        working-directory: telegram-shared
+        run: |
+          node - <<'NODE'
+          const mod=require('./news-original-photo.js');
+          const source='https://sana.sy/education/2632277/';
+          mod.originalImage(source).then(x=>{
+            console.log('REAL_NEWS_PHOTO',x.status,'BYTES',x.buffer?.length||0,'MIME',x.mime||'','SOURCE',x.url||'');
+            if(x.status!=='image')process.exitCode=1;
+          }).catch(e=>{console.error('PHOTO_INSPECTION_ERROR',e.message);process.exitCode=1})
+          NODE
