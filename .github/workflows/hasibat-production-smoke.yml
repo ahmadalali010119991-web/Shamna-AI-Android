@@ -1,0 +1,41 @@
+name: Verify production Hasibat Telegram schedule without sending a photo
+on:
+  push:
+    branches: [hasibat-telegram-shared-renderer-20261111]
+    paths: [.github/workflows/hasibat-production-smoke.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check production endpoints only
+        shell: bash
+        env:
+          HOST: https://dallalna-telegram-bridge.vercel.app
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 20 "$HOST/api/health" -o /tmp/health.json
+          python3 - <<'PY'
+          import json
+          data=json.load(open('/tmp/health.json'))
+          assert data.get('ok') is True
+          assert data.get('configured') is True
+          print('PRODUCTION_HEALTH_OK')
+          PY
+          status="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "$HOST/api/daily-v2?slot=07")"
+          test "$status" = "401" || { echo "Unprotected currency publish route: $status"; exit 1; }
+          echo 'PRODUCTION_CURRENCY_AUTH_OK'
+          status="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 -X POST "$HOST/api/schedule")"
+          test "$status" = "401" || { echo "Unprotected news route: $status"; exit 1; }
+          echo 'PRODUCTION_NEWS_AUTH_OK'
+          curl -fsSL --max-time 30 "$HOST/api/rates-preview?mode=metadata" -o /tmp/rates.json
+          python3 - <<'PY'
+          import json
+          d=json.load(open('/tmp/rates.json'))
+          assert d.get('ok') is True
+          assert set(row['code'] for row in d['rows'])>=set(['USD','EUR','TRY'])
+          print('PRODUCTION_LIVE_RATES_OK',d.get('ageSeconds'))
+          PY
