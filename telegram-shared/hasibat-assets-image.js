@@ -45,7 +45,7 @@ function rounded(ctx,x,y,w,h,r){
  }
 }
 function text(ctx,value,x,y,size,color,weight,align='right',maxWidth){
- ctx.save();ctx.direction=align==='left'?'ltr':'rtl';ctx.textAlign=align;
+ ctx.save();ctx.direction='ltr';ctx.textAlign=align;
  ctx.textBaseline='middle';ctx.fillStyle=color;
  // Render without maxWidth: napi Canvas occasionally omits RTL strings
  // or paints corrupted oversized glyphs when measuring/re-fitting Arabic.
