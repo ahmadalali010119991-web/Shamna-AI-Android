@@ -83,16 +83,10 @@ async function sendTelegram(png,snapshot,slot,date){
     throw new Error('Telegram rejected photo '+response.status+': '+String(receipt.description||'no receipt').slice(0,130));
   return receipt.result;
 }
-async function run({now=new Date(),requestedSlot,test=false}={}){
-  const local=stamp(now);
-  // One explicitly authorized real Telegram smoke test, restricted to today's
-  // early-morning window, uses a distinct idempotency key from scheduled posts.
-  const instant=Boolean(test)&&local.date==='2026-11-11'&&local.hour>=3&&local.hour<6;
-  const slot=instant?{...local,slot:'TEST'}:allowedSlot(now,requestedSlot);
-  if(test&&!instant)return {status:'skipped',reason:'one-time test window ended'};
+async function run({now=new Date(),requestedSlot}={}){
+  const slot=allowedSlot(now,requestedSlot);
   if(!slot)return {status:'skipped',reason:'outside 07:00/11:00/15:00/19:00 Damascus schedule'};
-  const once=instant?'once/rates:2026-11-11-live-test-app-image-v1':
-    'once/rates:'+slot.date+'-'+slot.slot+'-hasibat-image-v1';
+  const once='once/rates:'+slot.date+'-'+slot.slot+'-hasibat-image-v1';
   const existing=await readState(once);
   if(existing?.completed_at)return {status:'duplicate',slot:slot.slot,date:slot.date};
   const rates=await image.freshRates();
