@@ -9,7 +9,7 @@ const capturedFetch=globalThis.fetch;
 const MAX_IMAGE=9_000_000;
 const MAX_PAGE=2_000_000;
 const timeout=ms=>AbortSignal.timeout(ms);
-const htmlDecode=x=>String(x||'').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+const htmlDecode=x=>String(x||'').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;|&apos;|&#x27;/gi,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>');
 function publicHttps(raw){
   try{
     const u=new URL(htmlDecode(raw));
