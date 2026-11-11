@@ -1,0 +1,31 @@
+name: Probe official Miraath audio streams for Hasibat Android repair
+on:
+  push:
+    branches: [hasibat-miraath-radio-1823]
+    paths: [.github/workflows/hasibat-miraath-radio-probe.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Test stream response and actual media bytes (never post content)
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import urllib.request,ssl,time
+          urls=[
+           'https://radio.al7eah.net/8010/stream',
+           'https://radio.miraath.net:7000/stream',
+           'http://radio.miraath.net:7000/stream'
+          ]
+          for u in urls:
+            try:
+              req=urllib.request.Request(u,headers={'User-Agent':'Mozilla/5.0 (Hasibat Stream Probe)','Icy-MetaData':'0'})
+              with urllib.request.urlopen(req,timeout=13) as response:
+                chunk=response.read(32768)
+                print('STREAM',u,'STATUS',response.status,'FINAL_URL',response.url,'TYPE',response.headers.get('content-type'),'BYTES',len(chunk),'SIGNATURE',chunk[:20].hex())
+            except Exception as e:print('STREAM',u,'ERROR',type(e).__name__,str(e)[:180])
+          PY
