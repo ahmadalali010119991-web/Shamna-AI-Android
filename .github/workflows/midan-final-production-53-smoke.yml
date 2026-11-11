@@ -1,0 +1,56 @@
+name: Final Midan production 53 originals and schedule smoke test
+on:
+  push:
+    branches: [midan-news-original-photo-20261111]
+    paths: [.github/workflows/midan-final-production-53-smoke.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: {persist-credentials: false}
+      - name: Confirm all live production media assets, exact hashes and API protection
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import urllib.request,urllib.error,hashlib,json,struct,concurrent.futures
+          host='https://dallalna-telegram-bridge.vercel.app'
+          data=json.load(open('telegram-shared/midan-awareness-manifest.json'))
+          assert len(data)==53
+          def check(item):
+            with urllib.request.urlopen(urllib.request.Request(host+'/awareness/'+item['file'],headers={'User-Agent':'MidanProductionIntegrity/1.0'}),timeout=35) as r:
+              assert r.status==200
+              photo=r.read()
+            assert photo[:8]==b'\x89PNG\r\n\x1a\n'
+            assert struct.unpack('>II',photo[16:24])==(1254,1254)
+            assert len(photo)==item['bytes']
+            assert hashlib.sha256(photo).hexdigest()==item['sha256']
+            return item['id']
+          with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
+            results=list(pool.map(check,data))
+          print('PRODUCTION_ORIGINAL_53_MEDIA_PASS',len(results))
+          with urllib.request.urlopen(host+'/api/health',timeout=15) as r:
+            assert r.status==200
+            print('PRODUCTION_HEALTH_PASS',r.status)
+          try:
+            urllib.request.urlopen(urllib.request.Request(host+'/api/daily-v2?slot=awareness',method='POST',data=b''),timeout=12)
+            raise AssertionError('Unauthenticated daily dispatch accepted!')
+          except urllib.error.HTTPError as e:
+            assert e.code==401,e.code
+            print('PRIVATE_AWARENESS_DISPATCH_AUTH_PASS',e.code)
+          PY
+      - name: Confirm exact cron schedule from Git branch
+        run: |
+          python3 - <<'PY'
+          import json
+          cron=json.load(open('telegram-shared/vercel.json'))['crons']
+          expected={'07':'0 4 * * *','09':'0 6 * * *','11':'0 8 * * *','15':'0 12 * * *','19':'0 16 * * *','awareness':'30 17 * * *'}
+          actual={x['path'].split('slot=')[-1]:x['schedule'] for x in cron}
+          assert actual==expected,(actual,expected)
+          print('ALL_SIX_CRON_SCHEDULES_PASS',actual)
+          PY
