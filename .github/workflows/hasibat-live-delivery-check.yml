@@ -1,0 +1,26 @@
+name: Verify live Hasibat Telegram delivery without posting
+on:
+  push:
+    branches: [hasibat-telegram-shared-renderer-20261111]
+    paths: [.github/workflows/hasibat-live-delivery-check.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  confirm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Read public receipt status without bot secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error --max-time 45             'https://dallalna-telegram-bridge.vercel.app/api/health?check=rates-delivery'             -o /tmp/delivery.json
+          python3 - <<'PY'
+          import json
+          j=json.load(open('/tmp/delivery.json'))
+          assert j.get('ok') is True
+          assert j.get('scheduleLocal')==['07:00','11:00','15:00','19:00']
+          print('SCHEDULE_4_PASS',j['scheduleLocal'])
+          print('LIVE_DELIVERY_RECEIPTS',json.dumps(j.get('delivery'),ensure_ascii=False))
+          PY
