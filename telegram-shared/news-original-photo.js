@@ -23,7 +23,7 @@ function publicHttps(raw){
 }
 function sourceLink(body){
   const text=String(body.text||'');
-  const raw=text.match(/(?:^|\n)\s*(?:🔗\s*)?(?:(?:المصدر(?:\s+الأصلي)?|المنشور الأصلي)\s*[:：]\s*)?(https:\/\/[^\s<>"]+)/gmu)||[];
+  const raw=text.match(/(?:^|\n)\s*(?:🔗\s*|(?:المصدر(?:\s+الأصلي)?|المنشور الأصلي)\s*[:：]\s*)https:\/\/[^\s<>"]+/gmu)||[];
   for(const line of raw.reverse()){
     const hit=line.match(/https:\/\/[^\s<>"]+/);
     if(hit){const url=publicHttps(hit[0]);if(url)return url}
