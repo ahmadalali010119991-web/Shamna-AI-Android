@@ -47,6 +47,7 @@ jobs:
           strings /tmp/hasibat-1822/dex/classes.dex | grep -F 'awareness-53.json'
           sha256sum /tmp/hasibat-1822/dex/classes.dex | tee /tmp/hasibat-1822/classes3.sha256
           cp /tmp/hasibat-1822/dex/classes.dex /tmp/hasibat-1822/classes3.dex
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" /tmp/hasibat-1822/apksigner.jar
       - name: Export compiled DEX only (no signing key)
         uses: actions/upload-artifact@v4
         with:
@@ -54,5 +55,8 @@ jobs:
           path: |
             /tmp/hasibat-1822/classes3.dex
             /tmp/hasibat-1822/classes3.sha256
+            /tmp/hasibat-1822/apksigner.jar
+            android_native_bridge/SaveActivity.java
+            android_native_bridge/MessagesReceiver.java
           if-no-files-found: error
           retention-days: 5
