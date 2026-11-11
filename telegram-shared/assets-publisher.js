@@ -114,6 +114,10 @@ async function run({now=new Date()}={}){
  const items=[];
  if(!gSent)items.push(await publishOne({kind:'gold',now,price:goldPrice,usdSell:null}));
  else items.push({kind:'gold',status:'duplicate'});
+ // A concurrent scheduler may hold the gold lease. Never let fuel overtake
+ // that gold message before the Telegram receipt has been confirmed.
+ if(!(await alreadySent(goldKey)))
+  return {status:'gold-pending',date,items};
  if(!fSent)items.push(await publishOne({kind:'fuel',now,price:fuelPrice,usdSell}));
  else items.push({kind:'fuel',status:'duplicate'});
  return {status:'ok',date,items};
