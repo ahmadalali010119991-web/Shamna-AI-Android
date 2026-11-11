@@ -15,7 +15,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          HOST='https://dallalna-telegram-bridge-56se1qdhn-ahmadalali010119991-6976.vercel.app'
+          HOST='https://dallalna-telegram-bridge-18yapg3oa-ahmadalali010119991-6976.vercel.app'
           for kind in gold fuel; do
             curl -sS --fail-with-body --max-time 55 "$HOST/api/daily-v2?preview=$kind" -o "/tmp/assets-$kind.png"
           done
