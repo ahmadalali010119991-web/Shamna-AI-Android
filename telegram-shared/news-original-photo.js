@@ -23,12 +23,12 @@ function publicHttps(raw){
 }
 function sourceLink(body){
   const text=String(body.text||'');
-  const raw=text.match(/(?:^|\n)\s*(?:🔗\s*)?(?:المصدر(?:\s+الأصلي)?\s*[:：]\s*)?(https:\/\/[^\s<>"]+)/gmu)||[];
+  const raw=text.match(/(?:^|\n)\s*(?:🔗\s*)?(?:(?:المصدر(?:\s+الأصلي)?|المنشور الأصلي)\s*[:：]\s*)?(https:\/\/[^\s<>"]+)/gmu)||[];
   for(const line of raw.reverse()){
     const hit=line.match(/https:\/\/[^\s<>"]+/);
     if(hit){const url=publicHttps(hit[0]);if(url)return url}
   }
-  const html=text.match(/<a\s+[^>]*href=["'](https:\/\/[^"']+)["'][^>]*>\s*(?:المصدر|عرض المصدر)\s*<\/a>/iu);
+  const html=text.match(/<a\s+[^>]*href=["'](https:\/\/[^"']+)["'][^>]*>\s*(?:المصدر|عرض المصدر|المنشور الأصلي)\s*<\/a>/iu);
   if(html)return publicHttps(html[1]);
   const ent=[...(body.entities||[])].find(e=>e.type==='text_link'&&e.url);
   return ent?publicHttps(ent.url):null;
@@ -85,7 +85,9 @@ async function fetched(url,{binary=false,maxBytes=MAX_PAGE}={}){
                 'user-agent':'Mozilla/5.0 (compatible; MidanAlKhabarBot/4.0)'},
        signal:timeout(binary?17000:11000)});
     if([301,302,303,307,308].includes(resp.status)){
-      current=publicHttps(new URL(resp.headers.get('location')||'',current).href);
+      const redirect=resp.headers.get('location');
+      if(!redirect)throw Error('Missing redirect target');
+      current=publicHttps(new URL(redirect,current).href);
       if(!current)throw Error('Untrusted redirect target');
       continue;
     }
