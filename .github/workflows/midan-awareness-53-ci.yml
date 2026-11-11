@@ -1,0 +1,26 @@
+name: Validate Midan daily 53-photo message schedule
+on:
+  push:
+    branches: [midan-news-original-photo-20261111]
+    paths:
+      - telegram-shared/midan-awareness-daily.js
+      - telegram-shared/test/midan-awareness.test.js
+      - .github/workflows/midan-awareness-53-ci.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with: {node-version: '22'}
+      - name: Install prior bot dependencies
+        working-directory: telegram-shared
+        run: npm install --no-audit --no-fund
+      - name: Verify no-repeat shuffle, approved text and 20:30 timezone
+        working-directory: telegram-shared
+        run: node --test test/midan-awareness.test.js
