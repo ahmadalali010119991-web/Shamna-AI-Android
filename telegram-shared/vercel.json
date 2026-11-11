@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
+      ]
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/daily-v2?slot=07",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/daily-v2?slot=19",
+      "schedule": "0 16 * * *"
+    }
+  ]
+}
