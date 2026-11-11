@@ -3,6 +3,7 @@ const core=require('../lib/core');
 const githubOidc=require('../lib/github-oidc');
 const rates=require('../lib/rates-publisher');
 const assets=require('../lib/assets-publisher');
+const awareness=require('../lib/midan-awareness-daily');
 module.exports=async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   // Preview-only dry run: produce PNG without Telegram credentials or posting.
@@ -36,9 +37,18 @@ module.exports=async(req,res)=>{
       return res.status(200).end(png.buffer);
     }catch(e){return res.status(503).json({ok:false,error:String(e.message).slice(0,190)})}
   }
+  if(process.env.VERCEL_ENV==='preview'&&req.method==='GET'&&req.query?.preview==='awareness'){
+    try{
+      const items=awareness.manifest;
+      const sample=[0,20,40,41,52].map(index=>({
+         image:items[index].file,expectedSha256:items[index].sha256,expectedBytes:items[index].bytes
+      }));
+      return res.status(200).json({ok:true,count:items.length,mode:'no-telegram-post',sample});
+    }catch(e){return res.status(503).json({ok:false,error:String(e.message).slice(0,180)})}
+  }
   if(!['GET','POST'].includes(req.method))return res.status(405).json({error:'Method not allowed'});
   if(!core.authorize(req,'cron')&&!(await githubOidc(req)))
     return res.status(401).json({error:'Unauthorized'});
-  try{return res.status(200).json({ok:true,result:String(req.query?.slot||'')==='09'?await assets.run():await rates.run({requestedSlot:String(req.query?.slot||'')})})}
+  try{return res.status(200).json({ok:true,result:String(req.query?.slot||'')==='awareness'?await awareness.run():String(req.query?.slot||'')==='09'?await assets.run():await rates.run({requestedSlot:String(req.query?.slot||'')})})}
   catch(e){console.error('Hasibat scheduled image:',String(e.message).slice(0,180));return res.status(503).json({ok:false,error:String(e.message).slice(0,160)})}
 };
