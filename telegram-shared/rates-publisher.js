@@ -12,8 +12,8 @@ function stamp(t){
 }
 function allowedSlot(t,requestedSlot){
   const v=stamp(t);
-  if(![7,19].includes(v.hour)||v.minute>20)return null;
-  const slot=v.hour===7?'07':'19';
+  if(![7,11,15,19].includes(v.hour)||v.minute>20)return null;
+  const slot=String(v.hour).padStart(2,'0');
   if(requestedSlot&&requestedSlot!==slot)return null;
   return {...v,slot};
 }
@@ -66,7 +66,9 @@ async function sendTelegram(png,snapshot,slot,date){
   const token=process.env.TELEGRAM_BOT_TOKEN,channel=process.env.TELEGRAM_CHAT_ID;
   if(!token||!channel)throw new Error('Missing Telegram bot configuration');
   const caption=['💱 أسعار الصرف — حاسبة الليرة السورية',
-    slot==='07'?'🌅 نشرة الساعة 7:00 صباحًا':'🌆 نشرة الساعة 7:00 مساءً',
+    slot==='TEST'?'🧪 اختبار مباشر لصورة أسعار العملات من حاسبة الليرة':
+    ({'07':'🌅 نشرة الساعة 7:00 صباحًا','11':'🌤️ نشرة الساعة 11:00 صباحًا',
+      '15':'🌇 نشرة الساعة 3:00 مساءً','19':'🌆 نشرة الساعة 7:00 مساءً'}[slot]||'💱 نشرة العملات'),
     '💵 نتائج تحويل 1 دولار أمريكي — السعر الوسطي',
     '🕒 تحديث الأسعار: '+snapshot.checkedAt+' (بتوقيت دمشق)',
     '#حاسبة_الليرة #أسعار_العملات'].join('\n');
@@ -81,10 +83,16 @@ async function sendTelegram(png,snapshot,slot,date){
     throw new Error('Telegram rejected photo '+response.status+': '+String(receipt.description||'no receipt').slice(0,130));
   return receipt.result;
 }
-async function run({now=new Date(),requestedSlot}={}){
-  const slot=allowedSlot(now,requestedSlot);
-  if(!slot)return {status:'skipped',reason:'outside 07:00/19:00 Damascus schedule'};
-  const once='once/rates:'+slot.date+'-'+slot.slot+'-hasibat-image-v1';
+async function run({now=new Date(),requestedSlot,test=false}={}){
+  const local=stamp(now);
+  // One explicitly authorized real Telegram smoke test, restricted to today's
+  // early-morning window, uses a distinct idempotency key from scheduled posts.
+  const instant=Boolean(test)&&local.date==='2026-11-11'&&local.hour>=3&&local.hour<6;
+  const slot=instant?{...local,slot:'TEST'}:allowedSlot(now,requestedSlot);
+  if(test&&!instant)return {status:'skipped',reason:'one-time test window ended'};
+  if(!slot)return {status:'skipped',reason:'outside 07:00/11:00/15:00/19:00 Damascus schedule'};
+  const once=instant?'once/rates:2026-11-11-live-test-app-image-v1':
+    'once/rates:'+slot.date+'-'+slot.slot+'-hasibat-image-v1';
   const existing=await readState(once);
   if(existing?.completed_at)return {status:'duplicate',slot:slot.slot,date:slot.date};
   const rates=await image.freshRates();
