@@ -12,6 +12,9 @@ const images=require('./hasibat-assets-image');
 const TIPS=require('./hasibat-image').messages;
 function permitted(now){
  const p=rates.stamp(now);
+ // Owner-authorized single preview on 2026-11-11 from 07:00 to 07:59 Damascus.
+ // Distinct once-key prevents repeats; never modifies regular 09:00 cadence.
+ if(p.date==='2026-11-11'&&p.hour===7)return {date:p.date,slot:'PREVIEW'};
  return p.hour===9&&p.minute<=20?{date:p.date,slot:'09'}:null;
 }
 function jsonString(value){return JSON.stringify(value).slice(0,600)}
@@ -42,7 +45,7 @@ async function alreadySent(key){
 async function publishOne({kind,now,price,usdSell}){
  const slot=permitted(now);
  if(!slot)return {status:'skipped',kind,reason:'outside 09:00 Damascus slot'};
- const key='once/rates:'+slot.date+'-09-'+kind+'-hasibat-v1';
+ const key=slot.slot==='PREVIEW'?'once/rates:2026-11-11-manual-preview-'+kind+'-hasibat-v1':'once/rates:'+slot.date+'-09-'+kind+'-hasibat-v1';
  if(await alreadySent(key))return {status:'duplicate',kind};
  const next=await rates.chooseNext();
  if(!TIPS.includes(next.text))throw Error('Owner awareness validation failed');
@@ -93,8 +96,9 @@ async function publishOne({kind,now,price,usdSell}){
 async function run({now=new Date()}={}){
  if(!permitted(now))return {status:'skipped',reason:'outside 09:00 Asia/Damascus',items:[]};
  const date=rates.stamp(now).date;
- const goldKey='once/rates:'+date+'-09-gold-hasibat-v1';
- const fuelKey='once/rates:'+date+'-09-fuel-hasibat-v1';
+ const preview=permitted(now).slot==='PREVIEW';
+ const goldKey=preview?'once/rates:2026-11-11-manual-preview-gold-hasibat-v1':'once/rates:'+date+'-09-gold-hasibat-v1';
+ const fuelKey=preview?'once/rates:2026-11-11-manual-preview-fuel-hasibat-v1':'once/rates:'+date+'-09-fuel-hasibat-v1';
  const [gSent,fSent]=await Promise.all([alreadySent(goldKey),alreadySent(fuelKey)]);
  if(gSent&&fSent)return {status:'duplicate',items:[]};
  let goldPrice=null,fuelPrice=null,usdSell=null;
