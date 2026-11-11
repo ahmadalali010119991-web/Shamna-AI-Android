@@ -1,5 +1,6 @@
 'use strict';
 const engine=require('../lib/sync-v3-engine');
+const sourceLinks=require('../lib/telegram-source-links');
 const rates=require('../lib/rates-publisher');
 const assets=require('../lib/assets-publisher');
 module.exports=async(req,res)=>{
@@ -7,7 +8,7 @@ module.exports=async(req,res)=>{
   if(req.method!=='POST')return res.status(405).json({error:'POST required'});
   if(req.body&&typeof req.body==='object'&&Object.keys(req.body).length)return res.status(400).json({error:'Unexpected request body'});
   const now=new Date();
-  const [news,photo,extra]=await Promise.allSettled([engine.run(),rates.run({now}),assets.run({now})]);
+  const [news,photo,extra]=await Promise.allSettled([sourceLinks.withSourceLinks(()=>engine.run()),rates.run({now}),assets.run({now})]);
   const exchange=photo.status==='fulfilled'?photo.value:{status:'error',error:String(photo.reason?.message||photo.reason).slice(0,160)};
   if(photo.status==='rejected')console.error('Hasibat schedule:',exchange.error);
   const goldFuel=extra.status==='fulfilled'?extra.value:{status:'error',error:String(extra.reason?.message||extra.reason).slice(0,160)};
