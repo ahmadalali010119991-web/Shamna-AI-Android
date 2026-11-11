@@ -5,9 +5,8 @@ module.exports=async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
   if(req.method!=='POST')return res.status(405).json({error:'POST required'});
   if(req.body&&typeof req.body==='object'&&Object.keys(req.body).length)return res.status(400).json({error:'Unexpected request body'});
-  const now=new Date(),local=rates.stamp(now);
-  const liveTest=local.date==='2026-11-11'&&local.hour>=3&&local.hour<6;
-  const [news,photo]=await Promise.allSettled([engine.run(),rates.run({now,test:liveTest})]);
+  const now=new Date();
+  const [news,photo]=await Promise.allSettled([engine.run(),rates.run({now})]);
   const exchange=photo.status==='fulfilled'?photo.value:{status:'error',error:String(photo.reason?.message||photo.reason).slice(0,160)};
   if(photo.status==='rejected')console.error('Hasibat schedule:',exchange.error);
   if(news.status==='rejected'){
