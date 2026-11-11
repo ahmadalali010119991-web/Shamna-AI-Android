@@ -49,7 +49,8 @@ function text(ctx,value,x,y,size,color,weight,align='right',maxWidth){
  ctx.textBaseline='middle';ctx.fillStyle=color;
  // Render without maxWidth: napi Canvas occasionally omits RTL strings
  // or paints corrupted oversized glyphs when measuring/re-fitting Arabic.
- ctx.font=(weight||700)+' '+size+'px HasibatArabic,Tahoma,Arial,sans-serif';
+ const safeWeight=Math.min(900,Math.max(400,Math.round((weight||700)/100)*100));
+ ctx.font=safeWeight+' '+size+'px HasibatArabic,Tahoma,Arial,sans-serif';
  ctx.fillText(String(value),x,y);
  ctx.restore();
 }
