@@ -1,0 +1,36 @@
+name: Validate original Hasibat 09:00 gold and fuel images
+on:
+  push:
+    branches: [hasibat-telegram-gold-fuel-0900-20261111]
+    paths:
+      - telegram-shared/assets-*
+      - telegram-shared/hasibat-assets-image.js
+      - telegram-shared/test/assets-*
+      - .github/workflows/hasibat-assets-0900-ci.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with: {node-version: '22'}
+      - name: Install canvas dependencies
+        working-directory: telegram-shared
+        run: npm install --no-audit --no-fund
+      - name: Test source parsing and 09:00 timing (no sending)
+        working-directory: telegram-shared
+        run: node --test test/assets-0900.test.js
+      - name: Render the TWO exact current-data images (no Telegram posting)
+        working-directory: telegram-shared
+        run: node test/assets-live-render.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hasibat-gold-fuel-0900-real-source-pngs
+          path: /tmp/hasibat-0900-*.png
+          if-no-files-found: error
+          retention-days: 5
