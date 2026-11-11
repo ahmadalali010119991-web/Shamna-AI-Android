@@ -14,7 +14,7 @@ jobs:
       - name: GET real PNG without posting to channel
         shell: bash
         env:
-          HOST: https://dallalna-telegram-bridge-dvsbkopxn-ahmadalali010119991-6976.vercel.app
+          HOST: https://dallalna-telegram-bridge-45sfswol3-ahmadalali010119991-6976.vercel.app
         run: |
           set -euo pipefail
           curl --fail-with-body --silent --show-error --retry 2 --max-time 90 \
