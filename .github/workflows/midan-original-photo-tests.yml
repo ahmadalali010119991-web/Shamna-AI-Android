@@ -1,0 +1,22 @@
+name: Check original-source news photo policy
+on:
+  push:
+    branches: [midan-news-original-photo-20261111]
+    paths:
+      - telegram-shared/news-original-photo.js
+      - telegram-shared/test/original-photo.test.js
+      - .github/workflows/midan-original-photo-tests.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with: {node-version: '22'}
+      - name: Test source photo and original clickable article links
+        run: node --test telegram-shared/test/original-photo.test.js
