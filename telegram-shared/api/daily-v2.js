@@ -4,6 +4,22 @@ const githubOidc=require('../lib/github-oidc');
 const rates=require('../lib/rates-publisher');
 module.exports=async(req,res)=>{
   res.setHeader('Cache-Control','no-store');
+  // Safe temporary isolated storage diagnostic, preview only; never publish.
+  if(process.env.VERCEL_ENV==='preview'&&req.method==='GET'&&req.query?.preview==='storage'){
+    const B=require('@vercel/blob'),crypto=require('node:crypto');
+    const path='hasibat/diagnostics/'+crypto.randomUUID()+'.json';
+    try {
+      await B.put(path,JSON.stringify({ok:true,source:'hasibat-check'}),
+        {access:'private',contentType:'application/json',addRandomSuffix:false,allowOverwrite:false});
+      const got=await B.get(path,{access:'private',useCache:false});
+      const value=got?.statusCode===200?JSON.parse(await new Response(got.stream).text()):null;
+      await B.del(path);
+      return res.status(200).json({ok:!!value?.ok,privateStoreWorks:!!value?.ok,cleanedUp:true});
+    } catch(e) {
+      await B.del(path).catch(()=>{});
+      return res.status(503).json({ok:false,storageError:String(e.message).slice(0,160)});
+    }
+  }
   // Preview-only dry run: produce PNG without Telegram credentials or posting.
   if(process.env.VERCEL_ENV==='preview'&&req.method==='GET'&&req.query?.preview==='image'){
     try{
