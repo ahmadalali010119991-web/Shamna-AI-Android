@@ -1,0 +1,17 @@
+{
+  "name": "hasibat-telegram-shared-image",
+  "private": true,
+  "version": "1.0.0",
+  "type": "commonjs",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "preview": "node test/render-smoke.js"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "0.1.80",
+    "@vercel/blob": "2.8.2"
+  }
+}
