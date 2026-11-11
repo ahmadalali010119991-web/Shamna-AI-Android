@@ -54,7 +54,7 @@ function parseGold(html,checkedAt=new Date()){
 function parseFuel(js,checkedAt=new Date()){
  const pattern=/^\s*window\.HasibatFuelReceive\s*&&\s*window\.HasibatFuelReceive\((\{[\s\S]*\})\);?\s*$/u;
  const m=String(js).match(pattern);
- must(m,'Fuel feed does not use the application's expected JSONP payload');
+ must(m,'Fuel feed does not use the expected JSONP payload');
  const raw=JSON.parse(m[1]);
  must(['https://sp-today.com/energy','https://sypnow.com/ar/fuel'].includes(raw.source),
    'Fuel feed contains an untrusted source');
