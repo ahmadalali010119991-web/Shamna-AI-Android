@@ -1,0 +1,19 @@
+name: Probe preview private state without Telegram posting
+on:
+  push:
+    branches: [hasibat-telegram-shared-renderer-20261111]
+    paths: [.github/workflows/hasibat-preview-storage-smoke.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check isolated diagnostic and cleanup only
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sS --max-time 40 -w '\nHTTP %{http_code}\n' \
+            'https://dallalna-telegram-bridge-fi7waxlj5-ahmadalali010119991-6976.vercel.app/api/daily-v2?preview=storage' | tail -c 800
