@@ -173,6 +173,14 @@ async function generatePng(snapshot,omitLogo=false){
   contextText(ctx,'رسالة نافعة',941,y+179,19,'#e9c67c',800,'right');
   for(let i=0;i<messageLines.length;i++)
     contextText(ctx,messageLines[i],940,y+153+62+i*messageLineHeight,messageFontSize,'#ffffff',700,'right',799);
+  // Paint small metadata after all cards: some font engines omit these labels
+  // if previously drawn between translucent card layers.
+  contextText(ctx,'المبلغ المدخل',938,383,27,'#ffe6a5',800,'right');
+  contextText(ctx,'القيم المحوّلة',938,549,29,'#ffe6a5',800,'right');
+  snapshot.results.forEach((r,i)=>contextText(ctx,r.key===snapshot.selected?'العملة المختارة':'سعر التحويل الوسطي',940,584+i*156+111,21,'#e8eedd',800,'right'));
+  contextText(ctx,'وقت إنشاء الصورة: '+snapshot.createdAt,946,y+48,24,'#fff9e5',800,'right');
+  contextText(ctx,'آخر تحديث ناجح للأسعار: '+snapshot.checkedAt,946,y+88,22,'#e4f2dc',800,'right');
+  contextText(ctx,snapshot.stale?'أسعار محفوظة — قد تكون غير محدثة':'أسعار متاحة وقت إنشاء الصورة',946,y+125,20,'#cde9d3',800,'right');
   const output=canvas.toBuffer('image/png');
   requireValid(Buffer.isBuffer(output)&&output.length>20000&&output.subarray(0,8).toString('hex')==='89504e470d0a1a0a','PNG export invalid');
   requireValid(output.readUInt32BE(16)===W&&output.readUInt32BE(20)===H,'PNG dimensions invalid');
