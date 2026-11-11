@@ -46,8 +46,18 @@ function rounded(ctx,x,y,w,h,r){
 }
 function text(ctx,value,x,y,size,color,weight,align='right',maxWidth){
  ctx.save();ctx.direction=align==='left'?'ltr':'rtl';ctx.textAlign=align;
- ctx.textBaseline='middle';ctx.fillStyle=color;ctx.font=(weight||700)+' '+size+'px HasibatArabic,Tahoma,Arial,sans-serif';
- ctx.fillText(String(value),x,y,...(maxWidth?[maxWidth]:[]));ctx.restore();
+ ctx.textBaseline='middle';ctx.fillStyle=color;
+ let px=size;
+ const string=String(value);
+ // napi Canvas fails to paint some RTL glyph runs when fillText receives
+ // its maxWidth argument. Fit the font manually, then call fillText(x,y).
+ do{
+   ctx.font=(weight||700)+' '+px+'px HasibatArabic,Tahoma,Arial,sans-serif';
+   if(!maxWidth||ctx.measureText(string).width<=maxWidth||px<=13)break;
+   px=Math.max(13,px-1);
+ }while(true);
+ ctx.fillText(string,x,y);
+ ctx.restore();
 }
 function wrap(ctx,value,maxWidth,size){
  const lines=[];ctx.save();ctx.font='700 '+size+'px HasibatArabic,Tahoma,Arial,sans-serif';
