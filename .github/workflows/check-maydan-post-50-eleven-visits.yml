@@ -1,0 +1,61 @@
+name: Inspect Telegram post 50 in eleven independent visits
+on:
+  push:
+    branches: [midan-news-original-photo-20261111]
+    paths: [.github/workflows/check-maydan-post-50-eleven-visits.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  visit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - name: Eleven independent enter-inspect-exit sessions
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import urllib.request,urllib.error,re,hashlib,time,html,json
+          from html.parser import HTMLParser
+          url='https://t.me/maydan_alkhabar/50'
+          class Meta(HTMLParser):
+            def __init__(self):super().__init__();self.meta={};self.title=''
+            def handle_starttag(self,tag,attrs):
+              d=dict(attrs)
+              if tag=='meta' and (d.get('property') or d.get('name')):
+                self.meta[d.get('property') or d.get('name')]=d.get('content','')
+          results=[]
+          for idx in range(1,12):
+            # Brand-new request + connection on every visit. The response is closed
+            # inside the with-block, before beginning the next visit.
+            req=urllib.request.Request(url,headers={
+              'User-Agent':'Mozilla/5.0 (compatible; Midan-Post-Review/1.0)',
+              'Cache-Control':'no-cache',
+              'Pragma':'no-cache',
+              'Connection':'close',
+              'Accept':'text/html,application/xhtml+xml'
+            })
+            try:
+              with urllib.request.urlopen(req,timeout=18) as resp:
+                raw=resp.read(2_000_000)
+                status=resp.status
+                final=resp.url
+                contenttype=resp.headers.get('Content-Type')
+              page=raw.decode('utf-8','replace')
+              meta=Meta();meta.feed(page)
+              title=html.unescape(meta.meta.get('og:title',''))
+              description=html.unescape(meta.meta.get('og:description',''))
+              image=meta.meta.get('og:image','')
+              embed='tgme_widget_message_text' in page
+              result={'visit':idx,'status':status,'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest(),
+              'url':final,'title':title[:240],'description':description[:1200],'image':image[:350],
+              'telegram_message_markup':embed,'content_type':contenttype}
+            except Exception as exc:
+              result={'visit':idx,'error':type(exc).__name__+': '+str(exc)[:260]}
+            results.append(result)
+            print('VISIT '+str(idx)+' '+json.dumps(result,ensure_ascii=False),flush=True)
+            print('EXIT '+str(idx),flush=True)
+            time.sleep(0.25)
+          print('VISITS_TOTAL',len(results))
+          print('SUCCESSFUL_VISITS',sum(x.get('status')==200 for x in results))
+          PY
