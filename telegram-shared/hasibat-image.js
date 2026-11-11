@@ -42,7 +42,7 @@ async function freshRates(){
   const j=await r.json();
   requireValid(j.ok===true&&Array.isArray(j.rows)&&j.rows.length>=3,'Hasibat feed has an unexpected schema');
   const age=Number(j.ageSeconds);
-  requireValid(Number.isFinite(age)&&age>=0&&age<=7200,'Exchange rates are more than 2 hours old; do not publish stale quotes');
+  requireValid(Number.isFinite(age)&&age>=0&&age<=900,'Exchange rates exceed 15 minutes; do not publish stale quotes');
   const index=new Map(j.rows.map(x=>[String(x.code).toUpperCase(),x]));
   for(const k of ['USD','EUR','TRY'])requireValid(index.has(k),'Rate not available: '+k);
   const usd=mid(index.get('USD').buyNew,index.get('USD').sellNew);
