@@ -1,0 +1,58 @@
+name: Compile Hasibat 1.8.22 original image bridge and 53-message Android reminders
+on:
+  push:
+    branches: [hasibat-native-53-notifications-1822]
+    paths:
+      - android_native_bridge/SaveActivity.java
+      - android_native_bridge/MessagesReceiver.java
+      - .github/workflows/hasibat-1822-native-notifications.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: {persist-credentials: false}
+      - name: Select Android build tools
+        run: |
+          set -euo pipefail
+          test -d "$ANDROID_HOME/platforms/android-35" || "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35"
+          test -x "$ANDROID_HOME/build-tools/35.0.0/d8" || "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "build-tools;35.0.0"
+      - name: Compile only additive native classes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/hasibat-1822/stub/com/syrianlira/calculator /tmp/hasibat-1822/classes /tmp/hasibat-1822/dex
+          cat > /tmp/hasibat-1822/stub/com/syrianlira/calculator/MainActivity.java <<'STUB'
+          package com.syrianlira.calculator;
+          public class MainActivity extends android.app.Activity {}
+          STUB
+          javac -encoding UTF-8 -source 8 -target 8 -cp "$ANDROID_HOME/platforms/android-35/android.jar" \
+            -d /tmp/hasibat-1822/classes \
+            /tmp/hasibat-1822/stub/com/syrianlira/calculator/MainActivity.java \
+            android_native_bridge/SaveActivity.java \
+            android_native_bridge/MessagesReceiver.java
+          rm /tmp/hasibat-1822/classes/com/syrianlira/calculator/MainActivity.class
+          "$ANDROID_HOME/build-tools/35.0.0/d8" --min-api 26 \
+            --lib "$ANDROID_HOME/platforms/android-35/android.jar" \
+            --output /tmp/hasibat-1822/dex \
+            /tmp/hasibat-1822/classes/com/syrianlira/calculator/*.class
+          test -s /tmp/hasibat-1822/dex/classes.dex
+          strings /tmp/hasibat-1822/dex/classes.dex | grep -F 'MessagesReceiver'
+          strings /tmp/hasibat-1822/dex/classes.dex | grep -F 'saveResultsImage'
+          strings /tmp/hasibat-1822/dex/classes.dex | grep -F 'syncAdviceSchedule'
+          strings /tmp/hasibat-1822/dex/classes.dex | grep -F 'awareness-53.json'
+          sha256sum /tmp/hasibat-1822/dex/classes.dex | tee /tmp/hasibat-1822/classes3.sha256
+          cp /tmp/hasibat-1822/dex/classes.dex /tmp/hasibat-1822/classes3.dex
+      - name: Export compiled DEX only (no signing key)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Hasibat-v1.8.22-native-image-and-53-notification-DEX
+          path: |
+            /tmp/hasibat-1822/classes3.dex
+            /tmp/hasibat-1822/classes3.sha256
+          if-no-files-found: error
+          retention-days: 5
