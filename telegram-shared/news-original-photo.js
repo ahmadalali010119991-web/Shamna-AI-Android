@@ -172,11 +172,14 @@ function install(){
         throw Error('Original article contains a photo but media is unavailable; retry original news later');
       }
     }catch(err){
-      // Propagate fail-closed for confirmed missing media; but a source page
-      // temporarily unavailable doesn't establish it has an image.
-      if(String(err.message).startsWith('Original article contains'))throw err;
-      console.warn('Publisher source media discovery unavailable:',String(err.message).slice(0,120));
+      // The publisher requested no text-only version of a pictured source.
+      // A blocked/unreachable source is not evidence that it has no image.
+      // Fail closed and retry via the existing news synchronization cycle.
+      console.warn('Original source media not yet verified:',String(err.message).slice(0,120));
+      throw Error('News photo verification failed; retry source later: '+String(err.message).slice(0,120));
     }
+    // No source photo was detected after a successful article fetch; a
+    // genuinely text-only source can still be sent as text.
     return prior.apply(this,arguments);
   };
 }
