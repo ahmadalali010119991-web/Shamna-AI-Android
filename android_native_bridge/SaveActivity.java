@@ -30,6 +30,11 @@ public class SaveActivity extends MainActivity {
     super.onCreate(state);
     resultsWeb=findWeb(findViewById(android.R.id.content));
     if(resultsWeb!=null) resultsWeb.addJavascriptInterface(this,"ResultShareHost");
+    // Register only silent owner-authored advice; existing update alerts remain untouched.
+    try{MessagesReceiver.sync(getApplicationContext(),false);}catch(Exception e){android.util.Log.w("HasibatAwareness","Advice schedule unavailable",e);}
+  }
+  @JavascriptInterface public void syncAdviceSchedule(){
+    try{MessagesReceiver.sync(getApplicationContext(),false);}catch(Exception e){android.util.Log.w("HasibatAwareness","Settings sync unavailable",e);}
   }
   private WebView findWeb(View node) {
     if(node instanceof WebView) return (WebView)node;
