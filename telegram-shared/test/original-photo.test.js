@@ -36,3 +36,31 @@ test('do not allow internal/private IP HTTP resources',()=>{
  for(const s of ['http://example.com/a.jpg','https://127.0.0.1/a','https://192.168.1.5/a','https://localhost/a'])
    assert.equal(x.publicHttps(s),null);
 });
+
+test('source page with real image sends a photo, not a plain message', async()=>{
+ const mime='image/png';
+ const png=Buffer.from('89504e470d0a1a0a'+('ff'.repeat(6000)),'hex');
+ const calls=[];
+ const realFetch=globalThis.fetch;
+ globalThis.fetch=async (url,options={})=>{
+   const u=String(url);calls.push({url:u,options});
+   if(u==='https://example.com/article/1')return new Response('<meta property="og:image" content="https://img.example.com/photo.png">',{status:200,headers:{'content-type':'text/html'}});
+   if(u==='https://img.example.com/photo.png')return new Response(png,{status:200,headers:{'content-type':mime}});
+   if(u.endsWith('/sendPhoto'))return new Response(JSON.stringify({ok:true,result:{message_id:4}}),{status:200,headers:{'content-type':'application/json'}});
+   throw new Error('Unexpected network '+u);
+ };
+ delete require.cache[require.resolve('../news-original-photo')];
+ delete globalThis.__MIDAN_ORIGINAL_PHOTO_INSTALLED;
+ const plugin=require('../news-original-photo');plugin.install();
+ try{
+   const response=await globalThis.fetch('https://api.telegram.org/botTOKEN/sendMessage',
+     {method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({chat_id:'@test',text:'📰 اختبار\n🔗 https://example.com/article/1',parse_mode:'HTML'})});
+   assert.equal((await response.json()).ok,true);
+   assert.equal(calls.filter(c=>c.url.endsWith('/sendPhoto')).length,1);
+   assert.equal(calls.filter(c=>c.url.endsWith('/sendMessage')).length,0);
+   const form=calls.find(c=>c.url.endsWith('/sendPhoto')).options.body;
+   assert.equal(form.get('chat_id'),'@test');
+   assert.equal(form.get('caption').includes('🔗 المصدر'),true);
+   assert.equal(form.get('photo').size,png.length);
+ }finally{globalThis.fetch=realFetch;delete globalThis.__MIDAN_ORIGINAL_PHOTO_INSTALLED}
+});
