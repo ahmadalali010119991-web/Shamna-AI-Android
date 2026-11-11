@@ -1,0 +1,44 @@
+name: Probe Vercel preview PNG and preserve Telegram route behavior
+on:
+  push:
+    branches: [hasibat-telegram-shared-renderer-20261111]
+    paths: [.github/workflows/hasibat-preview-smoke.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - name: GET real PNG without posting to channel
+        shell: bash
+        env:
+          HOST: https://dallalna-telegram-bridge-51lw9idgw-ahmadalali010119991-6976.vercel.app
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error --retry 2 --max-time 90 \
+            "$HOST/api/daily-v2?preview=image" -o /tmp/shared.png
+          python3 - <<'PY'
+          from pathlib import Path
+          import struct,hashlib
+          b=Path('/tmp/shared.png').read_bytes()
+          assert b[:8]==b'\x89PNG\r\n\x1a\n','Preview did not serve PNG'
+          width,height=struct.unpack('>II',b[16:24])
+          assert width==1080 and 1690<=height<=2600
+          assert len(b)>40000
+          print('PREVIEW_IMAGE_PASS',width,height,len(b),hashlib.sha256(b).hexdigest()[:20])
+          PY
+          status="$(curl -s -o /dev/null -w '%{http_code}' --max-time 12 -X POST "$HOST/api/schedule")"
+          test "$status" = "401" || { echo "Unauthorized news route status: $status"; exit 1; }
+          echo 'PREVIEW_NEWS_AUTH_PASS'
+          status="$(curl -s -o /dev/null -w '%{http_code}' --max-time 12 "$HOST/api/health")"
+          test "$status" = "200"
+          echo 'PREVIEW_HEALTH_PASS'
+      - name: Preserve private preview image for technical review
+        uses: actions/upload-artifact@v4
+        with:
+          name: hasibat-serverless-preview-png
+          path: /tmp/shared.png
+          if-no-files-found: error
+          retention-days: 3
