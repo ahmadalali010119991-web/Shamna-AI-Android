@@ -1,0 +1,16 @@
+import assert from "node:assert/strict";
+import {decision,receipt,attributableSource,messagePayload,classify} from "./delivery-policy.mjs";
+const job={newsId:"news-42",channelId:"@maydan_alkhabar",approved:true,destination:"general",originalHadPhoto:true,photoAttempts:0,publishText:"نص الخبر",sourceName:"صهيب اليعربي"};
+assert.equal(decision(job).action,"retry_photo");
+assert.equal(decision({...job,photoAttempts:3}).action,"text");
+assert.equal(decision({...job,approved:false}).action,"hold");
+assert.equal(decision({...job,category:"sports"}).action,"skip");
+assert.equal(decision({...job,category:"sports",destination:"sports"}).action,"retry_photo");
+assert.equal(classify({category:"sports"}),"sports");
+assert.equal(attributableSource(job).removeGenericCirculationLabel,true);
+assert.equal(messagePayload({...job,imageUrl:"https://example.com/a.jpg"}, {action:"photo"}).method,"sendPhoto");
+assert.equal(receipt({ok:true,result:{message_id:42}}).state,"sent");
+assert.equal(receipt({ok:false,error_code:429,parameters:{retry_after:15}}).afterSeconds,15);
+assert.equal(receipt(null).state,"reconcile_before_retry");
+assert.equal(messagePayload({...job,publishText:"x".repeat(4100)}, {action:"text"}).method,"split_required");
+console.log("Midan publisher policy: 12 assertions passed");
