@@ -4,13 +4,13 @@ const {test}=require('node:test');
 const Module=require('node:module');
 const photo=require('./news-original-photo');
 const original=globalThis.fetch;
-let calls=[],pageVideo=true,videoAvailable=true,telegramSuccess=true;
+let calls=[],pageVideo=true,videoAvailable=true,telegramSuccess=true,telegramMode=false;
 const mp4=Buffer.alloc(300);mp4.write('ftypisom',4,'ascii');
 const source='https://news.example.org/article';
 const video='https://cdn.example.org/video.mp4';
 function fakeFetch(input,init={}){
  const u=String(input?.url||input);calls.push({url:u,body:init.body,headers:init.headers});
- if(u===source)return Promise.resolve(new Response(pageVideo?'<meta property="og:video" content="'+video+'">':'<html>plain text</html>',{headers:{'content-type':'text/html'}}));
+ if(u===source || u==='https://t.me/MidanVideoTest/123')return Promise.resolve(new Response(telegramMode?'<div class="tgme_widget_message_video_player"><video src="https://cdn.example.org/video.mp4"></video></div>':(pageVideo?'<meta property="og:video" content="'+video+'">':'<html>plain text</html>'),{headers:{'content-type':'text/html'}}));
  if(u===video)return Promise.resolve(videoAvailable?new Response(mp4,{headers:{'content-type':'video/mp4'}}):new Response('not available',{status:404}));
  if(u.startsWith('https://api.telegram.org/botMOCK/'))return Promise.resolve(new Response(JSON.stringify({ok:telegramSuccess,result:{message_id:35,video:{file_id:'fileABC'}}}),{status:telegramSuccess?200:400,headers:{'content-type':'application/json'}}));
  throw Error('Unexpected URL: '+u);
@@ -25,6 +25,15 @@ async function setup(){
  return module;
 }
 const originalSend=()=>globalThis.fetch('https://api.telegram.org/botMOCK/sendMessage',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({chat_id:'@channel',text:'منشور مهم\nالمصدر: '+source})});
+test('Telegram-origin video is copied natively without downloading media',async()=>{
+ telegramMode=true;await setup();
+ await globalThis.fetch('https://api.telegram.org/botMOCK/sendMessage',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({chat_id:'@channel',text:'خبر من الناشط\\nالمصدر: https://t.me/MidanVideoTest/123'})});
+ const request=calls.find(x=>x.url.endsWith('/copyMessage'));
+ assert.ok(request,'copyMessage was not attempted');
+ const data=JSON.parse(request.body);assert.equal(data.from_chat_id,'@MidanVideoTest');assert.equal(data.message_id,123);
+ assert.ok(request.body.includes('المصدر'));assert.ok(!calls.some(x=>x.url===video),'Video was redundantly downloaded');
+ telegramMode=false;globalThis.fetch=original;
+});
 test('Native MP4 video is attached to one Telegram post, no disk storage',async()=>{
  pageVideo=true;videoAvailable=true;telegramSuccess=true;await setup();
  const result=await originalSend();assert.equal(result.status,200);
