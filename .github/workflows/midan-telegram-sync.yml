@@ -80,6 +80,25 @@ jobs:
             fi
           fi
 
+      - name: Backfill verified source hyperlinks on old Telegram posts
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          msg="$(jq -r '.head_commit.message // ""' "$GITHUB_EVENT_PATH")"
+          if [[ "$msg" != *"[mkr-restore-links-47]"* ]]; then exit 0; fi
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" && test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}"
+          token="$(curl --fail --silent --show-error -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=dallalna-telegram-bridge" | jq -r '.value')"
+          test -n "$token" && test "$token" != null
+          failures=0
+          for batch in $(seq 0 11); do
+            echo "Source link repair batch $batch"
+            output="$(curl --silent --show-error --max-time 100 -X POST -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" --data '{}' "https://dallalna-telegram-bridge.vercel.app/api/status-v2?sourceLinks=20261112&batch=${batch}")"
+            printf '%s\n' "$output" | jq '{ok,batch,result,error}'
+            if ! printf '%s\n' "$output" | jq -e '.ok == true and ([.result[]? | select(.status != "edited" and .status != "already_linked")] | length == 0)' >/dev/null; then failures=$((failures+1)); fi
+          done
+          if (( failures > 0 )); then echo "::error::${failures} link batches need review"; exit 1; fi
+
 # Social button repair: align existing Telegram channel posts with @alislam_almutab_book on both platforms.
 # Editorial test: inside Syria > Syrians abroad/refugees > major Middle East > exceptional world, no unrelated stories.
 
