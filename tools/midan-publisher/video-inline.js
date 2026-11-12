@@ -20,7 +20,7 @@ async function check(){
  lastId=id;running=true;
  try{
   let data=cache.get(id);
-  if(!data){const r=await fetch('/api/article-video?id='+encodeURIComponent(id),{cache:'no-store'});if(!r.ok)throw Error('Video metadata unavailable');data=await r.json();cache.set(id,data)}
+  if(!data){const r=await fetch('/api/news?videoFor='+encodeURIComponent(id),{cache:'no-store'});if(!r.ok)throw Error('Video metadata unavailable');data=await r.json();cache.set(id,data)}
   if(!data.ok||!['mp4','embed'].includes(data.kind)||lastId!==id||document.getElementById('overlay')?.hidden)return;
   const save=view.querySelector('[data-save]');if(!save||save.getAttribute('data-save')!==id)return;
   if(view.querySelector('.news-video,.video-frame,.midan-original-video'))return;
