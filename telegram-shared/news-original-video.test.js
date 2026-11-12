@@ -27,7 +27,7 @@ async function setup(){
 const originalSend=()=>globalThis.fetch('https://api.telegram.org/botMOCK/sendMessage',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({chat_id:'@channel',text:'منشور مهم\nالمصدر: '+source})});
 test('Telegram-origin video is copied natively without downloading media',async()=>{
  telegramMode=true;await setup();
- await globalThis.fetch('https://api.telegram.org/botMOCK/sendMessage',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({chat_id:'@channel',text:'خبر من الناشط\\nالمصدر: https://t.me/MidanVideoTest/123'})});
+ await globalThis.fetch('https://api.telegram.org/botMOCK/sendMessage',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({chat_id:'@channel',text:'خبر من الناشط\nالمصدر: https://t.me/MidanVideoTest/123'})});
  const request=calls.find(x=>x.url.endsWith('/copyMessage'));
  assert.ok(request,'copyMessage was not attempted');
  const data=JSON.parse(request.body);assert.equal(data.from_chat_id,'@MidanVideoTest');assert.equal(data.message_id,123);
@@ -35,7 +35,7 @@ test('Telegram-origin video is copied natively without downloading media',async(
  telegramMode=false;globalThis.fetch=original;
 });
 test('Native MP4 video is attached to one Telegram post, no disk storage',async()=>{
- pageVideo=true;videoAvailable=true;telegramSuccess=true;await setup();
+ telegramMode=false;pageVideo=true;videoAvailable=true;telegramSuccess=true;await setup();
  const result=await originalSend();assert.equal(result.status,200);
  const sent=calls.find(x=>x.url.endsWith('/sendVideo'));
  assert.ok(sent,'sendVideo not invoked');assert.ok(sent.body.get('video') instanceof Blob);
@@ -45,19 +45,19 @@ test('Native MP4 video is attached to one Telegram post, no disk storage',async(
  globalThis.fetch=original;
 });
 test('Article without video is unchanged',async()=>{
- pageVideo=false;await setup();await originalSend();
+ telegramMode=false;pageVideo=false;await setup();await originalSend();
  assert.equal(calls.filter(x=>x.url.endsWith('/sendVideo')).length,0);
  assert.equal(calls.filter(x=>x.url.endsWith('/sendMessage')).length,1);
  globalThis.fetch=original;
 });
 test('Unreachable video gracefully falls back instead of claiming a video was posted',async()=>{
- pageVideo=true;videoAvailable=false;await setup();await originalSend();
+ telegramMode=false;pageVideo=true;videoAvailable=false;await setup();await originalSend();
  assert.equal(calls.filter(x=>x.url.endsWith('/sendVideo')).length,0);
  assert.equal(calls.filter(x=>x.url.endsWith('/sendMessage')).length,1);
  globalThis.fetch=original;
 });
 test('Long caption retains complete text in a reply',async()=>{
- pageVideo=true;videoAvailable=true;await setup();
+ telegramMode=false;pageVideo=true;videoAvailable=true;await setup();
  const big='خبر '.repeat(300)+'\nالمصدر: '+source;
  await globalThis.fetch('https://api.telegram.org/botMOCK/sendMessage',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({chat_id:'@channel',text:big})});
  const videoReq=calls.find(x=>x.url.endsWith('/sendVideo'));
