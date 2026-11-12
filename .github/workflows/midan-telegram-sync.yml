@@ -84,3 +84,5 @@ jobs:
 # Editorial test: inside Syria > Syrians abroad/refugees > major Middle East > exceptional world, no unrelated stories.
 
 # Editorial policy: Syrian domestic first; Syrian diaspora second; major Middle East third; exceptional world only.
+
+# Production bridge post-deploy OIDC sync verification: 2026-11-12; keep the authenticated publisher path unchanged.
