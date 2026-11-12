@@ -1,0 +1,25 @@
+name: Verify native Telegram video publishing
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/midan-video-native-qa.yml'
+permissions:
+  contents: read
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: midan-news-original-photo-20261111
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Native MP4 and text fallbacks (no Telegram credentials)
+        run: node --test telegram-shared/news-original-video.test.js
+      - name: Validate syntax
+        run: node --check telegram-shared/news-original-video.js
