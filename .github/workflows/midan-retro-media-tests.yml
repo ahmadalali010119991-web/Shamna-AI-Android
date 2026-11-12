@@ -5,6 +5,7 @@ on:
     paths:
       - "tools/midan-publisher/retro-media*.cjs"
       - "tools/midan-publisher/retro-status-route.cjs"
+      - "tools/midan-publisher/retro-voices-video-backfill*.cjs"
       - ".github/workflows/midan-retro-media-tests.yml"
   workflow_dispatch:
 permissions:
@@ -19,4 +20,5 @@ jobs:
         with:
           node-version: "22"
       - run: node --test tools/midan-publisher/retro-media-backfill.test.cjs
+      - run: node --test tools/midan-publisher/retro-voices-video-backfill.test.cjs
       - run: node --check tools/midan-publisher/retro-status-route.cjs
