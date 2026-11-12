@@ -17,6 +17,7 @@ function fakeFetch(input,init={}){
 }
 async function setup(){
  calls=[];globalThis.fetch=fakeFetch;globalThis.__MIDAN_NEWS_RAW_FETCH=fakeFetch;
+ delete globalThis.__MIDAN_ORIGINAL_VIDEO_INSTALLED;
  // Use a cache-cleared copy with the mock configured before module import.
  delete require.cache[require.resolve('./news-original-video')];
  const module=require('./news-original-video');
