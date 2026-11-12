@@ -12,33 +12,33 @@ const TRUSTED=new Set(['sana.sy','www.sana.sy','www.france24.com','arabic.eurone
 const CACHE=new Map(),MAX_HTML=1200000;
 const decode=s=>String(s||'').replace(/&amp;/gi,'&').replace(/&quot;/gi,'"').replace(/&#(?:39|x27);|&apos;/gi,"'").replace(/&lt;/gi,'<').replace(/&gt;/gi,'>');
 function safeHttps(raw,base){
- try{const u=new URL(decode(raw),base);if(u.protocol!=='https:'||u.username||u.password||u.port||!u.hostname.includes('.')||u.hostname.endsWith('.local')||u.hostname.endsWith('.internal')||/^\\d+\\.\\d+\\.\\d+\\.\\d+$/.test(u.hostname))return null;return u.href}catch{return null}
+ try{const u=new URL(decode(raw),base);if(u.protocol!=='https:'||u.username||u.password||u.port||!u.hostname.includes('.')||u.hostname.endsWith('.local')||u.hostname.endsWith('.internal')||/^\d+\.\d+\.\d+\.\d+$/.test(u.hostname))return null;return u.href}catch{return null}
 }
-function attrs(tag){const r={};for(const m of String(tag).matchAll(/([\\w:-]+)\\s*=\\s*(["'])([\\s\\S]*?)\\2/g))r[m[1].toLowerCase()]=decode(m[3]);return r}
+function attrs(tag){const r={};for(const m of String(tag).matchAll(/([\w:-]+)\s*=\s*(["'])([\s\S]*?)\2/g))r[m[1].toLowerCase()]=decode(m[3]);return r}
 function classifyVideo(raw,base){
  const url=safeHttps(raw,base);if(!url)return null;let u;try{u=new URL(url)}catch{return null}
  const host=u.hostname.toLowerCase();
- if(/^(?:www\\.)?youtube\\.com$/.test(host)||host==='www.youtube-nocookie.com'){
-  const m=u.pathname.match(/^\\/embed\\/([a-zA-Z0-9_-]{11})/);
+ if(/^(?:www\.)?youtube\.com$/.test(host)||host==='www.youtube-nocookie.com'){
+  const m=u.pathname.match(/^\/embed\/([a-zA-Z0-9_-]{11})/);
   if(m)return {kind:'embed',url:'https://www.youtube-nocookie.com/embed/'+m[1]};
   const id=u.searchParams.get('v');if(id&&/^[a-zA-Z0-9_-]{11}$/.test(id))return {kind:'embed',url:'https://www.youtube-nocookie.com/embed/'+id}
  }
  if(host==='youtu.be'){const id=u.pathname.slice(1);if(/^[a-zA-Z0-9_-]{11}$/.test(id))return {kind:'embed',url:'https://www.youtube-nocookie.com/embed/'+id}}
- if(host==='player.vimeo.com'&&/^\\/video\\/\\d+/.test(u.pathname))return {kind:'embed',url};
- if(['www.dailymotion.com','geo.dailymotion.com'].includes(host)&&/\\/embed\\/video\\//.test(u.pathname))return {kind:'embed',url};
- if(/\\.mp4(?:$|[?#])/i.test(url)||/\\/mp4\\//i.test(u.pathname))return {kind:'mp4',url};
+ if(host==='player.vimeo.com'&&/^\/video\/\d+/.test(u.pathname))return {kind:'embed',url};
+ if(['www.dailymotion.com','geo.dailymotion.com'].includes(host)&&/\/embed\/video\//.test(u.pathname))return {kind:'embed',url};
+ if(/\.mp4(?:$|[?#])/i.test(url)||/\/mp4\//i.test(u.pathname))return {kind:'mp4',url};
  return null;
 }
 function extract(html,base){
  const candidates=[];
- for(const m of String(html).matchAll(/<meta\\b[^>]*>/gi)){
+ for(const m of String(html).matchAll(/<meta\b[^>]*>/gi)){
   const a=attrs(m[0]),k=String(a.property||a.name||'').toLowerCase();
   if(['og:video:secure_url','og:video','og:video:url','twitter:player:stream'].includes(k)&&a.content)candidates.push(a.content)
  }
- for(const m of String(html).matchAll(/<script\\b[^>]*type=["']application\\/ld\\+json["'][^>]*>([\\s\\S]*?)<\\/script>/gi)){
+ for(const m of String(html).matchAll(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)){
   try{const stack=[JSON.parse(m[1])];for(let i=0;i<35&&stack.length;i++){const v=stack.pop();if(Array.isArray(v)){stack.push(...v);continue}if(!v||typeof v!=='object')continue;if(String(v['@type']||'').includes('VideoObject')){if(v.contentUrl)candidates.push(v.contentUrl);if(v.embedUrl)candidates.push(v.embedUrl)}if(v['@graph'])stack.push(v['@graph']);if(v.video)stack.push(v.video)}}catch{}
  }
- for(const m of String(html).matchAll(/<(?:video|source|iframe)\\b[^>]*>/gi)){const a=attrs(m[0]);if(a.src)candidates.push(a.src)}
+ for(const m of String(html).matchAll(/<(?:video|source|iframe)\b[^>]*>/gi)){const a=attrs(m[0]);if(a.src)candidates.push(a.src)}
  for(const candidate of candidates){const video=classifyVideo(candidate,base);if(video)return video}
  return null;
 }
@@ -51,7 +51,7 @@ async function fetchHtml(url){
    target=safeHttps(response.headers.get('location'),target);if(!target)throw Error('Unsafe redirect');continue
   }
   if(!response.ok)throw Error('Source HTTP '+response.status);
-  const type=response.headers.get('content-type')||'';if(!/text\\/html|application\\/xhtml/i.test(type))throw Error('Non-HTML source');
+  const type=response.headers.get('content-type')||'';if(!/text\/html|application\/xhtml/i.test(type))throw Error('Non-HTML source');
   const len=+(response.headers.get('content-length')||0);if(len>MAX_HTML)throw Error('Source HTML too large');
   const chunks=[];let size=0;for await(const buf of response.body){size+=buf.length;if(size>MAX_HTML)throw Error('Source HTML exceeds limit');chunks.push(Buffer.from(buf))}
   return {url:target,html:Buffer.concat(chunks).toString('utf8')};
