@@ -17,7 +17,7 @@ module.exports=async(req,res)=>{
    const articles=selectSports(merged,sportsOnly?'sports':'general');
    articles.sort(sportsOnly?(a,b)=>(Date.parse(b.publishedAt)||0)-(Date.parse(a.publishedAt)||0):(a,b)=>Number(a.editorialTier||9)-Number(b.editorialTier||9)||score(b)-score(a));
    const sources=Array.isArray(data.sources)?data.sources:[];
-   const augmented=privatePosts.length?sources.some(x=>x.id==='private-source99')?sources:[...sources,{id:'private-source99',name:'مصدر خاص',group:'special',status:'ok',count:privatePosts.length}]:sources;
+   const augmented=sources.some(x=>x.id==='private-source99')?sources:[...sources,{id:'private-source99',name:'مصدر خاص',group:'special',status:'ok',count:privatePosts.length}];
    data={...data,articles,sources:augmented,count:articles.length,currentFirst:true,sportsOnly};
   }
   return original.call(this,data);
