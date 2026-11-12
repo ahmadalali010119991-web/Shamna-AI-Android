@@ -63,13 +63,9 @@ async function determineSource(text,body,key,rawFetch){
   })();
 }
 function linksInText(text,parseMode){
- const html=parseMode==='HTML';
- const existing=[];
- if(html){
-  const re=/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
-  for(const m of text.matchAll(re)){if(SOURCE_WORDS.includes(m[2].replace(/<[^>]*>/g,'').trim()))existing.push(m[2].replace(/<[^>]*>/g,'').trim())}
- }else for(const w of SOURCE_WORDS)if(text.includes(w))existing.push(w);
- return existing;
+ const s=String(text||'');
+ // Detect plain labels as well as already linked ones.
+ return SOURCE_WORDS.filter(word=>s.includes(word));
 }
 function repairBody(body,kind,originalUrl){
  if(!body||typeof body!=='object'||!originalUrl)return body;
