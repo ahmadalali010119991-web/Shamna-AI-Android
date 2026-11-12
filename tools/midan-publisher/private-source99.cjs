@@ -23,12 +23,12 @@ function parse(html){
   if(!Number.isFinite(when)||when>Date.now()+5*60000)continue;
   const matched=block.match(/\bclass="tgme_widget_message_text[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
   const content=plain(matched?.[1]);
-  if(!content||content==='Channel created'||content.length<18)continue;
-  const link='https://t.me/Private_Source99/'+id;
-  const title=(content.split(/\n/).find(x=>x.length>=12)||content).replace(/^#[^\s]+\s*/,'').slice(0,200).trim();
-  const summary=content.slice(0,1500);
   const hasVideo=/tgme_widget_message_video|tgme_widget_message_roundvideo|<video\b/i.test(block);
   const hasPhoto=/tgme_widget_message_photo_wrap|tgme_widget_message_photo/i.test(block);
+  if(content==='Channel created'||(!content&&!hasVideo&&!hasPhoto))continue;
+  const link='https://t.me/Private_Source99/'+id;
+  const title=content?(content.split(/\n/).find(x=>x.length>=4)||content).replace(/^#[^\s]+\s*/,'').slice(0,200).trim():(hasVideo?'فيديو من مصدر خاص':'صورة من مصدر خاص');
+  const summary=(content||'محتوى مصور منشور في مصدر خاص. افتح المنشور الأصلي لمشاهدة الوسائط.').slice(0,1500);
   out.push({
    id:'private-source99-'+id,title,url:link,sourceUrl:link,originalPostUrl:link,
    summary,source:'مصدر خاص',sourceId:'private-source99',
