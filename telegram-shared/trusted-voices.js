@@ -2,7 +2,7 @@
 const SOURCES=Object.freeze(['عهد الصليبي','صهيب الجابر','زين العابدين العكيدي','صهيب اليعربي','أمجد الساري','إبراهيم الحبش']);
 function attributedName(text){
  const s=String(text||'').normalize('NFKC');
- return SOURCES.find(n=>s.includes(n)&&/(المصدر|الناشط|بقلم|قناة|ناقل الخبر)/u.test(s))||null;
+ return SOURCES.find(n=>new RegExp('(?:المصدر|الناشط|بقلم|قناة|ناقل الخبر)\\s*[:：–-]?\\s*'+n+'(?=\\s|$|[،.|📌🔗#])','u').test(s))||null;
 }
 function clean(text){
  if(typeof text!=='string'||!attributedName(text))return text;
