@@ -64,7 +64,7 @@ def discover_link():
     if parsed.scheme!="https" or parsed.hostname!=SUPABASE_HOST or not parsed.path.startswith(
         "/storage/v1/object/public/site-assets/") or not parsed.path.endswith(".apk") or parsed.query or parsed.fragment:
         raise RuntimeError("Hasibat APK URL not a trusted public Dallalna asset")
-    return url
+    return url, str(row.get("version") or "").strip()
 
 def download_apk(url,path):
     digest=hashlib.sha256()
@@ -109,17 +109,20 @@ def inspect_apk(path):
 
 def main():
     existing=json.loads(REPO_FILE.read_text(encoding="utf-8"))
-    url=discover_link()
+    url, listed_version=discover_link()
     # Dallalna publishes each APK at a new immutable, UUID-based storage URL.
     # Re-check the public listing automatically on every run, but do not
     # download the same 12 MB APK hundreds of times per day.
-    if url == existing.get("apkUrl") and int(existing.get("versionCode", 0)) > 0:
+    if (url == existing.get("apkUrl") and listed_version == existing.get("versionName")
+            and int(existing.get("versionCode", 0)) > 0):
         print("Dallalna APK unchanged; automatic monitoring is active. No full download needed.")
         return
     with tempfile.TemporaryDirectory() as directory:
         candidate=pathlib.Path(directory)/"candidate.apk"
         digest,size=download_apk(url,candidate)
         code,version=inspect_apk(candidate)
+    if listed_version and listed_version != version:
+        raise RuntimeError(f"Dallalna version label {listed_version} does not match signed APK version {version}")
     previous=int(existing.get("versionCode",0))
     print(f"Dallalna signed APK: {version} (code {code}, bytes {size}); live notice code {previous}")
     if code<=previous:
@@ -134,6 +137,8 @@ def main():
         "apkUrl":url,
         "apkSha256":digest,
         "apkSize":size,
+        "packageName":APP_PACKAGE,
+        "originApkUrl":existing.get("originApkUrl", ""),
         "message":f"تحديث حاسبة الليرة السورية {version} جاهز. اضغط «تحميل التحديث» للتنزيل داخل التطبيق، ثم أكّد التثبيت فوق النسخة الحالية."
     }
     REPO_FILE.write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
