@@ -86,25 +86,25 @@ jobs:
         run: |
           set -euo pipefail
           # Only the expressly reviewed, single-purpose commit can invoke repair.
-          commit_message="$(jq -r '.head_commit.message // ""' "\${GITHUB_EVENT_PATH}")"
+          commit_message="$(jq -r '.head_commit.message // ""' "${GITHUB_EVENT_PATH}")"
           if [[ "$commit_message" != *"[midan-video-backfill-20261112]"* ]]; then
             echo "No retroactive media repair requested by this commit."
             exit 0
           fi
-          if [[ -z "\${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || -z "\${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]]; then
+          if [[ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]]; then
             echo "::error::GitHub OIDC is unavailable."
             exit 1
           fi
           token="$(curl --fail --silent --show-error \
-            -H "Authorization: bearer \${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-            "\${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=dallalna-telegram-bridge" | jq -r '.value')"
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=dallalna-telegram-bridge" | jq -r '.value')"
           if [[ -z "$token" || "$token" == "null" ]]; then
             echo "::error::No verified GitHub ID token available."
             exit 1
           fi
           response="$(curl --fail-with-body --silent --show-error \
             --max-time 160 -X POST \
-            -H "Authorization: Bearer \${token}" \
+            -H "Authorization: Bearer ${token}" \
             -H "Content-Type: application/json" --data '{}' \
             'https://dallalna-telegram-bridge.vercel.app/api/status-v2?retroMedia=20261112')"
           printf '%s\n' "$response" | jq '{ok,status,messageId,videoConfirmed,bytes,error}'
