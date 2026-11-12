@@ -23,3 +23,4 @@ jobs:
         run: node --test telegram-shared/news-original-video.test.js
       - name: Validate syntax
         run: node --check telegram-shared/news-original-video.js
+# Test coverage: public Telegram source video copied natively without a server download.
