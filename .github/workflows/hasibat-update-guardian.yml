@@ -100,8 +100,24 @@ jobs:
               raise SystemExit(f'Metadata code {previous} exceeds latest signed public release {code}; refusing downgrade')
           name=os.environ['CANDIDATE_VERSION']
           url='https://github.com/'+os.environ['GITHUB_REPOSITORY']+'/releases/download/'+os.environ['CANDIDATE_TAG']+'/'+os.environ['CANDIDATE_FILE']
+          # The installed Android release only accepts APK downloads from its
+          # pinned Supabase storage host. A signed GitHub release is NOT enough.
+          # Never auto-publish an unsupported URL: that disables the install button.
+          from urllib.parse import urlparse
+          trusted_host='ftzmeimurgsqzvmcahhs.supabase.co'
+          existing=obj.get('apkUrl','')
+          existing_host=urlparse(existing).hostname
+          if existing_host!=trusted_host or previous<code:
+              raise SystemExit(
+                  'UPDATE_SOURCE_NOT_APPROVED: install APK '+name+
+                  ' on the original Supabase storage domain and verify its SHA256, '+
+                  'then approve it in hasibat-update.json. Cannot auto-repair without '+
+                  'a trusted hosted artifact; preserving existing metadata.'
+              )
+          # Guard does not replace a trusted URL with an incompatible GitHub link.
+          url=existing
           expected={
-              'versionCode':code,'versionName':name,'apkUrl':url,'originApkUrl':url,
+              'versionCode':code,'versionName':name,'apkUrl':url,'originApkUrl':obj.get('originApkUrl',url),
               'apkSha256':os.environ['CANDIDATE_SHA'],'apkSize':int(os.environ['CANDIDATE_SIZE']),
               'packageName':'com.syrianlira.calculator','requiresUninstall':False
           }
