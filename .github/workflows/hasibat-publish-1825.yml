@@ -1,0 +1,94 @@
+name: Publish verified signed Hasibat AlLira 1.8.25 Radio Sunna APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/hasibat-publish-1825.yml'
+      - 'tools/hasibat/releases/reconstruct_1825.py'
+      - 'tools/hasibat/releases/hasibat_1825_reconstruct.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hasibat-verified-1825-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+
+      - name: Fetch exact previous signed release
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 2 --max-time 170 \
+            "https://github.com/${GITHUB_REPOSITORY}/releases/download/hasibat-v1.8.24/Hasibat-AlLira-v1.8.24.apk" \
+            -o /tmp/Hasibat-AlLira-v1.8.24.apk
+          echo 'd25fd6312a01aae5789dd60d9b1e6b873b82e178fcafa324ff0c458b77aefdbe  /tmp/Hasibat-AlLira-v1.8.24.apk' | sha256sum --check
+
+      - name: Recreate byte-identical previously signed 1.8.25
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/hasibat/releases/reconstruct_1825.py \
+            /tmp/Hasibat-AlLira-v1.8.24.apk \
+            tools/hasibat/releases/hasibat_1825_reconstruct.json \
+            Hasibat-AlLira-v1.8.25.apk
+          echo '7e33b13e78027a27ead931aa1f8bc739e20880598f7fb162d3b6cffb611575d4  Hasibat-AlLira-v1.8.25.apk' | sha256sum --check
+          test "$(stat -c%s Hasibat-AlLira-v1.8.25.apk)" = 11981214
+          unzip -t Hasibat-AlLira-v1.8.25.apk >/dev/null
+
+      - name: Verify original production signer and in-place upgrade identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK_SIGNER="$(find "${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools" -type f -name apksigner | sort -V | tail -1)"
+          AAPT="$(find "${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools" -type f -name aapt | sort -V | tail -1)"
+          test -x "$APK_SIGNER"
+          test -x "$AAPT"
+          "$APK_SIGNER" verify --print-certs Hasibat-AlLira-v1.8.25.apk | tee /tmp/hasibat-1825-signature.txt
+          grep -iq 'ae4461cd1629197505fea7bc540c5c63bac447a40dd66fb57433962f1d8946b5' /tmp/hasibat-1825-signature.txt
+          "$AAPT" dump badging Hasibat-AlLira-v1.8.25.apk | head -1 | tee /tmp/hasibat-1825-package.txt
+          grep -q "package: name='com.syrianlira.calculator' versionCode='38' versionName='1.8.25'" /tmp/hasibat-1825-package.txt
+          unzip -p Hasibat-AlLira-v1.8.25.apk assets/index.html | grep -q 'https://radiosunna.radioca.st/stream'
+          if unzip -p Hasibat-AlLira-v1.8.25.apk assets/index.html | grep -q 'ميراث الأنبياء'; then
+            echo "::error::Previous station still referenced"
+            exit 1
+          fi
+          # The release must remain signed by the same certificate as the installed build.
+          "$APK_SIGNER" verify --print-certs /tmp/Hasibat-AlLira-v1.8.24.apk | grep -iq 'ae4461cd1629197505fea7bc540c5c63bac447a40dd66fb57433962f1d8946b5'
+
+      - name: Publish once; refuse to overwrite any pre-existing release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view hasibat-v1.8.25 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            mkdir -p /tmp/already-published
+            gh release download hasibat-v1.8.25 --repo "$GITHUB_REPOSITORY" \
+              --pattern 'Hasibat-AlLira-v1.8.25.apk' --dir /tmp/already-published
+            cmp -s Hasibat-AlLira-v1.8.25.apk /tmp/already-published/Hasibat-AlLira-v1.8.25.apk
+            echo 'Same signed release already published; no duplicate created'
+            exit 0
+          fi
+          gh release create hasibat-v1.8.25 Hasibat-AlLira-v1.8.25.apk \
+            --repo "$GITHUB_REPOSITORY" \
+            --title 'حاسبة الليرة 1.8.25 — إذاعة السنة Radio Sunna' \
+            --notes 'تحديث حاسبة الليرة 1.8.25 (versionCode 38)، شهادة التوقيع الأصلية نفسها، استبدال إذاعة ميراث الأنبياء بإذاعة السنة. يمكن تثبيت التطبيق فوق إصدار 1.8.24 دون حذفه إذا كانت شهادة التطبيق المثبت مطابقة. بصمة SHA-256: 7e33b13e78027a27ead931aa1f8bc739e20880598f7fb162d3b6cffb611575d4. بعد النشر يجب مزامنة رابط APK على Supabase/Dallalna لإعلان التحديث داخل التطبيق.' \
+            --latest=false
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Hasibat-AlLira-1.8.25-SIGNED-VERIFIED
+          path: Hasibat-AlLira-v1.8.25.apk
+          retention-days: 30
+          if-no-files-found: error
