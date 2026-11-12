@@ -1,0 +1,32 @@
+name: Publish verified signed Hasibat AlLira 1.8.24 App Links APK
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/hasibat-publish-1824.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Download independently signed APK and verify exact identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 1 --max-time 160 'https://qurl.sh/e73a7e39aa21491b/Hasibat-AlLira-v1.8.24-SIGNED.apk' -o /tmp/Hasibat-AlLira-v1.8.24.apk
+          printf '%s  %s\n' 'd25fd6312a01aae5789dd60d9b1e6b873b82e178fcafa324ff0c458b77aefdbe' /tmp/Hasibat-AlLira-v1.8.24.apk | sha256sum -c -
+          test "$(stat -c%s /tmp/Hasibat-AlLira-v1.8.24.apk)" = 11986669
+          unzip -t /tmp/Hasibat-AlLira-v1.8.24.apk >/dev/null
+      - name: Publish official GitHub APK release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create hasibat-v1.8.24 /tmp/Hasibat-AlLira-v1.8.24.apk \
+            --repo ahmadalali010119991-web/Shamna-AI-Android \
+            --title 'حاسبة الليرة 1.8.24 — فتح التطبيق مباشرة من تيليجرام' \
+            --notes 'الإصدار 1.8.24 (build 37)، موقّع بالشهادة الأصلية، يدعم Android App Links لصفحة /hasibat.html ويحافظ على الميزات والبيانات عند التثبيت فوق 1.8.23. بصمة SHA256: d25fd6312a01aae5789dd60d9b1e6b873b82e178fcafa324ff0c458b77aefdbe' \
+            --latest=false
