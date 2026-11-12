@@ -1,9 +1,9 @@
 'use strict';
-/** Source-verified restoration of two native Telegram videos to the original Midan posts.
- * No source video downloads, external CDN tokens, or persistent temporary files.
- * Protected source forwarding is never bypassed.
+/** Source-verified restoration of two public MP4 news videos to original Midan messages.
+ * Read only the public source video, upload via Telegram editMessageMedia, discard bytes.
+ * Never store files or create duplicate Telegram posts.
  */
-const CHAT='@maydan_alkhabar',SOURCE_CHANNEL='@suhebb0';
+const CHAT='@maydan_alkhabar';
 const CHANGES=Object.freeze([
  {target:487,from:47965,needle:'أجبرت الشبيبة',text:'أجبرت الشبيبة الثـ.ـورية الوفد الحكومي على انزال العلم السوري أثناء دخوله الى مدينة القامشلي'},
  {target:491,from:47969,needle:'حسب ماوردني من أحد الأشخاص',text:'|متابعة حسب ماوردني من أحد الأشخاص الذين كانوا مع الوفد الحكومي ... انهم قاموا بإنزال العلم اثناء مصادفة مظاهرة لأنصار قسد في القامشلي وتم إنزال العلم كبادرة حسن نية ومنعاً للأستفزاز'}
@@ -34,8 +34,8 @@ async function checkAdmin(token){
  const me=await api(token,'getMe',{});
  if(!me.ok||!Number.isSafeInteger(me.result?.id))throw Error('Cannot verify bot identity');
  const own=await api(token,'getChatMember',{chat_id:CHAT,user_id:me.result.id});
- if(!own.ok||!['administrator','creator'].includes(own.result?.status)||own.result?.can_delete_messages===false)
-  throw Error('Bot lacks verified channel editing/cleanup access');
+ if(!own.ok||!['administrator','creator'].includes(own.result?.status)||own.result?.can_edit_messages===false)
+  throw Error('Bot lacks channel editing access');
 }
 async function sourceHtml(url){
  const r=await fetch(url,{signal:AbortSignal.timeout(18000),headers:{'user-agent':'MidanAlKhabarBot/retro-audit'}});
@@ -44,36 +44,59 @@ async function sourceHtml(url){
  const chunks=[];let n=0;for await(const c of r.body){n+=c.length;if(n>1800000)throw Error('Telegram page oversized');chunks.push(Buffer.from(c))}
  return Buffer.concat(chunks).toString('utf8');
 }
-async function deleteTemporary(token,id){
- for(let attempt=0;attempt<2;attempt++){
-  try{const r=await api(token,'deleteMessage',{chat_id:CHAT,message_id:id});if(r.ok)return true}catch{}
- }
- return false;
+function publicVideoUrl(source){
+ // Public embedded Telegram video URLs only, extracted from an EXACT source post.
+ const tag=source.match(/<video\b[^>]*\bsrc=(["'])(.*?)\1/i);
+ if(!tag)throw Error('No original public video file in the source post');
+ const url=tag[2].replace(/&amp;/g,'&');
+ let u;try{u=new URL(url)}catch{throw Error('Invalid public video URL')}
+ if(u.protocol!=='https:'||u.port||u.username||u.password||!/^cdn[1-9]\.telesco\.pe$/i.test(u.hostname)||!u.pathname.endsWith('.mp4'))
+  throw Error('Source video host/file is not recognized');
+ return u.href;
+}
+async function getPublicVideo(source){
+ const url=publicVideoUrl(source);
+ // Bounded in-memory download only. No disk, logs of expiring CDN tokens, or cloud storage.
+ const response=await fetch(url,{redirect:'error',signal:AbortSignal.timeout(22000)});
+ if(!response.ok)throw Error('Public video source unavailable: '+response.status);
+ const length=Number(response.headers.get('content-length')||0);
+ const type=String(response.headers.get('content-type')||'');
+ if(length>19*1024*1024||(!type.includes('video/mp4')&&!type.includes('application/octet-stream')))
+  throw Error('Original video size or media type is incompatible');
+ let size=0;const chunks=[];
+ for await(const chunk of response.body){size+=chunk.length;if(size>19*1024*1024)throw Error('Original video exceeded 19 MB');chunks.push(Buffer.from(chunk))}
+ const bytes=Buffer.concat(chunks);chunks.length=0;
+ if(bytes.length<1024||bytes.toString('ascii',4,8)!=='ftyp')throw Error('Invalid MP4 signature');
+ return bytes;
+}
+async function editNativeVideo(token,item,bytes){
+ const meta=caption(item), form=new FormData();
+ const media={type:'video',media:'attach://original_video',caption:meta.value,caption_entities:meta.entities,supports_streaming:true};
+ const button={inline_keyboard:[[{text:'📲 افتح الخبر في ميدان الخبر',url:'https://midan-al-khabar.vercel.app/open.html?source='+encodeURIComponent(meta.source)}]]};
+ form.append('chat_id',CHAT);form.append('message_id',String(item.target));
+ form.append('media',JSON.stringify(media));form.append('reply_markup',JSON.stringify(button));
+ form.append('original_video',new Blob([bytes],{type:'video/mp4'}),'original-source-video.mp4');
+ const response=await fetch('https://api.telegram.org/bot'+token+'/editMessageMedia',
+  {method:'POST',body:form,signal:AbortSignal.timeout(55000)});
+ const output=await response.json().catch(()=>({ok:false,description:'Invalid Telegram response'}));
+ if(!output.ok||!output.result?.video)
+  throw Error('Telegram media edit failed: '+String(output.description||response.status).slice(0,90));
+ return output.result.message_id;
 }
 async function backfillOne(token,item,publicOwn,publicSource){
- let existing=section(publicOwn,'maydan_alkhabar',item.target);
+ const existing=section(publicOwn,'maydan_alkhabar',item.target);
  if(!existing.includes(item.needle))throw Error('Target post '+item.target+' does not match verified source title');
  if(/tgme_widget_message_video|tgme_widget_message_roundvideo|<video\b/.test(existing))
   return {messageId:item.target,status:'already_has_video'};
  const source=section(publicSource,'suhebb0',item.from);
  if(!/tgme_widget_message_video|tgme_widget_message_roundvideo|<video\b/.test(source))
-  throw Error('The original '+item.from+' does not advertise video');
- let forwardedId=null,removed=false;
+  throw Error('The original '+item.from+' has no public video');
+ let bytes=await getPublicVideo(source);
  try{
-  const forwarded=await api(token,'forwardMessage',{chat_id:CHAT,from_chat_id:SOURCE_CHANNEL,message_id:item.from,disable_notification:true});
-  if(!forwarded.ok)throw Error('Source Telegram forwarding forbidden/unavailable: '+String(forwarded.description||forwarded.httpStatus).slice(0,90));
-  forwardedId=forwarded.result?.message_id;
-  const fileId=forwarded.result?.video?.file_id;
-  if(!Number.isSafeInteger(forwardedId)||!fileId)throw Error('Forwarded source is not a native video');
-  const meta=caption(item);
-  const reply_markup={inline_keyboard:[[{text:'📲 افتح الخبر في ميدان الخبر',url:'https://midan-al-khabar.vercel.app/open.html?source='+encodeURIComponent(meta.source)}]]};
-  const edited=await api(token,'editMessageMedia',{chat_id:CHAT,message_id:item.target,
-   media:{type:'video',media:fileId,caption:meta.value,caption_entities:meta.entities,supports_streaming:true},reply_markup});
-  if(!edited.ok||!edited.result?.video)throw Error('Telegram media edit failed: '+String(edited.description||edited.httpStatus).slice(0,90));
-  return {messageId:item.target,status:'edited',videoConfirmed:true};
- }finally{
-  if(forwardedId!==null){removed=await deleteTemporary(token,forwardedId);if(!removed)console.error('Temporary media forward cleanup did not complete, messageId:',forwardedId)}
- }
+  const editedId=await editNativeVideo(token,item,bytes);
+  if(editedId!==item.target)throw Error('Unexpected edited Telegram message ID');
+  return {messageId:item.target,status:'edited',videoConfirmed:true,bytes:bytes.length};
+ }finally{bytes.fill(0);bytes=null}
 }
 module.exports=async function backfillVoices(req,res){
  res.setHeader('Cache-Control','no-store');
@@ -97,3 +120,4 @@ module.exports=async function backfillVoices(req,res){
 module.exports.CHANGES=CHANGES;
 module.exports.caption=caption;
 module.exports.section=section;
+module.exports.publicVideoUrl=publicVideoUrl;
