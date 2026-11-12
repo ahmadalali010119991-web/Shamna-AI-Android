@@ -80,6 +80,19 @@ jobs:
             fi
           fi
 
+      - name: Restore two verified public-source news videos
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          msg="$(jq -r '.head_commit.message // ""' "$GITHUB_EVENT_PATH")"
+          if [[ "$msg" != *"[mkr-videos-487-491]"* ]]; then exit 0; fi
+          token="$(curl --fail --silent --show-error -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=dallalna-telegram-bridge" | jq -r '.value')"
+          test -n "$token" && test "$token" != null
+          result="$(curl --silent --show-error --max-time 155 -X POST -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" --data '{}' "https://dallalna-telegram-bridge.vercel.app/api/status-v2?retroVoices=20261112")"
+          printf '%s\n' "$result" | jq '{ok,result,error}'
+          printf '%s\n' "$result" | jq -e '.ok == true and ([.result[]? | select(.status != "edited" and .status != "already_has_video")] | length == 0)' >/dev/null
+
 # Social button repair: align existing Telegram channel posts with @alislam_almutab_book on both platforms.
 # Editorial test: inside Syria > Syrians abroad/refugees > major Middle East > exceptional world, no unrelated stories.
 
