@@ -1,0 +1,66 @@
+name: Verify Hasibat 1.8.24 release and Android App Links
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-hasibat-app-links.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download official release (do not rebuild or re-sign)
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://github.com/ahmadalali010119991-web/Shamna-AI-Android/releases/download/hasibat-v1.8.24/Hasibat-AlLira-v1.8.24.apk"
+          curl --fail --location --retry 3 --retry-all-errors --max-time 180 "$url" -o /tmp/hasibat.apk
+          test "$(stat -c%s /tmp/hasibat.apk)" = 11986669
+          printf '%s  %s\n' 'd25fd6312a01aae5789dd60d9b1e6b873b82e178fcafa324ff0c458b77aefdbe' /tmp/hasibat.apk | sha256sum -c -
+          unzip -t /tmp/hasibat.apk | tail -1
+      - name: Verify Android package, version and original signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          APKSIGNER="$(find "${ANDROID_HOME:-/opt/android-sdk}" -path '*/build-tools/*/apksigner' | sort -V | tail -1)"
+          AAPT="$(find "${ANDROID_HOME:-/opt/android-sdk}" -path '*/build-tools/*/aapt' | sort -V | tail -1)"
+          test -n "$APKSIGNER" && test -n "$AAPT"
+          "$APKSIGNER" verify --verbose --print-certs /tmp/hasibat.apk | tee /tmp/signature.txt
+          grep -qi 'ae4461cd1629197505fea7bc540c5c63bac447a40dd66fb57433962f1d8946b5' /tmp/signature.txt
+          "$AAPT" dump badging /tmp/hasibat.apk | tee /tmp/badging.txt
+          grep -q "package: name='com.syrianlira.calculator' versionCode='37' versionName='1.8.24'" /tmp/badging.txt
+      - name: Verify production association, landing page and latest APK route
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, urllib.request, hashlib, time
+          host='https://midan-al-khabar.vercel.app'
+          def fetch(path):
+              req=urllib.request.Request(host+path,headers={'User-Agent':'Hasibat-release-verifier/1.0','Cache-Control':'no-cache'})
+              with urllib.request.urlopen(req,timeout=25) as resp:
+                  assert resp.status==200, (path,resp.status)
+                  return resp.read(),resp.headers.get('Content-Type','')
+          raw,typ=fetch('/.well-known/assetlinks.json')
+          entries=json.loads(raw)
+          target=[x['target'] for x in entries if x.get('target',{}).get('package_name')=='com.syrianlira.calculator' and 'delegate_permission/common.handle_all_urls' in x.get('relation',[])]
+          assert target, 'App Link association missing'
+          expected='AE:44:61:CD:16:29:19:75:05:FE:A7:BC:54:0C:5C:63:BA:C4:47:A4:0D:D6:6F:B5:74:33:96:2F:1D:89:46:B5'
+          assert expected in target[0].get('sha256_cert_fingerprints',[]), 'Certificate does not match'
+          page,typ=fetch('/hasibat.html')
+          assert b'<html' in page.lower(), 'Landing page is missing'
+          assert len(page)>500, 'Landing page suspiciously short'
+          print('PASS assetlinks and hasibat landing page; content length:',len(page))
+          PY
+      - name: Preserve verification evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: hasibat-1824-verification-evidence
+          path: |
+            /tmp/signature.txt
+            /tmp/badging.txt
+          if-no-files-found: ignore
