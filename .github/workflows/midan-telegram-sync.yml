@@ -110,6 +110,31 @@ jobs:
           printf '%s\n' "$response" | jq '{ok,status,messageId,videoConfirmed,bytes,error}'
           printf '%s\n' "$response" | jq -e '.ok == true and (.status == "edited" or .status == "already_has_video")' >/dev/null
 
+      - name: One-time original activist video restoration
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          commit_message="$(jq -r '.head_commit.message // ""' "${GITHUB_EVENT_PATH}")"
+          if [[ "$commit_message" != *"[midan-voices-video-backfill-20261112]"* ]]; then
+            echo "No activist video backfill requested in this commit."
+            exit 0
+          fi
+          token="$(curl --fail --silent --show-error \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=dallalna-telegram-bridge" | jq -r '.value')"
+          if [[ -z "$token" || "$token" == "null" ]]; then
+            echo "::error::Cannot obtain verified GitHub OIDC token."
+            exit 1
+          fi
+          response="$(curl --silent --show-error --fail-with-body \
+            --max-time 155 -X POST \
+            -H "Authorization: Bearer ${token}" \
+            -H "Content-Type: application/json" --data '{}' \
+            'https://dallalna-telegram-bridge.vercel.app/api/status-v2?retroVoices=20261112')"
+          printf '%s\n' "$response" | jq '{ok,result,error}'
+          printf '%s\n' "$response" | jq -e '.ok == true and ([.result[]? | select(.status != "edited" and .status != "already_has_video")] | length == 0)' >/dev/null
+
 # Social button repair: align existing Telegram channel posts with @alislam_almutab_book on both platforms.
 # Editorial test: inside Syria > Syrians abroad/refugees > major Middle East > exceptional world, no unrelated stories.
 
