@@ -6,7 +6,7 @@
  */
 const photo=require('./news-original-photo');
 const nativeFetch=globalThis.fetch;
-const MAX_PAGE=1500000,MAX_VIDEO=46*1024*1024,MAX_REMOTE_VIDEO=20*1024*1024;
+const MAX_PAGE=1500000,MAX_VIDEO=46*1024*1024;
 const BASE_TIMEOUT=13000,VIDEO_TIMEOUT=40000;
 const sourceLink=photo.sourceLink;
 function publicUrl(raw,base){
@@ -57,6 +57,8 @@ async function bounded(url,{maxBytes=MAX_PAGE,timeout=BASE_TIMEOUT,accept='text/
       if(!target)throw Error('Unsafe media redirect');continue;
     }
     if(!res.ok)throw Error('Source HTTP '+res.status);
+    const mime=String(res.headers.get('content-type')||'').toLowerCase();
+    if(accept.startsWith('video/') && !mime.includes('video/mp4') && !mime.includes('application/octet-stream'))throw Error('Not a direct playable MP4');
     const contentLength=Number(res.headers.get('content-length')||0);
     if(contentLength>maxBytes)throw Error('Media is larger than upload limit');
     if(mode==='headers'){try{await res.body?.cancel()}catch{};return {url:target,type:res.headers.get('content-type')||'',size:contentLength}}
@@ -73,11 +75,16 @@ function isPlayable(buf,ctype,url){
     (/(?:^|\b)video\/mp4/i.test(ctype)||/\.mp4(?:[?#]|$)/i.test(url))&&
     /ftyp/.test(sig);
 }
-function caption(text){
-  const trimmed=String(text||'').trim();
-  if([...trimmed].length<=950)return {caption:trimmed,remaining:''};
-  const all=[...trimmed],head=all.slice(0,850).join('').trimEnd()+'…';
-  return {caption:head+'\n\nالتفاصيل الكاملة في الرسالة التالية',remaining:all.join('')};
+function caption(text,source){
+  // Preserve user-visible words, not source-link HTML syntax.
+  const full=dec(String(text||'').replace(/<a\b[^>]*>([\s\S]*?)<\/a>/gi,'$1')
+    .replace(/<[^>]*>/g,'').replace(/(?:^|\n)\s*(?:🔗\s*|المصدر\s*[:：]\s*)https:\/\/[^\s]+\s*$/gmu,'').trim());
+  const suffix='\n\n🔗 المصدر';
+  // Telegram caption length and entity offsets are UTF-16 based.
+  const maxCaption=1024-suffix.length;
+  const short=full.length<=maxCaption;
+  const prefix=short?full:full.slice(0,Math.min(830,maxCaption-45)).trimEnd()+'…\nالتفاصيل الكاملة في الرد';
+  return {caption:prefix+suffix,remaining:short?'':full,sourceOffset:prefix.length+2+3};
 }
 function videoTarget(body,url,form){
   const parsed=JSON.parse(JSON.stringify(body));
@@ -89,9 +96,11 @@ function videoTarget(body,url,form){
   form.append('supports_streaming','true');
   return String(url).replace(/\/sendMessage(\?.*)?$/i,'/sendVideo$1');
 }
-function attachCaption(form,fullText){
-  const result=caption(fullText);
+function attachCaption(form,fullText,origin){
+  const result=caption(fullText,origin);
   form.append('caption',result.caption);
+  const linkStart=result.caption.lastIndexOf('المصدر');
+  form.append('caption_entities',JSON.stringify([{type:'text_link',offset:linkStart,length:'المصدر'.length,url:origin}]));
   return result;
 }
 function installed(){
@@ -105,7 +114,7 @@ function installed(){
     let body;try{body=JSON.parse(init.body)}catch{return prior.apply(this,arguments)}
     if(!body||typeof body.text!=='string'||!body.chat_id)return prior.apply(this,arguments);
     const origin=sourceLink(body);if(!origin)return prior.apply(this,arguments);
-    let media,videoUrl;
+    let media;
     try{
       const page=await bounded(origin);
       if(!/text\/html|application\/xhtml/i.test(page.type))return prior.apply(this,arguments);
@@ -113,10 +122,10 @@ function installed(){
       if(!videos.length)return prior.apply(this,arguments);
       for(const candidate of videos.slice(0,3)){
         // Upload only actual MP4. External embedded players are not direct video files.
-        if(!/\.mp4(?:[?#]|$)/i.test(candidate))continue;
+        if(!/\.mp4(?:[?#]|$)/i.test(candidate) && !/\/(?:video|file|media|stream|download)(?:[/?#]|$)/i.test(candidate))continue;
         try{
           const response=await bounded(candidate,{maxBytes:MAX_VIDEO,timeout:VIDEO_TIMEOUT,accept:'video/mp4,video/*'});
-          if(isPlayable(response.buffer,response.type,response.url)){videoUrl=response.url;media=response;break}
+          if(isPlayable(response.buffer,response.type,response.url)){media=response;break}
         }catch(e){console.warn('Video source unavailable:',String(e.message).slice(0,110))}
       }
     }catch(e){console.warn('Video detection unavailable:',String(e.message).slice(0,110));return prior.apply(this,arguments)}
@@ -124,7 +133,7 @@ function installed(){
     let published=false;
     try{
       const form=new FormData();
-      const out=attachCaption(form,body.text);
+      const out=attachCaption(form,body.text,origin);
       const url=videoTarget(body,u,form);
       form.append('video',new Blob([media.buffer],{type:'video/mp4'}),'midan-original-video.mp4');
       const response=await prior.call(this,url,{method:'POST',body:form,signal:AbortSignal.timeout(VIDEO_TIMEOUT+25000)});
@@ -138,8 +147,13 @@ function installed(){
         const messageId=packet.result?.message_id;
         if(Number.isSafeInteger(messageId)){
           const next=String(u);
-          const full={chat_id:body.chat_id,reply_to_message_id:messageId,text:out.remaining};
-          await prior.call(this,next,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(full),signal:AbortSignal.timeout(15000)}).catch(e=>console.warn('Full video text follow-up failed:',String(e.message).slice(0,120)));
+          for(let off=0;off<out.remaining.length;off+=3800){
+            const full={chat_id:body.chat_id,reply_to_message_id:messageId,text:out.remaining.slice(off,off+3800)};
+            try{
+              const reply=await nativeFetch(next,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(full),signal:AbortSignal.timeout(15000)});
+              if(!reply.ok)console.warn('Video text follow-up rejected:',reply.status);
+            }catch(e){console.warn('Full video text follow-up failed:',String(e.message).slice(0,120))}
+          }
         }
       }
       console.info('Midan video published natively', {messageId:packet.result?.message_id,bytes:media.size});
