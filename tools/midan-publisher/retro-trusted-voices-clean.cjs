@@ -77,8 +77,8 @@ function prepare(id,item){
  if(!after.text.trim())throw Error('Empty output message '+id);
  if(after.text.length>(media?1024:4096))throw Error('Corrected text exceeds Telegram limit for '+id);
  // Do not allow editorial rewriting of the article body, only metadata removal.
- const a=before.text.replace(/\s*📌\s*#?متداول\s*/gu,'').replace(/\s+/g,' ');
- const b=after.text.replace(/\s+/g,' ');
+ const a=before.text.replace(/📌\s*#?متداول/gu,' ').replace(/\s+/g,' ').trim();
+ const b=after.text.replace(/\s+/g,' ').trim();
  if(a!==b)throw Error('Changes beyond circulation tag detected for '+id);
  return {id,status:'ready',media,text:after.text,entities:after.entities};
 }
