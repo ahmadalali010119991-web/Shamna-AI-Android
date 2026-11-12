@@ -1,14 +1,14 @@
 {
-  "versionCode": 37,
-  "versionName": "1.8.24",
+  "versionCode": 38,
+  "versionName": "1.8.25",
   "required": false,
   "requiresUninstall": false,
   "url": "https://dallalna.com/install",
-  "apkUrl": "https://ftzmeimurgsqzvmcahhs.supabase.co/storage/v1/object/public/site-assets/b240bd5a-6536-42a3-8453-f309d1a053f1/47e6aa27-22a5-415d-8c89-d83ecb597180.apk",
-  "originApkUrl": "https://github.com/ahmadalali010119991-web/Shamna-AI-Android/releases/download/hasibat-v1.8.24/Hasibat-AlLira-v1.8.24.apk",
-  "apkSha256": "d25fd6312a01aae5789dd60d9b1e6b873b82e178fcafa324ff0c458b77aefdbe",
-  "apkSize": 11986669,
+  "apkUrl": "https://ftzmeimurgsqzvmcahhs.supabase.co/storage/v1/object/public/site-assets/hasibat-al-lira/1.8.25/Hasibat-AlLira-v1.8.25-7e33b13e.apk",
+  "originApkUrl": "https://github.com/ahmadalali010119991-web/Shamna-AI-Android/releases/download/hasibat-v1.8.25/Hasibat-AlLira-v1.8.25.apk",
+  "apkSha256": "7e33b13e78027a27ead931aa1f8bc739e20880598f7fb162d3b6cffb611575d4",
+  "apkSize": 11981214,
   "packageName": "com.syrianlira.calculator",
-  "publishedAt": "2026-11-12T13:55:35Z",
-  "message": "يتوفر تحديث حاسبة الليرة 1.8.24. نزّله مباشرة من الملف المعتمد على دلّالنا وثبّته فوق التطبيق الحالي دون حذف بياناتك."
+  "publishedAt": "2026-11-13T00:00:00Z",
+  "message": "يتوفر تحديث حاسبة الليرة 1.8.25 الذي يتضمن إذاعة السنة. اضغط «تحميل التحديث» وثبّته فوق النسخة الحالية دون حذف التطبيق أو بياناته."
 }
