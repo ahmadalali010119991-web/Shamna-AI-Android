@@ -5,7 +5,7 @@
  * Original news and publisher state remain the source of truth.
  */
 const photo=require('./news-original-photo');
-const nativeFetch=globalThis.fetch;
+const nativeFetch=globalThis.__MIDAN_NEWS_RAW_FETCH||globalThis.fetch;
 const MAX_PAGE=1500000,MAX_VIDEO=46*1024*1024;
 const BASE_TIMEOUT=13000,VIDEO_TIMEOUT=40000;
 const sourceLink=photo.sourceLink;
@@ -121,8 +121,8 @@ function installed(){
       const videos=videoCandidates(page.buffer.toString('utf8'),page.url);
       if(!videos.length)return prior.apply(this,arguments);
       for(const candidate of videos.slice(0,3)){
-        // Upload only actual MP4. External embedded players are not direct video files.
-        if(!/\.mp4(?:[?#]|$)/i.test(candidate) && !/\/(?:video|file|media|stream|download)(?:[/?#]|$)/i.test(candidate))continue;
+        // Try only video candidates advertised by the article itself.
+        // Check Content-Type and MP4 signature before accepting opaque CDN URLs.
         try{
           const response=await bounded(candidate,{maxBytes:MAX_VIDEO,timeout:VIDEO_TIMEOUT,accept:'video/mp4,video/*'});
           if(isPlayable(response.buffer,response.type,response.url)){media=response;break}
