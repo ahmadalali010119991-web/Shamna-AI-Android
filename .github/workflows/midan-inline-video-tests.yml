@@ -1,0 +1,23 @@
+name: Verify Midan inline source video safety
+on:
+  push:
+    branches: [main]
+    paths:
+      - "tools/midan-publisher/article-video-api.cjs"
+      - "tools/midan-publisher/article-video-api.test.cjs"
+      - "tools/midan-publisher/video-inline.js"
+      - ".github/workflows/midan-inline-video-tests.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+      - run: node --test tools/midan-publisher/article-video-api.test.cjs
+      - run: node --check tools/midan-publisher/video-inline.js
