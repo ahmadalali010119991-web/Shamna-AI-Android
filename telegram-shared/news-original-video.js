@@ -14,26 +14,26 @@ function publicUrl(raw,base){
     const u=new URL(raw,base),host=u.hostname.toLowerCase();
     if(u.protocol!=='https:'||u.username||u.password||u.port||!/^[a-z0-9.-]+$/.test(host)||
       !host.includes('.')||host==='localhost'||host.endsWith('.local')||host.endsWith('.internal')||
-      /^\\d+\\.\\d+\\.\\d+\\.\\d+$/.test(host)||host.includes('..')||host.endsWith('.test'))return null;
+      /^\d+\.\d+\.\d+\.\d+$/.test(host)||host.includes('..')||host.endsWith('.test'))return null;
     return u.href;
   }catch{return null}
 }
 function dec(s){return String(s||'').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;|&#x27;|&apos;/gi,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>')}
-function attrs(s){const r={};for(const m of String(s).matchAll(/([\\w:-]+)\\s*=\\s*(["'])([\\s\\S]*?)\\2/g))r[m[1].toLowerCase()]=dec(m[3]);return r}
+function attrs(s){const r={};for(const m of String(s).matchAll(/([\w:-]+)\s*=\s*(["'])([\s\S]*?)\2/g))r[m[1].toLowerCase()]=dec(m[3]);return r}
 function videoCandidates(html,base){
   const result=[],add=x=>{const url=publicUrl(dec(x),base);if(url&&!result.includes(url))result.push(url)};
-  for(const m of String(html).matchAll(/<meta\\b[^>]*>/gi)){
+  for(const m of String(html).matchAll(/<meta\b[^>]*>/gi)){
     const x=attrs(m[0]),key=(x.property||x.name||x.itemprop||'').toLowerCase();
     if(['og:video','og:video:url','og:video:secure_url','twitter:player:stream','video','contenturl'].includes(key))add(x.content);
   }
-  for(const m of String(html).matchAll(/<(?:video|source)\\b[^>]*>/gi)){const x=attrs(m[0]);add(x.src)}
-  for(const m of String(html).matchAll(/<script\\b[^>]*type=["']application\\/ld\\+json["'][^>]*>([\\s\\S]*?)<\\/script>/gi)){
+  for(const m of String(html).matchAll(/<(?:video|source)\b[^>]*>/gi)){const x=attrs(m[0]);add(x.src)}
+  for(const m of String(html).matchAll(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)){
     try{
       const root=JSON.parse(m[1]),stack=Array.isArray(root)?root:[root];
       while(stack.length){
         const item=stack.pop();if(!item||typeof item!=='object')continue;
         if(Array.isArray(item)){stack.push(...item);continue}
-        if(String(item['@type']||'').includes('VideoObject')){add(item.contentUrl);if(item.embedUrl&&/\\.(?:mp4|mov)(?:[?#]|$)/i.test(item.embedUrl))add(item.embedUrl)}
+        if(String(item['@type']||'').includes('VideoObject')){add(item.contentUrl);if(item.embedUrl&&/\.(?:mp4|mov)(?:[?#]|$)/i.test(item.embedUrl))add(item.embedUrl)}
         if(item['@graph'])stack.push(item['@graph']);
         if(item.video)stack.push(item.video);
         if(item.associatedMedia)stack.push(item.associatedMedia);
@@ -41,8 +41,8 @@ function videoCandidates(html,base){
     }catch{}
   }
   // A public Telegram video widget sometimes provides an HTML5 source.
-  if(/(?:^|\\.)t\\.me$|(?:^|\\.)telegram\\.me$/.test(new URL(base).hostname)){
-    for(const m of String(html).matchAll(/<(?:video|source)\\b[^>]*?src=(["'])([^"']+)\\1/gi))add(m[2]);
+  if(/(?:^|\.)t\.me$|(?:^|\.)telegram\.me$/.test(new URL(base).hostname)){
+    for(const m of String(html).matchAll(/<(?:video|source)\b[^>]*?src=(["'])([^"']+)\1/gi))add(m[2]);
   }
   return result;
 }
@@ -70,14 +70,14 @@ async function bounded(url,{maxBytes=MAX_PAGE,timeout=BASE_TIMEOUT,accept='text/
 function isPlayable(buf,ctype,url){
   const sig=buf.subarray(4,12).toString('latin1');
   return buf.length>128&&
-    (/(?:^|\\b)video\\/mp4/i.test(ctype)||/\\.mp4(?:[?#]|$)/i.test(url))&&
+    (/(?:^|\b)video\/mp4/i.test(ctype)||/\.mp4(?:[?#]|$)/i.test(url))&&
     /ftyp/.test(sig);
 }
 function caption(text){
   const trimmed=String(text||'').trim();
   if([...trimmed].length<=950)return {caption:trimmed,remaining:''};
   const all=[...trimmed],head=all.slice(0,850).join('').trimEnd()+'…';
-  return {caption:head+'\\n\\nالتفاصيل الكاملة في الرسالة التالية',remaining:all.join('')};
+  return {caption:head+'\n\nالتفاصيل الكاملة في الرسالة التالية',remaining:all.join('')};
 }
 function videoTarget(body,url,form){
   const parsed=JSON.parse(JSON.stringify(body));
@@ -87,7 +87,7 @@ function videoTarget(body,url,form){
     form.append(k,typeof parsed[k]==='object'?JSON.stringify(parsed[k]):String(parsed[k]));
   }
   form.append('supports_streaming','true');
-  return String(url).replace(/\\/sendMessage(\\?.*)?$/i,'/sendVideo$1');
+  return String(url).replace(/\/sendMessage(\?.*)?$/i,'/sendVideo$1');
 }
 function attachCaption(form,fullText){
   const result=caption(fullText);
@@ -100,7 +100,7 @@ function installed(){
   const prior=globalThis.fetch;
   globalThis.fetch=async function(input,init){
     const u=typeof input==='string'?input:input?.url;
-    if(!/^https:\\/\\/api\\.telegram\\.org\\/bot[^/]+\\/sendMessage(?:\\?.*)?$/i.test(String(u||''))||
+    if(!/^https:\/\/api\.telegram\.org\/bot[^/]+\/sendMessage(?:\?.*)?$/i.test(String(u||''))||
       typeof init?.body!=='string')return prior.apply(this,arguments);
     let body;try{body=JSON.parse(init.body)}catch{return prior.apply(this,arguments)}
     if(!body||typeof body.text!=='string'||!body.chat_id)return prior.apply(this,arguments);
@@ -108,12 +108,12 @@ function installed(){
     let media,videoUrl;
     try{
       const page=await bounded(origin);
-      if(!/text\\/html|application\\/xhtml/i.test(page.type))return prior.apply(this,arguments);
+      if(!/text\/html|application\/xhtml/i.test(page.type))return prior.apply(this,arguments);
       const videos=videoCandidates(page.buffer.toString('utf8'),page.url);
       if(!videos.length)return prior.apply(this,arguments);
       for(const candidate of videos.slice(0,3)){
         // Upload only actual MP4. External embedded players are not direct video files.
-        if(!/\\.mp4(?:[?#]|$)/i.test(candidate))continue;
+        if(!/\.mp4(?:[?#]|$)/i.test(candidate))continue;
         try{
           const response=await bounded(candidate,{maxBytes:MAX_VIDEO,timeout:VIDEO_TIMEOUT,accept:'video/mp4,video/*'});
           if(isPlayable(response.buffer,response.type,response.url)){videoUrl=response.url;media=response;break}
