@@ -22,6 +22,22 @@ jobs:
         with:
           ref: hasibat-al-lira
           persist-credentials: true
+      - name: Synchronize exact public Dallalna APK before metadata reconciliation
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Authoritative published source is Dallalna's public app_downloads entry.
+          # The script verifies APK package, version code, pinned signing cert and
+          # native update guards before allowing any manifest change.
+          python3 -m py_compile scripts/sync_hasibat_from_dallalna.py
+          python3 scripts/sync_hasibat_from_dallalna.py
+          if ! git diff --quiet -- hasibat-update.json; then
+            git config user.name 'hasibat-update-guardian[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add hasibat-update.json
+            git commit -m 'fix(hasibat): synchronize verified Dallalna APK update metadata'
+            git push origin HEAD:hasibat-al-lira
+          fi
       - name: Identify newest published Hasibat release
         env:
           GH_TOKEN: ${{ github.token }}
