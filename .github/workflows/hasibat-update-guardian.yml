@@ -1,0 +1,133 @@
+name: Hasibat update self-healing guardian
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/hasibat-update-guardian.yml'
+  schedule:
+    - cron: '17 */4 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: hasibat-update-metadata-guardian
+  cancel-in-progress: false
+jobs:
+  verify-and-repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - name: Checkout update metadata branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: hasibat-al-lira
+          persist-credentials: true
+      - name: Identify newest published Hasibat release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" > /tmp/hasibat-releases.json
+          python3 - <<'PY'
+          import json,os,re
+          from pathlib import Path
+          src=Path('/tmp/hasibat-releases.json').read_text()
+          # Pagination on a single repo is unlikely, but gh --paginate may concatenate JSON arrays.
+          decoder=json.JSONDecoder();items=[];i=0
+          while i<len(src):
+              while i<len(src) and src[i].isspace():i+=1
+              if i==len(src):break
+              obj,j=decoder.raw_decode(src,i)
+              items.extend(obj if isinstance(obj,list) else [obj]);i=j
+          valid=[]
+          for r in items:
+              if r.get('draft') or r.get('prerelease'):continue
+              tag=r.get('tag_name','')
+              m=re.fullmatch(r'hasibat-v(\d+)\.(\d+)\.(\d+)',tag)
+              if not m:continue
+              filename='Hasibat-AlLira-v'+'.'.join(m.groups())+'.apk'
+              if not any(a.get('name')==filename and a.get('size',0)>5000000 for a in r.get('assets',[])):continue
+              valid.append((tuple(map(int,m.groups())),tag,filename))
+          if not valid:raise SystemExit('No verified-format published Hasibat release asset')
+          version,tag,filename=max(valid)
+          with open(os.environ['GITHUB_ENV'],'a') as f:
+              f.write('CANDIDATE_TAG='+tag+'\n')
+              f.write('CANDIDATE_FILE='+filename+'\n')
+              f.write('CANDIDATE_VERSION='+'.'.join(map(str,version))+'\n')
+          print('Discovered candidate:',tag)
+          PY
+      - name: Download candidate and verify real APK identity and original signing certificate
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/hasibat-verified
+          gh release download "$CANDIDATE_TAG" --repo "$GITHUB_REPOSITORY" --pattern "$CANDIDATE_FILE" --dir /tmp/hasibat-verified
+          apk="/tmp/hasibat-verified/$CANDIDATE_FILE"
+          unzip -t "$apk" >/dev/null
+          APKSIGNER="$(find "${ANDROID_HOME:-/usr/local/lib/android/sdk}" -type f -path '*/build-tools/*/apksigner' | sort -V | tail -1)"
+          AAPT="$(find "${ANDROID_HOME:-/usr/local/lib/android/sdk}" -type f -path '*/build-tools/*/aapt' | sort -V | tail -1)"
+          test -n "$APKSIGNER" && test -n "$AAPT"
+          "$APKSIGNER" verify --print-certs "$apk" > /tmp/hasibat-signature.txt
+          grep -Eiq 'ae4461cd1629197505fea7bc540c5c63bac447a40dd66fb57433962f1d8946b5' /tmp/hasibat-signature.txt
+          "$AAPT" dump badging "$apk" > /tmp/hasibat-badging.txt
+          python3 - <<'PY'
+          import os,re
+          from pathlib import Path
+          text=Path('/tmp/hasibat-badging.txt').read_text()
+          m=re.search(r"package: name='([^']+)' versionCode='(\d+)' versionName='([^']+)'",text)
+          if not m:raise SystemExit('Missing APK metadata')
+          package,code,name=m.groups()
+          if package!='com.syrianlira.calculator' or name!=os.environ['CANDIDATE_VERSION'] or int(code)<37:
+              raise SystemExit(f'Invalid package/version/build: {package}, {name}, {code}')
+          with open(os.environ['GITHUB_ENV'],'a') as f:f.write('CANDIDATE_CODE='+code+'\n')
+          PY
+          printf 'CANDIDATE_SHA=%s\n' "$(sha256sum "$apk" | cut -d' ' -f1)" >> "$GITHUB_ENV"
+          printf 'CANDIDATE_SIZE=%s\n' "$(stat -c%s "$apk")" >> "$GITHUB_ENV"
+      - name: Repair stale metadata, never downgrade and never publish an unverified package
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path('hasibat-update.json')
+          obj=json.loads(p.read_text(encoding='utf-8')) if p.exists() else {}
+          code=int(os.environ['CANDIDATE_CODE'])
+          previous=int(obj.get('versionCode',0))
+          if previous>code:
+              raise SystemExit(f'Metadata code {previous} exceeds latest signed public release {code}; refusing downgrade')
+          name=os.environ['CANDIDATE_VERSION']
+          url='https://github.com/'+os.environ['GITHUB_REPOSITORY']+'/releases/download/'+os.environ['CANDIDATE_TAG']+'/'+os.environ['CANDIDATE_FILE']
+          expected={
+              'versionCode':code,'versionName':name,'apkUrl':url,'originApkUrl':url,
+              'apkSha256':os.environ['CANDIDATE_SHA'],'apkSize':int(os.environ['CANDIDATE_SIZE']),
+              'packageName':'com.syrianlira.calculator','requiresUninstall':False
+          }
+          changed=any(obj.get(k)!=v for k,v in expected.items())
+          if changed:
+              obj.update(expected)
+              obj.setdefault('url','https://dallalna.com/install')
+              obj.setdefault('required',False)
+              obj['message']='يتوفر تحديث حاسبة الليرة '+name+'؛ حمّله وثبّته فوق النسخة الحالية دون حذف بياناتك.'
+              p.write_text(json.dumps(obj,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+              print('Repaired release metadata for',name)
+          else:print('Release metadata is healthy:',name)
+          PY
+          if ! git diff --quiet -- hasibat-update.json; then
+            git config user.name 'hasibat-update-guardian[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add hasibat-update.json
+            git commit -m "fix(hasibat): automatically reconcile signed release metadata"
+            git push origin HEAD:hasibat-al-lira
+          fi
+      - name: Preserve diagnostics even if release verification fails
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: hasibat-update-guardian-evidence
+          path: |
+            /tmp/hasibat-signature.txt
+            /tmp/hasibat-badging.txt
+          if-no-files-found: ignore
