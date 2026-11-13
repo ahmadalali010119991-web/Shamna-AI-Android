@@ -40,6 +40,7 @@ async function handoff(raw,{store,recover=[],website,telegram,validate,allowPhot
       // Never exhaust a route without explicit proof that it cannot recover.
       state.attempts[adapter.id]={status:'retry',reason:'NO_VERIFIED_MEDIA'};
      }catch(e){
+      if(e?.message==='ARTICLE_LEASE_LOST')throw e;
       state.attempts[adapter.id]={status:e?.permanent===true?'exhausted':'retry',
        reason:String(e?.message||e).slice(0,100)};
      }
@@ -69,6 +70,7 @@ async function handoff(raw,{store,recover=[],website,telegram,validate,allowPhot
     if(!outcome?.ok||!outcome.externalId)throw Error('UNCONFIRMED_'+dest);
     state.destinations=mergeDestinations(state.destinations,{[dest]:{status:'sent',externalId:String(outcome.externalId)}});
    }catch(e){
+    if(e?.message==='ARTICLE_LEASE_LOST')throw e;
     state.destinations=mergeDestinations(state.destinations,{[dest]:{status:'retry',reason:String(e?.message||e).slice(0,100)}});
    }
    await persist();
