@@ -1,4 +1,5 @@
 'use strict';
+const {createHash}=require('node:crypto');
 /**
  * Persist validated video under an immutable content-addressed path.
  * put is a server-only storage callback. A signed or public playable media
@@ -17,6 +18,7 @@ function createVerifiedVideoStore({put,storagePrefix='midan-media/videos',allowe
     !(video.bytes instanceof Uint8Array)||video.bytes.length!==video.size||
     !['video/mp4','video/webm','video/quicktime'].includes(video.contentType))
     throw Error('VERIFIED_VIDEO_REQUIRED');
+   if(createHash('sha256').update(video.bytes).digest('hex')!==video.sha256)throw Error('MEDIA_HASH_MISMATCH');
    const suffix=video.contentType==='video/webm'?'.webm':video.contentType==='video/quicktime'?'.mov':'.mp4';
    const path=storagePrefix+'/'+video.sha256+suffix;
    const stored=await put(path,new Blob([video.bytes],{type:video.contentType}),{
