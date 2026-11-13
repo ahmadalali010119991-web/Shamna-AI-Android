@@ -21,7 +21,7 @@ jobs:
       - name: End-to-end dynamic-card, real PNG and download test
         shell: bash
         run: |
-          node <<'JS'
+          node <<'JS' > /tmp/midan_v3_e2e.log 2>&1
           const {chromium}=require('playwright');
           (async()=>{
            let opts={headless:true};const fs=require('fs');const feature=fs.readFileSync('midan-site-snapshot/feature/news-card-studio.js','utf8');
@@ -72,12 +72,16 @@ jobs:
            }finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
+          rc=$?
+          cat /tmp/midan_v3_e2e.log
+          cp /tmp/midan_v3_e2e.log midan-site-snapshot/feature/v3-e2e-log.txt
+          exit "$rc"
       - name: Save passing test marker
         run: |
           set -euo pipefail
           printf 'PASS: new Midan V3 layout: 3 source logos, 4 formats x 2 media modes, browser PNG save; %s\n' "$(date -u -Iseconds)" > midan-site-snapshot/feature/production-e2e.txt
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add midan-site-snapshot/feature/production-e2e.txt
+          git add midan-site-snapshot/feature/production-e2e.txt midan-site-snapshot/feature/v3-e2e-log.txt
           git commit -m 'test(midan): live image-card browser E2E passed'
           git push
