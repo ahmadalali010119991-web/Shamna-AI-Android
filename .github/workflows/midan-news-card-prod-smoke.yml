@@ -25,10 +25,17 @@ jobs:
           curl -fsSL --retry 2 "$base/news-card-studio.js" -o /tmp/news-card-studio.js
           node --check /tmp/news-card-studio.js
           grep -q 'MidanNewsCardStudioLoaded' /tmp/news-card-studio.js
+          grep -q 'function mcsTextBox' /tmp/news-card-studio.js
+          grep -q 'source-logos/bbc.png' /tmp/news-card-studio.js
+          cmp midan-site-snapshot/feature/news-card-studio.js /tmp/news-card-studio.js
+          for logo in sana aljazeera suhaib bbc; do
+            curl -fsSL --retry 2 "$base/source-logos/$logo.png" -o "/tmp/$logo.png"
+            test "$(wc -c < "/tmp/$logo.png")" -gt 100
+          done
           curl -fsSL --retry 2 "$base/assets/icon-192-v2.png" -o /tmp/midan-icon.png
           test "$(wc -c </tmp/midan-icon.png)" -gt 1000
           mkdir -p midan-site-snapshot/feature
-          printf 'PASS: production app homepage, live news-card script, JS syntax, icon; %s\n' "$(date -u -Iseconds)" > midan-site-snapshot/feature/production-smoke.txt
+          printf 'PASS: V3 live UI, exact source code, syntax, 4 verified source logo PNGs; %s\n' "$(date -u -Iseconds)" > midan-site-snapshot/feature/production-smoke.txt
       - name: Commit success report
         shell: bash
         run: |
