@@ -46,3 +46,12 @@ The full locally-tested integration scaffold is distributed separately; this PR 
 - \`signed-handoff.cjs\` adds an HMAC-SHA256 protocol with a 5-minute clock window and per-request random nonce. Verification requires a **durable, atomic** nonce consumer; an in-memory Set is never adequate for serverless production and is used only in unit tests.
 - Signing key and bridge token must remain server-only and must never be printed or embedded in the website frontend.
 - The source repository for this PR does **not** contain the existing Vercel production bridge/site deployments. Merging PR #1 alone will not activate the new protocol.
+
+## Signed HTTP ingress and durable admission (staged)
+- handoff-http-handler.cjs builds an HTTP POST ingress handler that validates raw-body HMAC signatures, rejects replay, clock skew and tampering, and only acknowledges after durable enqueue.
+- ingress-persistence.cjs and migrations/002_media_ingress.sql provide atomic nonce insert and idempotent enqueue on a Supabase Postgres database. Not applied to production.
+- An enqueue failure needs a newly signed nonce on the same article key before retrying.
+- HTTP middleware must preserve the exact raw request bytes for signature verification.
+- Never expose the service-role key or shared signing secret to the browser.
+- A queued job is NOT a published news article. Actual site/Telegram publishing, media extraction, and reconciliation require additional production integration.
+- These are staged library modules, not deployed HTTP endpoints on either existing Vercel application.
