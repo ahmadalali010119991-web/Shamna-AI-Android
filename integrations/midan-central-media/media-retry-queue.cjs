@@ -41,6 +41,8 @@ function createMediaRetryQueue({url,serviceRoleKey,fetcher=globalThis.fetch,time
   },
   async complete(jobKey,leaseToken,{messageId,fileId=null}={}){
    if(!Number.isSafeInteger(messageId)||messageId<=0)throw Error('CONFIRMED_TELEGRAM_MESSAGE_ID_REQUIRED');
+   if(typeof fileId!=='string'||fileId.trim().length<8||fileId.length>512)
+    throw Error('CONFIRMED_TELEGRAM_VIDEO_FILE_ID_REQUIRED');
    return rpc('midan_retry_complete',{p_key:jobKey,p_token:leaseToken,
      p_telegram_message_id:messageId,p_telegram_file_id:fileId});
   },
