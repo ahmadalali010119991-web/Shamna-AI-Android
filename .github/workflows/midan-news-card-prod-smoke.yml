@@ -22,6 +22,18 @@ jobs:
           grep -q 'id="newsList"' /tmp/midan-app.html
           grep -q 'id="modalContent"' /tmp/midan-app.html
           grep -q '/news-card-studio.js' /tmp/midan-app.html
+          grep -q '/media-click-fix.js' /tmp/midan-app.html
+          grep -q '/field-feed-enhancer.js' /tmp/midan-app.html
+          for asset in media-click-fix.js field-feed-enhancer.js source-images.js sports-view.js; do
+            curl -fsSL --retry 2 "$base/$asset" -o "/tmp/$asset"
+            node --check "/tmp/$asset"
+          done
+          grep -q 'voice-post' /tmp/field-feed-enhancer.js
+          grep -q 'midan-media-viewer' /tmp/media-click-fix.js
+          grep -q "document.createElement('button')" /tmp/source-images.js
+          grep -q 'اقرأ المصدر الأصلي' /tmp/sports-view.js
+          curl -fsSL --retry 2 'https://raw.githubusercontent.com/ahmadalali010119991-web/Shamna-AI-Android/main/midan-site-snapshot/data/field-news-10h.json' -o /tmp/field-news.json
+          node -e 'const x=require("/tmp/field-news.json");if(x.schema!==2||!Array.isArray(x.items)||!x.items.some(p=>p.url==="https://t.me/suhebb0/47987"&&p.fullText.includes("محاسبة")))process.exit(1)'
           curl -fsSL --retry 2 "$base/news-card-studio.js" -o /tmp/news-card-studio.js
           node --check /tmp/news-card-studio.js
           grep -q 'MidanNewsCardStudioLoaded' /tmp/news-card-studio.js
@@ -35,7 +47,7 @@ jobs:
           curl -fsSL --retry 2 "$base/assets/icon-192-v2.png" -o /tmp/midan-icon.png
           test "$(wc -c </tmp/midan-icon.png)" -gt 1000
           mkdir -p midan-site-snapshot/feature
-          printf 'PASS: V3 live UI, exact source code, syntax, 4 verified source logo PNGs; %s\n' "$(date -u -Iseconds)" > midan-site-snapshot/feature/production-smoke.txt
+          printf 'PASS: V3 live UI, in-app media viewer, full-text news recovery, source-only links, 4 source logos; %s\n' "$(date -u -Iseconds)" > midan-site-snapshot/feature/production-smoke.txt
       - name: Commit success report
         shell: bash
         run: |
