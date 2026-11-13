@@ -19,6 +19,12 @@ const allow="const valid=video?['video/mp4','video/webm','video/quicktime']:";
 change(allow,"const valid=video?['video/mp4','video/webm','video/quicktime','binary/octet-stream','application/octet-stream']:");
 const bytes="const buf=new Uint8Array(arr);";
 change(bytes,bytes+"\n if(video&&(type==='binary/octet-stream'||type==='application/octet-stream')){\n  if(buf.length<16||String.fromCharCode(...buf.slice(4,8))!=='ftyp')\n   throw Error('INVALID_VIDEO_SIGNATURE');\n  type='video/mp4';\n }");
+// A successful Telegram HTTP response is not proof a VIDEO was attached.
+// Confirm the actual Telegram file_id before the idempotency queue marks sent.
+change("  return data.result;\n }",
+ "  if(method==='sendVideo'&&!data.result?.video?.file_id)throw Error('TELEGRAM_VIDEO_RECEIPT_MISSING');\\n".replace('\\n','\n')+
+ "  if(method==='sendPhoto'&&!data.result?.photo?.some(p=>!!p.file_id))throw Error('TELEGRAM_PHOTO_RECEIPT_MISSING');\\n".replace('\\n','\n')+
+ "  return data.result;\\n }".replace('\\n','\n'));
 const child=new Module(filename,module);
 child.filename=filename;
 child.paths=module.paths;
