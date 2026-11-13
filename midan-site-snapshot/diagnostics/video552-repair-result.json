@@ -1,0 +1,7 @@
+{
+  "attemptDate": "2026-11-13T08:20:47.491Z",
+  "targetMessageId": 552,
+  "originalMessage": "https://t.me/suhebb0/47987",
+  "updatedExistingMessage": false,
+  "reason": "Telegram bot token not configured as GitHub Actions secret"
+}
