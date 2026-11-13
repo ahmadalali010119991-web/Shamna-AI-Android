@@ -161,7 +161,30 @@ async function render(item,format){
  mcsSourceFooter(g,item,identity,logo,{x:0,y:h-footer,w:w,h:footer},!land);
  return {canvas:c,warning:warning,sourceLogo:identity.key,source:identity.name,layout:{header:header,footer:footer,width:w,height:h,photo:!!img}};
 }
-function article(node){var title=node.querySelector("h1,h2,h3,.news-title,.article-title,[data-title]"),img=node.querySelector("img[data-original-src],img[data-highres],img[data-fullsize],.news-media img,.article-image img,img"),sum=node.querySelector(".card-desc,.news-summary,.article-summary,.article-body,p"),src=node.querySelector(".source-name,.detail-source"),date=node.querySelector("time,[datetime]"),meta=node.querySelector(".card-meta");var linked=(typeof articles!=="undefined"&&Array.isArray(articles)&&node.dataset.article)?articles.find(function(a){return String(a.id)===String(node.dataset.article)}):null;var photo=img?(img.dataset.originalSrc||img.dataset.highres||img.dataset.fullsize||img.dataset.original||img.currentSrc||img.src):"";if(!photo&&linked)photo=linked.imageUrl||linked.image||linked.thumbnailUrl||"";return {title:clean(title?.textContent||node.dataset.title),summary:clean(sum?.textContent),source:clean(src?.textContent),sourceUrl:(linked?.url||src?.querySelector?.("a[href]")?.href||node.querySelector?.(".source-link[href]")?.href||""),date:date?.dateTime||clean(date?.textContent),category:clean(meta?.textContent).slice(0,24)||"آخر الأخبار",photo:photo}}
+function article(node){
+ var sports=node.matches(".m-sports-card"),voice=node.matches(".voice-post");
+ var title=node.querySelector("h1,h2,h3,.news-title,.article-title,[data-title]");
+ var img=node.querySelector("img[data-original-src],img[data-highres],img[data-fullsize],.article-source-media img,.news-media img,.article-image img,img");
+ var sum=node.querySelector(".card-desc,.news-summary,.article-summary,.article-body,p");
+ var src=node.querySelector(".source-name,.detail-source"),date=node.querySelector("time,[datetime]"),meta=node.querySelector(".card-meta");
+ var linked=(typeof articles!=="undefined"&&Array.isArray(articles)&&node.dataset.article)?articles.find(function(a){return String(a.id)===String(node.dataset.article)}):null;
+ var photo=img?(img.dataset.originalSrc||img.dataset.highres||img.dataset.fullsize||img.dataset.original||img.currentSrc||img.src):"";
+ if(!photo&&linked)photo=linked.imageUrl||linked.image||linked.thumbnailUrl||"";
+ var source=clean(src?.textContent),sourceUrl=linked?.url||src?.querySelector?.("a[href]")?.href||node.querySelector?.(".source-link[href],.m-sports-source[href],.card-foot a[href]")?.href||"";
+ var dateValue=date?.dateTime||clean(date?.textContent);
+ if(sports){
+  var sportsMeta=clean(node.querySelector(".m-sports-meta")?.textContent);
+  source=clean(sportsMeta.split(/\s+•\s+/)[0])||source||"مصدر الخبر الرياضي";
+  var sportsDate=sportsMeta.split(/\s+•\s+/).slice(1).join(" • ");
+  if(!dateValue&&sportsDate)dateValue=sportsDate;
+ }
+ if(voice){
+  var author=clean(node.querySelector(".voice-byline")?.textContent).replace(/^✍️\s*/,"");
+  if(author&&(!source||/^(?:مصدر خاص|مصدر غير محدد|منشور من المصدر)$/i.test(source)))source=author;
+ }
+ var category=sports?"الرياضة":voice?"الميدان السوري":clean(meta?.textContent).slice(0,24)||"آخر الأخبار";
+ return {title:clean(title?.textContent||node.dataset.title),summary:clean(sum?.textContent),source:source,date:dateValue,sourceUrl:sourceUrl,category:category,photo:photo};
+}
 var modal,model,current=null,generated=null,working=false;
 function open(data){current=data;if(!modal){modal=document.createElement("div");modal.className="mcs-modal";modal.hidden=true;modal.innerHTML='<div class="mcs-shade" data-mcs-close></div><section class="mcs-box" role="dialog" aria-modal="true" aria-label="إنشاء صورة الخبر"><div class="mcs-top"><strong>تصميم صورة الخبر • ميدان الخبر</strong><button class="mcs-close" type="button" data-mcs-close>×</button></div><div class="mcs-control"><label for="mcs-size">المقاس</label><select id="mcs-size"><option value="portrait">منشور عمودي 4:5</option><option value="square">مربع 1:1</option><option value="story">ستوري 9:16</option><option value="wide">أفقي 16:9</option></select></div><p class="mcs-msg" id="mcs-msg"></p><img class="mcs-preview" id="mcs-preview" alt="بطاقة الخبر المصممة"><div class="mcs-actions"><button id="mcs-save" type="button">تحميل الصورة</button><button id="mcs-share" type="button">مشاركة الصورة</button></div><p class="mcs-note">تظهر جهة المصدر عند توفرها؛ البطاقة ليست تحققًا مستقلًا من صحة الخبر.</p></section>';document.body.append(modal);
 modal.querySelectorAll("[data-mcs-close]").forEach(function(n){n.addEventListener("click",function(){modal.hidden=true})});
@@ -171,11 +194,38 @@ async function refresh(){if(working||!current)return;working=true;var msg=modal.
 function toData(c){var data=c.toDataURL("image/png");for(var i=0;i<5&&data.length>7200000;i++){var d=document.createElement("canvas");d.width=Math.max(600,Math.round(c.width*.85));d.height=Math.max(600,Math.round(c.height*.85));d.getContext("2d").drawImage(c,0,0,d.width,d.height);c=d;data=c.toDataURL("image/png")}return data}
 function download(data){var a=document.createElement("a");a.href=data;a.download="midan-al-khabar-"+Date.now()+".png";document.body.append(a);a.click();a.remove()}
 async function act(kind){if(!generated||working)return;var btn=modal.querySelector(kind==="share"?"#mcs-share":"#mcs-save");btn.disabled=true;try{var data=toData(generated.canvas),b=window.AndroidBridge,fn=kind==="share"?"shareImagePng":"saveImagePng";if(b&&typeof b[fn]==="function"&&data.length<7400000){b[fn](data);return}if(kind==="share"&&navigator.share&&navigator.canShare){var blob=await(await fetch(data)).blob(),file=new File([blob],"midan-al-khabar.png",{type:"image/png"});if(navigator.canShare({files:[file]})){await navigator.share({title:BRAND,files:[file]});return}}download(data)}catch(e){if(e?.name!=="AbortError"){modal.querySelector("#mcs-msg").textContent="لم تعمل المشاركة المباشرة. استخدم زر تحميل الصورة."}}finally{btn.disabled=false}}
-function install(){var list=document.querySelector("#newsList"),detail=document.querySelector("#modalContent");if(!list||!detail)return;var lastId=null;
-document.addEventListener("click",function(e){var el=e.target.closest?.("[data-open]");if(el)lastId=el.getAttribute("data-open")},true);
-function attach(node){if(!node||node.querySelector(".mcs-create")||!node.querySelector("h2,h3"))return;var b=document.createElement("button");b.className="mcs-create";b.type="button";b.textContent="▣ إنشاء صورة الخبر";b.setAttribute("aria-label","إنشاء صورة الخبر");b.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();var data=article(node);if(node===detail&&lastId){var alt=list.querySelector('[data-article="'+CSS.escape(lastId)+'"]');if(alt){var more=article(alt);if(!data.photo)data.photo=more.photo;if(!data.source)data.source=more.source;if(!data.date)data.date=more.date;if(!data.sourceUrl)data.sourceUrl=more.sourceUrl}}open(data)});node.appendChild(b)}
-function scan(){list.querySelectorAll("article.news-card").forEach(attach);if(detail.querySelector("h2"))attach(detail)}
-var timer;new MutationObserver(function(){clearTimeout(timer);timer=setTimeout(scan,80)}).observe(list,{childList:true,subtree:true});new MutationObserver(function(){clearTimeout(timer);timer=setTimeout(scan,80)}).observe(detail,{childList:true,subtree:true});scan()}
+function install(){
+ var list=document.querySelector("#newsList"),detail=document.querySelector("#modalContent");
+ if(!list||!detail)return;
+ var lastId=null,root=document.body;
+ document.addEventListener("click",function(e){var el=e.target.closest?.("[data-open]");if(el)lastId=el.getAttribute("data-open")},true);
+ function attach(node){
+  if(!node||node.querySelector(":scope > .mcs-create")||!node.querySelector("h2,h3"))return;
+  var b=document.createElement("button");b.className="mcs-create";b.type="button";b.textContent="▣ إنشاء صورة الخبر";
+  b.setAttribute("aria-label","إنشاء صورة الخبر");
+  b.addEventListener("click",function(e){
+   e.preventDefault();e.stopPropagation();
+   var data=article(node);
+   if(node===detail&&lastId){
+    var alt=list.querySelector('[data-article="'+CSS.escape(lastId)+'"]');
+    if(alt){var more=article(alt);if(!data.photo)data.photo=more.photo;if(!data.source)data.source=more.source;if(!data.date)data.date=more.date;if(!data.sourceUrl)data.sourceUrl=more.sourceUrl}
+   }
+   open(data);
+  });
+  var actions=node.querySelector(":scope > .card-foot .card-actions");
+  if(actions)actions.appendChild(b);else node.appendChild(b);
+ }
+ function scan(){
+  document.querySelectorAll("#newsList article.news-card, #voicesPanel article.voice-post, #sportsView article.m-sports-card").forEach(attach);
+  if(detail.querySelector("h2"))attach(detail);
+ }
+ var timer=0;
+ new MutationObserver(function(mutations){
+  if(!mutations.some(function(m){return m.addedNodes.length||m.removedNodes.length}))return;
+  clearTimeout(timer);timer=setTimeout(scan,65);
+ }).observe(root,{childList:true,subtree:true});
+ scan();
+}
 window.MidanNewsCardStudio={open:open,render:render,clean:clean,formats:FORMATS};
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});else install();
 })();
