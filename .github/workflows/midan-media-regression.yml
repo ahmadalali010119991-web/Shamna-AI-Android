@@ -22,6 +22,7 @@ jobs:
       - run: node integrations/midan-central-media/supabase-lease-store.test.cjs
       - run: node integrations/midan-central-media/media-retry-queue.test.cjs
       - run: node integrations/midan-central-media/media-retry-gateway.test.cjs
+      - run: node integrations/midan-central-media/production-bridge.test.cjs
 
       - run: node integrations/midan-central-media/signed-handoff.test.cjs
 
