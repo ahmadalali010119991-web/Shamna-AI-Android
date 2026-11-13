@@ -45,3 +45,5 @@ jobs:
       - run: node integrations/midan-central-media/vercel-blob-video-store.test.cjs
 
       - run: node integrations/midan-central-media/public-video-playback-check.test.cjs
+
+      - run: node integrations/midan-central-media/video-full-handoff.test.cjs
