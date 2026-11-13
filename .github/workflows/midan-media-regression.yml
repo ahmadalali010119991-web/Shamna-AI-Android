@@ -22,3 +22,5 @@ jobs:
       - run: node integrations/midan-central-media/supabase-lease-store.test.cjs
 
       - run: node integrations/midan-central-media/signed-handoff.test.cjs
+
+      - run: node integrations/midan-central-media/handoff-http-handler.test.cjs
