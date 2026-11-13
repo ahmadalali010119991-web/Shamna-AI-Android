@@ -54,6 +54,12 @@ function render(){
  const headings=p.querySelectorAll(".voices-latest-heading");if(!headings.length)return;
  processing=true;
  try{
+  // Apply news-only decisions to ALL visible field posts, including cards outside the latest-section bounds.
+  for(const existing of Array.from(p.querySelectorAll("article.voice-post"))){
+   const link=cardLink(existing),item=all.get(link),body=existing.querySelector(".card-desc")?.textContent||"";
+   if(item){apply(item,existing);continue}
+   if((recent(existing)&&/t\.me\/suhebb0\/\d+$/.test(link))||OPINION.test(body))existing.remove();
+  }
   const first=headings[0],end=headings[1]||null;
   const current=new Map();let n=first.nextElementSibling;const cards=[];
   while(n&&n!==end){
