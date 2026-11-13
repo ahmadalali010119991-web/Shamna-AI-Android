@@ -111,3 +111,5 @@ jobs:
 # Production test: consume disposable non-channel media queue job; no real Telegram post (2026-11-14).
 
 # Verify transient HTTP 503 video-watch retry in production (2026-11-14).
+
+# Verify site-news alternate transport for video watcher in production (2026-11-14).
