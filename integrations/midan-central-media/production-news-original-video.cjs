@@ -21,7 +21,7 @@ function publicUrl(raw,base){
 function dec(s){return String(s||'').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;|&#x27;|&apos;/gi,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>')}
 function attrs(s){const r={};for(const m of String(s).matchAll(/([\w:-]+)\s*=\s*(["'])([\s\S]*?)\2/g))r[m[1].toLowerCase()]=dec(m[3]);return r}
 function videoCandidates(html,base){
-  const result=[],add=x=>{const url=publicUrl(dec(x),base);if(url&&!result.includes(url))result.push(url)};
+  const result=[],add=x=>{if(typeof x!=='string'||!x.trim())return;const url=publicUrl(dec(x),base);if(url&&!result.includes(url))result.push(url)};
   for(const m of String(html).matchAll(/<meta\b[^>]*>/gi)){
     const x=attrs(m[0]),key=(x.property||x.name||x.itemprop||'').toLowerCase();
     if(['og:video','og:video:url','og:video:secure_url','twitter:player:stream','video','contenturl'].includes(key))add(x.content);
