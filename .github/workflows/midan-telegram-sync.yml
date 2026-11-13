@@ -105,3 +105,5 @@ jobs:
 # Production bridge post-deploy OIDC sync verification: 2026-11-12; keep the authenticated publisher path unchanged.
 
 # 2026-11-13: authorized live idempotency and repair-ledger observation; no configuration change.
+
+# Verify live production transactional media-retry queue after safe switch (2026-11-14).
