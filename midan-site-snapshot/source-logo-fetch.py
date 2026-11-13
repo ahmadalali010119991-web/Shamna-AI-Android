@@ -1,5 +1,6 @@
 import re, html, pathlib, urllib.request, urllib.parse, io, json
 from PIL import Image
+import cairosvg
 root=pathlib.Path("midan-site-snapshot/source-logos");root.mkdir(parents=True,exist_ok=True)
 heads={"User-Agent":"Mozilla/5.0 (compatible; MidanNewsCardLogoFetcher/1.0)"}
 sources=[
@@ -26,14 +27,17 @@ for key,site in sources:
  try:
   raw,final,ct=fetch(site);page=raw.decode("utf-8","replace")
   options=[get_meta(page,"og:image")]
-  if key!="suhaib":options += [get_icon(page)]
+  if key=="sana":options=["https://cdn.sananews.sy/2026/08/logo-footer.svg",get_icon(page)]
+  if key=="aljazeera":options=["https://www.aljazeera.net/favicon.ico",get_icon(page)]
   for u in filter(None,options):
    if u.startswith("//"):u="https:"+u
    u=urllib.parse.urljoin(final,u)
    try:
     b,url,ctype=fetch(u)
+    if b[:100].lstrip().startswith(b"<svg") or u.lower().split("?")[0].endswith(".svg"):
+     b=cairosvg.svg2png(bytestring=b,output_width=400)
     im=Image.open(io.BytesIO(b));im.load()
-    if im.width < 80 or im.height < 60:continue
+    if im.width < 20 or im.height < 20:continue
     im.thumbnail((320,320))
     outfile=root/(key+".png");im.convert("RGBA").save(outfile,optimize=True)
     print(json.dumps({"key":key,"url":url,"width":im.width,"height":im.height,"bytes":outfile.stat().st_size},ensure_ascii=False));break
