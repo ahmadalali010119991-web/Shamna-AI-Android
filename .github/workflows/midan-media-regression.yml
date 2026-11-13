@@ -57,3 +57,5 @@ jobs:
       - run: node integrations/midan-central-media/production-news-original-video.test.cjs
 
       - run: node integrations/midan-central-media/news-video-mime-compat.test.cjs
+
+      - run: node integrations/midan-central-media/source99-video-mime-compat.test.cjs
