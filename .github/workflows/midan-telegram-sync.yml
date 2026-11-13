@@ -64,6 +64,15 @@ jobs:
             echo "::error::Midan Telegram bridge reported a publishing failure; inspect its response and Vercel runtime logs."
             exit 1
           fi
+          # Distinguish news-sync success from failed pending-media recovery.
+          # Media failures must remain visible without interrupting ordinary news publishing.
+          printf '%s\n' "$response" | jq -r '
+            if (.mediaRecovery.skipped == "state_write_failed") or
+               (.mediaRecovery.reason == "write_rejected")
+            then "::warning::Pending media recovery is not persisting: " +
+                 ((.mediaRecovery.cause // .mediaRecovery.reason // "unknown") | tostring)
+            else empty end
+          '
           # Queue backlog is visible even if it is not itself an error; workers
           # may need retries for Telegram rate limits or missing source media.
           printf '%s\n' "$response" | jq -r '
