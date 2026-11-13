@@ -24,11 +24,12 @@ function sniff(bytes) {
  return null;
 }
 function createVerifiedMediaIngest({
- allowedHosts,fetcher=globalThis.fetch,persist,maxVideoBytes=45_000_000,
+ allowedHosts,storageHosts,fetcher=globalThis.fetch,persist,maxVideoBytes=45_000_000,
  maxImageBytes=9_000_000,timeoutMs=45000
 }={}) {
  if(!Array.isArray(allowedHosts)||!allowedHosts.length||allowedHosts.some(h=>!/^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/.test(h)))
   throw Error('MEDIA_HOST_ALLOWLIST_REQUIRED');
+ if(!Array.isArray(storageHosts)||!storageHosts.length||storageHosts.some(h=>!/^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/.test(h)))throw Error('MEDIA_STORAGE_ALLOWLIST_REQUIRED');
  if(typeof persist!=='function'||typeof fetcher!=='function')throw Error('DURABLE_MEDIA_STORAGE_REQUIRED');
  const hosts=allowedHosts.map(x=>x.toLowerCase());
  async function ingest(candidate,{kind='video',articleId}={}){
@@ -67,6 +68,7 @@ function createVerifiedMediaIngest({
      sourceUrl:uri,extension:MIME[detected]});
    if(!stored?.uri||stored?.sha256!==checksum||stored?.durable!==true)
      throw Error('MEDIA_PERSISTENCE_UNCONFIRMED');
+   hostAllowed(stored.uri,storageHosts.map(x=>x.toLowerCase()));
    return {kind,uri:stored.uri,verified:true,sha256:checksum,mime:detected,bytes:size,
      origin:uri,storageId:stored.id||null};
   }finally{clearTimeout(timer);}
