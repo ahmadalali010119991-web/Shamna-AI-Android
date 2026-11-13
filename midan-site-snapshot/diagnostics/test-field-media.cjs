@@ -1,6 +1,6 @@
 const {chromium}=require("playwright"),fs=require("fs");
 (async()=>{
- const browser=await chromium.launch({headless:true});
+ const browser=await chromium.launch({headless:true,...(fs.existsSync("/usr/bin/google-chrome")?{executablePath:"/usr/bin/google-chrome"}:{})});
  try{
   const ctx=await browser.newContext({viewport:{width:420,height:900},acceptDownloads:true,userAgent:"Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 Chrome/140 Mobile Safari/537.36 MidanAlKhabarApp/1.3.9"});
   const page=await ctx.newPage();const errors=[];page.on("pageerror",x=>errors.push(x.message));
