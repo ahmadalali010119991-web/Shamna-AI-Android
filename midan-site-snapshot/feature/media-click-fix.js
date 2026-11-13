@@ -12,7 +12,7 @@ function telegramEmbed(raw){try{const u=new URL(raw);if(!["t.me","www.t.me","tel
 function openMedia(entry){ensure();previous=document.activeElement;modal.hidden=false;document.body.style.overflow="hidden";stage.replaceChildren();caption.textContent=entry.caption||"الوسيط الأصلي للمنشور";let el;
  if(entry.kind==="video"){
   const embed=telegramEmbed(entry.postUrl),direct=safeLink(entry.direct);
-  if(direct){el=document.createElement("video");el.controls=true;el.playsInline=true;el.preload="metadata";el.src=direct;el.addEventListener("error",()=>{if(embed&&!modal.hidden){const f=document.createElement("iframe");f.src=embed;f.allowFullscreen=true;f.allow="autoplay; encrypted-media; picture-in-picture; fullscreen";stage.replaceChildren(f)}else caption.textContent="تعذر تشغيل الفيديو من رابط المصدر."},{once:true})}
+  if(direct){el=document.createElement("video");el.controls=true;el.playsInline=true;el.preload="metadata";el.src=direct;el.addEventListener("error",()=>{if(embed&&!modal.hidden){const f=document.createElement("iframe");f.src=embed;f.allowFullscreen=true;f.allow="autoplay; encrypted-media; picture-in-picture; fullscreen";f.sandbox="allow-scripts allow-same-origin allow-presentation";stage.replaceChildren(f)}else caption.textContent="تعذر تشغيل الفيديو من رابط المصدر."},{once:true})}
   else if(embed||entry.embed){el=document.createElement("iframe");el.src=entry.embed||embed;el.allowFullscreen=true;el.allow="autoplay; encrypted-media; picture-in-picture; fullscreen";el.referrerPolicy="strict-origin-when-cross-origin";el.sandbox="allow-scripts allow-same-origin allow-presentation"}
   else{caption.textContent="لا يتوفر رابط تشغيل لهذا الفيديو بعد؛ الصورة المعروضة هي صورة معاينته.";entry.kind="image"}
  }
