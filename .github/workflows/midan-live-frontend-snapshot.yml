@@ -20,7 +20,8 @@ jobs:
           set -euo pipefail
           mkdir -p midan-site-snapshot/live
           for f in index.html reader.html open.html app.js app-inner.js app-legacy.js enhancements.js geo-unified.js source-images.js; do
-            curl --fail --location --retry 2 --max-time 30 --silent --show-error "https://midan-al-khabar.vercel.app/$f" -o "midan-site-snapshot/live/$f"
+            if [ "$f" = "index.html" ]; then url="https://midan-al-khabar.vercel.app/"; else url="https://midan-al-khabar.vercel.app/$f"; fi
+            curl --fail --location --retry 2 --max-time 30 --silent --show-error "$url" -o "midan-site-snapshot/live/$f"
             test "$(wc -c < "midan-site-snapshot/live/$f")" -gt 500
           done
           printf '%s\n' "# Public frontend snapshot from midan-al-khabar.vercel.app" "No backend code or secrets copied." > midan-site-snapshot/live/README.md
