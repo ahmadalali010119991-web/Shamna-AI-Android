@@ -24,3 +24,5 @@ jobs:
       - run: node integrations/midan-central-media/signed-handoff.test.cjs
 
       - run: node integrations/midan-central-media/handoff-http-handler.test.cjs
+
+      - run: node integrations/midan-central-media/ingress-persistence.test.cjs
