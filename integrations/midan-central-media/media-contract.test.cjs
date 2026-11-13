@@ -1,0 +1,16 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {normalize,identity,publishDecision,mergeDestinations}=require('./media-contract.cjs');
+const e=normalize({id:'voice-suhaib-47987',sourceUrl:'https://t.me/suhebb0/47987',title:'News',mediaKind:'video'});
+assert.equal(identity(e).length,64);
+assert.deepEqual(publishDecision(e),{kind:null,status:'awaiting-video'});
+assert.deepEqual(publishDecision(e,{videoVerified:true}),{kind:'video',status:'ready'});
+assert.equal(publishDecision(e,{recoveryExhausted:true,photoVerified:true,hasPendingRetries:true}).status,'awaiting-video');
+assert.equal(publishDecision(e,{recoveryExhausted:true,photoVerified:true}).status,'original-photo-fallback');
+const a=mergeDestinations({}, {website:{status:'sent',externalId:'web-1'}});
+const b=mergeDestinations(a,{website:{status:'retry'},telegram:{status:'sent',externalId:'tg-2'}});
+assert.equal(b.website.externalId,'web-1');
+assert.equal(b.telegram.externalId,'tg-2');
+assert.throws(()=>mergeDestinations({}, {telegram:{status:'sent'}}),/CONFIRMATION/);
+assert.throws(()=>normalize({id:'x',sourceUrl:'http://example.org',title:'N'}),/SOURCE/);
+console.log('PASS: 9 media publication policy assertions');
