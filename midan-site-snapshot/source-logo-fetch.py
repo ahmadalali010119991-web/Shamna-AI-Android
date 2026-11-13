@@ -7,6 +7,7 @@ sources=[
 ("sana","https://sana.sy/"),
 ("aljazeera","https://www.aljazeera.net/"),
 ("suhaib","https://t.me/suhebb0"),
+("bbc","https://www.bbc.com/"),
 ]
 def fetch(url):
  req=urllib.request.Request(url,headers=heads)
@@ -29,6 +30,7 @@ for key,site in sources:
   options=[get_meta(page,"og:image")]
   if key=="sana":options=["https://cdn.sananews.sy/2026/08/logo-footer.svg",get_icon(page)]
   if key=="aljazeera":options=["https://www.aljazeera.net/favicon.ico",get_icon(page)]
+  if key=="bbc":options=["https://www.bbc.com/favicon.ico",get_icon(page)]
   for u in filter(None,options):
    if u.startswith("//"):u="https:"+u
    u=urllib.parse.urljoin(final,u)
