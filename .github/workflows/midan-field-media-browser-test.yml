@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - '.github/workflows/midan-field-media-browser-test.yml'
+      - 'midan-site-snapshot/diagnostics/test-field-media.cjs'
   workflow_dispatch:
 permissions:
   contents: write
@@ -14,7 +15,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with: {persist-credentials: true}
       - run: npm install --no-save playwright@1.56.1
-      - run: npx playwright install chromium
+      - run: if [ ! -x /usr/bin/google-chrome ]; then npx playwright install chromium; fi
       - name: Run restored-field-browser test and preserve evidence
         shell: bash
         run: |
