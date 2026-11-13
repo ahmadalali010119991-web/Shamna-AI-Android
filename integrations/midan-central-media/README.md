@@ -17,3 +17,23 @@ This feature branch holds a **non-production** media contract and tests. It does
 Run: `node integrations/midan-central-media/media-contract.test.cjs`.
 
 The full locally-tested integration scaffold is distributed separately; this PR is the version-controlled starting point, not completion of end-to-end integration.
+
+
+## Durable state implementation added (2026-11-13)
+- \`migrations/001_media_pipeline_leases.sql\` defines a service-role-only table and compare-and-set RPC claim/renew/save/release operations. **Not applied to any database.** The accessible Supabase project \`shamna-kc\` is unrelated and inactive; never modify it for this integration.
+- \`supabase-lease-store.cjs\` implements \`transaction(key,callback)\` with an exclusive expiring lease and durable checkpoint saves. Only use it on a **server** with an appropriately scoped Supabase service role key.
+- The broker calls lease renewal before performing media recovery or delivery. A release is attempted on completion or failure.
+- GitHub Actions tests run all contract/handoff/lease cases. These are isolated deterministic tests, **not proof of a live delivery**.
+
+### Production integration gate
+1. Identify the **actual** production database/storage for \`dallalna-telegram-bridge\`; do not apply the example migration to an unrelated project.
+2. Deploy schema only after backups and reviewing row-level permissions.
+3. Wire the website's authenticated new-article event and the bridge's adapters to this store; source adapters must be permitted and verified.
+4. Implement destination-side reconciliation: an HTTP timeout after Telegram accepts a send can leave its message ID unknown. No backend lease alone can promise exactly-once delivery against Telegram.
+5. Validate one text, one photo, and one video end-to-end in staging; include a source failure and duplicate webhook test.
+6. Gradually enable with a feature flag; keep the legacy publisher active until the new pipeline is demonstrably complete, with a clear sole-owner cutoff to prevent dual posting.
+
+### Known limits
+- Leases expire, so long-running network operations must renew and ensure ownership. A late response after lease expiry is not an atomic distributed transaction.
+- \`recover\` adapters in the staged engine are interfaces only. There is **no production video extractor or 100 independent services** bundled with this branch.
+- Until actual Vercel services, credentials, and production store are wired and tested, this code is **not an enabled news publisher**.
