@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - '.github/workflows/midan-field-news-recovery.yml'
+      - 'midan-site-snapshot/diagnostics/field_news_recover.py'
   workflow_dispatch:
 permissions:
   contents: write
