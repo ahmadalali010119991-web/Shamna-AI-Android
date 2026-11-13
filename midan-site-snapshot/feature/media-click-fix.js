@@ -21,19 +21,19 @@ function openMedia(entry){ensure();previous=document.activeElement;modal.hidden=
 }
 function inspect(e){
  const target=e.target;
- const hit=target.closest?.(".article-source-media a,.article-source-media button,.article-source-media img,.article-source-media video,.voice-post .article-source-media,.news-card .news-media img,.m-sports-card .article-source-media");
+ const hit=target.closest?.(".article-source-media a,.article-source-media button,.article-source-media img,.article-source-media video,.midan-card-media-button,.voice-post .article-source-media,.news-card .news-media img,.m-sports-card .article-source-media");
  if(!hit)return;
  const card=hit.closest(".voice-post,.news-card,.m-sports-card,#modalContent")||hit.closest(".article-source-media")?.parentElement;
  const figure=hit.closest(".article-source-media")||hit;
  const img=hit.tagName==="IMG"?hit:figure.querySelector?.("img");
  const video=figure.querySelector?.("video")||(hit.tagName==="VIDEO"?hit:null);
  const explicitLink=card?.querySelector(".card-foot a[href],.m-sports-source[href],.detail-source a[href]")?.href;
- const postUrl=explicitLink||hit.closest("a[href]")?.href||null;
+ const postUrl=card?.dataset?.midanPostUrl||explicitLink||hit.closest("a[href]")?.href||null;
  if(!img&&!video)return;
  e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
- const clip=!!video||/(?:فيديو|مقطع مصور|شاهد الفيديو)/i.test(card?.textContent?.slice(0,350)||"");
+ const clip=card?.dataset?.midanVideo==="1"||!!video||/(?:فيديو|مقطع مصور|شاهد الفيديو)/i.test(card?.textContent?.slice(0,350)||"");
  const embed=telegramEmbed(postUrl);
- openMedia({kind:clip&& (video||embed)?"video":"image",direct:video?.currentSrc||video?.src,image:img?.currentSrc||img?.src,postUrl:postUrl,caption:clip?"الفيديو الأصلي داخل ميدان الخبر":"صورة الخبر الأصلية"});
+ openMedia({kind:clip&& (video||embed)?"video":"image",direct:card?.dataset?.midanVideoUrl||video?.currentSrc||video?.src,image:img?.currentSrc||img?.src,postUrl:postUrl,caption:clip?"الفيديو الأصلي داخل ميدان الخبر":"صورة الخبر الأصلية"});
 }
 document.addEventListener("click",inspect,true);
 window.MidanMediaViewer={open:openMedia,close,telegramEmbed};
