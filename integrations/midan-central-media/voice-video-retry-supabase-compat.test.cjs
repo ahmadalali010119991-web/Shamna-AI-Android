@@ -6,7 +6,7 @@ const compat=fs.readFileSync(path.join(__dirname,'voice-video-retry-supabase-com
 const legacy=[
  "'use strict';",
  "const RETRY_PREFIX='midan-media-retry/v4/';",
- "const STATE_QUEUE_KEY='midan_media_video_retries_v4';",
+
  "async function retryUsingSupabase(){const state=require('./state-v3');const data={};const result=await state.write(STATE_QUEUE_KEY,data);return result}",
  "const STATE_QUEUE_KEY='midan_media_video_retries_v4';",
  "const blobAPI=()=>globalThis.__testBlob||null;",
