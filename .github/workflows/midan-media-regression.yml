@@ -28,3 +28,5 @@ jobs:
       - run: node integrations/midan-central-media/ingress-persistence.test.cjs
 
       - run: node integrations/midan-central-media/end-to-end.test.cjs
+
+      - run: node integrations/midan-central-media/telegram-bot-publisher.test.cjs
