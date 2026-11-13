@@ -51,3 +51,5 @@ jobs:
       - run: node integrations/midan-central-media/direct-video-recovery.test.cjs
 
       - run: node integrations/midan-central-media/direct-video-url-policy.test.cjs
+
+      - run: node integrations/midan-central-media/private-source99-site-video.test.cjs
