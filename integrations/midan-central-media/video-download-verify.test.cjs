@@ -25,7 +25,7 @@ function maker(get,opts={}){return createVideoDownloader({allowedHosts:[host],fe
  await assert.rejects(()=>maker(()=>response(mp4,{size:mp4.length+1})).download(candidate),/LENGTH_MISMATCH/);
  await assert.rejects(()=>maker(()=>response(mp4,{redirected:true})).download(candidate),/FETCH_FAILED/);
  await assert.rejects(()=>maker(()=>response(mp4,{status:403})).download(candidate),/FETCH_FAILED/);
- await assert.rejects(()=>maker(()=>response(mp4),{maxBytes:24}).download(candidate),/TOO_LARGE/);
+ await assert.rejects(()=>maker(()=>response(Uint8Array.from([...mp4,...new Array(16).fill(0)])),{maxBytes:32}).download(candidate),/TOO_LARGE/);
  await assert.rejects(()=>maker(()=>response(mp4,{size:99}),{maxBytes:50}).download(candidate),/TOO_LARGE/);
  await assert.rejects(()=>maker(()=>response(mp4)).download({kind:'photo',uri}),/CANDIDATE/);
  assert.throws(()=>checkedUrl('http://cdn.example.org/real-video.mp4',[host]),/INVALID_VIDEO_URL/);
