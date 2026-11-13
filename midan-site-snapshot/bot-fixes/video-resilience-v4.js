@@ -280,18 +280,66 @@ async function seedMissingIncident(blob,entries){
   return 'newly_queued';
  }catch(e){return 'seed_error:'+String(e.message||e).slice(0,100)}
 }
+
+const STATE_QUEUE_KEY='midan_media_video_retries_v4';
+async function retryUsingSupabase(native,cause){
+ const state=require('./state-v3'),api='https://api.telegram.org/bot'+process.env.TELEGRAM_BOT_TOKEN+'/sendMessage';
+ let previous;
+ try{previous=await state.read(STATE_QUEUE_KEY)}
+ catch(e){return {backend:'supabase',skipped:'state_read_failed',cause,reason:String(e.message||e).slice(0,170)}}
+ let data=previous?.value;
+ if(!data||typeof data!=='object'||data.schema!==4)data={schema:4,jobs:{},done552:false,createdAt:new Date().toISOString()};
+ if(!data.jobs||typeof data.jobs!=='object'||Array.isArray(data.jobs))data.jobs={};
+ const key='suhebb0:47987:552';let seeded=false;
+ if(!data.done552&&!data.jobs[key]){data.jobs[key]={...INCIDENT,createdAt:Date.now(),nextRetry:Date.now()};seeded=true}
+ let scanned=0,success=0,failed=0,failures=[],waiting=[];
+ const jobs=Object.entries(data.jobs).filter(([_,job])=>job&&job.schema===4).slice(0,2);
+ for(const [id,job]of jobs){
+  if(job.attempts>=12||job.nextRetry>Date.now()){
+   waiting.push({sourceId:job.sourceId,target:job.targetMessageId,attempts:job.attempts,nextRetry:job.nextRetry,
+    exhausted:job.attempts>=12,lastError:job.errors?.at(-1)||null});continue
+  }
+  scanned++;
+  try{
+   const repair=await repairTarget(job,native,api);
+   if(job.targetMessageId===552&&job.channel==='suhebb0')data.done552=true;
+   delete data.jobs[id];success++;
+   data.lastSuccess={target:job.targetMessageId,sourceId:job.sourceId,route:repair.via,at:new Date().toISOString()};
+  }catch(e){
+   const error=String(e.message||e).slice(0,210);
+   failed++;failures.push({sourceId:job.sourceId,target:job.targetMessageId,reason:error});
+   const retries=[300000,900000,3600000,21600000,43200000,86400000];
+   job.attempts++;job.nextRetry=Date.now()+retries[Math.min(job.attempts,retries.length-1)];
+   job.errors=[...(job.errors||[]).slice(-5),error];
+  }
+ }
+ data.updatedAt=new Date().toISOString();
+ try{
+  const result=await state.write(STATE_QUEUE_KEY,data);
+  if(result?.ok===false)throw Error('write_rejected');
+  const check=await state.read(STATE_QUEUE_KEY);
+  if(!check||!check.value||check.value.schema!==4)throw Error('write_readback_mismatch');
+ }catch(e){
+  return {backend:'supabase',skipped:'state_write_failed',cause,reason:String(e.message||e).slice(0,170),scanned,successUnconfirmed:success,failed};
+ }
+ return {backend:'supabase',cause,seedStatus:seeded?'queued':'existing_or_completed',scanned,success,failed,
+  done552:!!data.done552,pendingCount:Object.keys(data.jobs).length,waiting,failures};
+}
 async function retryPending(native=globalThis.__MIDAN_NEWS_RAW_FETCH||globalThis.fetch){
  if(running)return running;
  running=(async()=>{
-  if(!process.env.TELEGRAM_BOT_TOKEN||!process.env.BLOB_READ_WRITE_TOKEN)return {skipped:'not_configured'};
-  const blob=blobAPI();if(!blob)return {skipped:'no_blob_sdk'};
+  if(!process.env.TELEGRAM_BOT_TOKEN)return {skipped:'bot_token_not_configured'};
+  const native=arguments[0]||globalThis.__MIDAN_NEWS_RAW_FETCH||globalThis.fetch;
+  if(!process.env.BLOB_READ_WRITE_TOKEN)return retryUsingSupabase(native,'blob_token_missing');
+  const blob=blobAPI();if(!blob)return retryUsingSupabase(native,'blob_sdk_unavailable');
   const api='https://api.telegram.org/bot'+process.env.TELEGRAM_BOT_TOKEN+'/sendMessage';
   let entries,seedStatus;
   try{
    entries=(await blob.list({prefix:RETRY_PREFIX,limit:100})).blobs||[];
    seedStatus=await seedMissingIncident(blob,entries);
    entries=(await blob.list({prefix:RETRY_PREFIX,limit:100})).blobs||[];
-  }catch(e){return {skipped:'ledger_unavailable'}}
+  }catch(e){return retryUsingSupabase(native,'blob_list_unavailable:'+String(e.message||e).slice(0,90))}
+  if(String(seedStatus||'').startsWith('seed_error:'))return retryUsingSupabase(native,seedStatus);
   let success=0,failed=0,scanned=0;const failures=[],waiting=[];
   for(const row of entries.filter(r=>!r.pathname.includes('/done/')).slice(0,2)){
    let job;try{job=await native(row.url,{signal:AbortSignal.timeout(9000)}).then(r=>r.json())}catch{continue}
