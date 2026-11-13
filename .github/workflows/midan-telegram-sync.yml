@@ -68,7 +68,8 @@ jobs:
           # Media failures must remain visible without interrupting ordinary news publishing.
           printf '%s\n' "$response" | jq -r '
             if (.mediaRecovery.skipped == "state_write_failed") or
-               (.mediaRecovery.reason == "write_rejected")
+               (.mediaRecovery.reason == "write_rejected") or
+               ((.mediaRecovery.cause // "") | startswith("seed_error:"))
             then "::warning::Pending media recovery is not persisting: " +
                  ((.mediaRecovery.cause // .mediaRecovery.reason // "unknown") | tostring)
             else empty end
