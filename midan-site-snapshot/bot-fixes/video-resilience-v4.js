@@ -41,7 +41,8 @@ async function sourceMedia(source,fetcher){
    for(const m of html.matchAll(/(?:content|href|src)=["'](https:\/\/[^"']+)["']/gi)){
     if(MP4_RE.test(m[1]))candidates.push(m[1].replace(/&amp;/g,'&'));
    }
-   value.urls=[...new Set(candidates.map(safeUrl).filter(Boolean))].slice(0,4);
+   // A public Telegram post may include attacker-supplied links. Only trust Telegram's own media CDN.
+   value.urls=[...new Set(candidates.map(safeUrl).filter(u=>u&&/^(?:[a-z0-9-]+\.)*(?:telesco\.pe|telegram\.org)$/i.test(new URL(u).hostname)))].slice(0,4);
   }
  }catch(e){value.reason=String(e.message||e).slice(0,110)}
  cache.set(key,{at:Date.now(),value});if(cache.size>150)cache.clear();
@@ -292,7 +293,7 @@ async function retryPending(native=globalThis.__MIDAN_NEWS_RAW_FETCH||globalThis
    entries=(await blob.list({prefix:RETRY_PREFIX,limit:100})).blobs||[];
   }catch(e){return {skipped:'ledger_unavailable'}}
   let success=0,failed=0,scanned=0;
-  for(const row of entries.filter(r=>!r.pathname.includes('/done/')).slice(0,12)){
+  for(const row of entries.filter(r=>!r.pathname.includes('/done/')).slice(0,2)){
    let job;try{job=await native(row.url,{signal:AbortSignal.timeout(9000)}).then(r=>r.json())}catch{continue}
    if(job.schema!==4||job.nextRetry>Date.now()||job.attempts>=12)continue;scanned++;
    try{
