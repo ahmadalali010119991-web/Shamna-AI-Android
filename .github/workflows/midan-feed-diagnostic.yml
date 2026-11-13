@@ -1,0 +1,25 @@
+name: Midan diagnose missing field posts and video metadata
+on:
+  push:
+    paths: ['.github/workflows/midan-feed-diagnostic.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Inspect public feeds and capture frontend module
+        shell: bash
+        run: |
+          set +e
+          python midan-site-snapshot/diagnostics/inspect_feeds.py > /tmp/feed-inspection.txt 2>&1
+          cp /tmp/feed-inspection.txt midan-site-snapshot/diagnostics/inspection-results.txt
+          curl -fLsS --max-time 25 https://midan-al-khabar.vercel.app/video-inline.js -o midan-site-snapshot/diagnostics/live-video-inline.js
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add midan-site-snapshot/diagnostics
+          git commit -m 'diag(midan): capture public feed structure and video viewer module'
+          git push
