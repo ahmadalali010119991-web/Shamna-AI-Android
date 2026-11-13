@@ -272,13 +272,13 @@ const INCIDENT={
 async function seedMissingIncident(blob,entries){
  const path=RETRY_PREFIX+'suhebb0-47987-552.json',donePath=RETRY_PREFIX+'done/voice-552.json';
  const complete=(await blob.list({prefix:donePath,limit:2})).blobs||[];
- if(complete.length)return false;
- if(entries.some(b=>b.pathname===path))return false;
+ if(complete.length)return 'already_completed';
+ if(entries.some(b=>b.pathname===path))return 'already_queued';
  try{
   await blob.put(path,JSON.stringify({...INCIDENT,createdAt:Date.now(),nextRetry:Date.now()}),
    {access:'public',addRandomSuffix:false,allowOverwrite:false,contentType:'application/json',cacheControlMaxAge:60});
-  return true;
- }catch(e){return false}
+  return 'newly_queued';
+ }catch(e){return 'seed_error:'+String(e.message||e).slice(0,100)}
 }
 async function retryPending(native=globalThis.__MIDAN_NEWS_RAW_FETCH||globalThis.fetch){
  if(running)return running;
@@ -286,16 +286,22 @@ async function retryPending(native=globalThis.__MIDAN_NEWS_RAW_FETCH||globalThis
   if(!process.env.TELEGRAM_BOT_TOKEN||!process.env.BLOB_READ_WRITE_TOKEN)return {skipped:'not_configured'};
   const blob=blobAPI();if(!blob)return {skipped:'no_blob_sdk'};
   const api='https://api.telegram.org/bot'+process.env.TELEGRAM_BOT_TOKEN+'/sendMessage';
-  let entries;
+  let entries,seedStatus;
   try{
    entries=(await blob.list({prefix:RETRY_PREFIX,limit:100})).blobs||[];
-   await seedMissingIncident(blob,entries);
+   seedStatus=await seedMissingIncident(blob,entries);
    entries=(await blob.list({prefix:RETRY_PREFIX,limit:100})).blobs||[];
   }catch(e){return {skipped:'ledger_unavailable'}}
-  let success=0,failed=0,scanned=0;const failures=[];
+  let success=0,failed=0,scanned=0;const failures=[],waiting=[];
   for(const row of entries.filter(r=>!r.pathname.includes('/done/')).slice(0,2)){
    let job;try{job=await native(row.url,{signal:AbortSignal.timeout(9000)}).then(r=>r.json())}catch{continue}
-   if(job.schema!==4||job.nextRetry>Date.now()||job.attempts>=12)continue;scanned++;
+   if(job.schema!==4)continue;
+   if(job.nextRetry>Date.now()||job.attempts>=12){
+    waiting.push({sourceId:job.sourceId,target:job.targetMessageId,attempts:job.attempts,nextRetry:job.nextRetry,
+      exhausted:job.attempts>=12,lastError:job.errors?.at(-1)||null});
+    continue;
+   }
+   scanned++;
    try{
     const repair=await repairTarget(job,native,api);
     if(job.targetMessageId===552&&job.channel==='suhebb0'){
@@ -312,7 +318,7 @@ async function retryPending(native=globalThis.__MIDAN_NEWS_RAW_FETCH||globalThis
   }
   if(scanned)console.info('Midan video retries',{scanned,success,failed});
   const done=(await blob.list({prefix:RETRY_PREFIX+'done/voice-552.json',limit:1}).catch(()=>({blobs:[]}))).blobs||[];
-  return {scanned,success,failed,done552:done.length>0,failures};
+  return {scanned,success,failed,done552:done.length>0,seedStatus,pendingCount:entries.filter(r=>!r.pathname.includes('/done/')).length,waiting,failures};
  })().finally(()=>{running=null});
  return running;
 }
