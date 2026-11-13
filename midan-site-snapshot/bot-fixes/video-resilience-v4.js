@@ -318,7 +318,8 @@ async function retryPending(native=globalThis.__MIDAN_NEWS_RAW_FETCH||globalThis
   }
   if(scanned)console.info('Midan video retries',{scanned,success,failed});
   const done=(await blob.list({prefix:RETRY_PREFIX+'done/voice-552.json',limit:1}).catch(()=>({blobs:[]}))).blobs||[];
-  return {scanned,success,failed,done552:done.length>0,seedStatus,pendingCount:entries.filter(r=>!r.pathname.includes('/done/')).length,waiting,failures};
+  const stateMethods=String(seedStatus||'').startsWith('seed_error:')?Object.keys(require('./state-v3')):undefined;
+  return {scanned,success,failed,done552:done.length>0,seedStatus,pendingCount:entries.filter(r=>!r.pathname.includes('/done/')).length,waiting,failures,stateMethods};
  })().finally(()=>{running=null});
  return running;
 }
