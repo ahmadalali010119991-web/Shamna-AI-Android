@@ -54,5 +54,17 @@ const v=async m=>!!m.uri;
   store:durable(),website,telegram,validate:v
  });
  assert.equal(textOnly.stage,'complete','text-only stories do not need media recovery');
- console.log('PASS: 10 central handoff regression assertions');
+ let postCount=0;
+ const leaseLost=async()=>{throw Error('ARTICLE_LEASE_LOST')};
+ const lostStore={transaction:async(key,work)=>work({},async()=>{},leaseLost)};
+ const noPosts={publish:async()=>{postCount++;return {ok:true,externalId:'unexpected'}}};
+ await assert.rejects(()=>handoff({...base,id:'lease-lost-on-recovery'},{
+  store:lostStore,recover:[route],website:noPosts,telegram:noPosts,validate:v
+ }),/ARTICLE_LEASE_LOST/);
+ await assert.rejects(()=>handoff({id:'lease-lost-on-publish',title:'News',
+  sourceUrl:'https://example.org/story',mediaKind:'text'},{
+   store:lostStore,website:noPosts,telegram:noPosts,validate:v
+ }),/ARTICLE_LEASE_LOST/);
+ assert.equal(postCount,0,'publisher must never send after lease ownership is lost');
+ console.log('PASS: 12 central handoff regression assertions including exclusive lease-loss protection');
 })().catch(e=>{console.error(e);process.exitCode=1});
