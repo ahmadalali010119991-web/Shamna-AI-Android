@@ -14,6 +14,16 @@ const html=posts.map(p=>
 assert.ok(extractMedia(html,6,'photo').includes('/private-source99-6.jpg'));
 assert.ok(extractMedia(html,7,'photo').includes('/private-source99-7.jpg'));
 assert.equal(extractMedia(html,5,'photo'),null);
+
+const telegramVideo='<div class="tgme_widget_message_wrap">'+
+ '<div class="tgme_widget_message" data-post="Private_Source99/8">'+
+ '<div class="tgme_widget_message_video_player">'+
+ '<i class="tgme_widget_message_video" data-video="https://media.example.org/real.mp4"></i></div></div></div>';
+assert.equal(extractMedia(telegramVideo,8,'video'),'https://media.example.org/real.mp4');
+const nestedVideo='<div class="tgme_widget_message_wrap" data-post="Private_Source99/9">'+
+ '<video class="tgme_widget_message_video" controls><source src="https://media.example.org/nested.mp4"></video></div>';
+assert.equal(extractMedia(nestedVideo,9,'video'),'https://media.example.org/nested.mp4');
+
 const state=new Map(),deliveries=[];
 const once=async(key,send)=>{
  if(state.has(key))return {status:'duplicate'};
@@ -55,5 +65,35 @@ const fetcher=async(url,options={})=>{
  const failure=await broken.run();
  assert.equal(failure.results[0].status,'retry');
  assert.equal(failure.results[0].error,'ORIGINAL_MEDIA_NOT_FOUND');
- console.log('PASS: Source99 photo upload, canonical post matching, atomic dedup and no silent photo-to-text fallback');
+
+ const videoPost={...posts[0],id:'private-source99-8',
+   sourceUrl:'https://t.me/Private_Source99/8',
+   hasOriginalVideo:true,hasOriginalPhoto:false};
+ const mp4=Uint8Array.from([0,0,0,20,102,116,121,112,105,115,111,109,0,0,0,0,0,0,0,0]);
+ let videoCalls=[];
+ const videoFetch=async (url,options={})=>{
+   if(url.includes('midan-al-khabar.vercel.app'))
+    return {ok:true,json:async()=>({articles:[videoPost]})};
+   if(url==='https://t.me/s/Private_Source99')
+    return {ok:true,text:async()=>telegramVideo};
+   if(url==='https://media.example.org/real.mp4')
+    return {ok:true,status:200,headers:{get:k=>k==='content-type'?'video/mp4':null},
+      arrayBuffer:async()=>mp4.buffer};
+   if(url.includes('api.telegram.org')){
+    videoCalls.push({url,body:options.body});
+    return {ok:true,status:200,json:async()=>({ok:true,result:{message_id:980,chat:{id:-123}}})};
+   }
+   throw Error('Unexpected video test URL '+url);
+ };
+ const videoPublisher=createSource99Publisher({fetcher:videoFetch,once:async (_key,send)=>{
+  const msg=await send();return {status:'sent',receipt:{message_id:msg.message_id}};
+ },botToken:'test-only-token'});
+ const videoResult=await videoPublisher.run();
+ assert.equal(videoResult.results[0].status,'sent');
+ assert.equal(videoCalls.length,1);
+ assert.ok(videoCalls[0].url.endsWith('/sendVideo'));
+ assert.ok(videoCalls[0].body.get('video') instanceof Blob);
+ assert.ok(videoCalls[0].body.get('caption').includes('المصدر الأصلي'));
+
+ console.log('PASS: Source99 photo+MP4 video upload, canonical post matching, atomic dedup and no silent photo-to-text fallback');
 })().catch(e=>{console.error(e);process.exitCode=1});
