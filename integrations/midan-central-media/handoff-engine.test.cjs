@@ -1,0 +1,24 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {handoff}=require('./handoff-engine.cjs');
+const input={id:'voice-suhaib-47987',title:'News',sourceUrl:'https://t.me/suhebb0/47987',mediaKind:'video',media:[{kind:'photo',isOriginal:true,uri:'https://t.me/a.jpg'}]};
+const slots=new Map();
+const store={transaction:async(k,fn)=>fn(slots.get(k),async state=>slots.set(k,structuredClone(state)))};
+const calls=[];
+const website={publish:async()=>{calls.push('web');return {ok:true,externalId:'site-11'}}};
+let outage=true;
+const telegram={publish:async()=>{calls.push('telegram');if(outage)throw Error('offline');return {ok:true,externalId:'tg-11'}}};
+const v=async m=>!!m.uri;
+(async()=>{
+ let one=await handoff(input,{store,recover:[{id:'web-video',run:async()=>({kind:'video',uri:'https://example.com/v.mp4'})}],website,telegram,validate:v});
+ assert.equal(one.stage,'partially-published');
+ outage=false;
+ let two=await handoff(input,{store,recover:[{id:'web-video',run:async()=>{throw Error('should not run')}}],website,telegram,validate:v});
+ assert.equal(two.stage,'complete');assert.equal(calls.filter(x=>x==='web').length,1);
+ const store2={transaction:async(_,fn)=>fn(undefined,async()=>{})};
+ let waiting=await handoff({...input,id:'case-2'}, {store:store2,recover:[{id:'r',run:async()=>{throw Error('temporary')}}],website,telegram,validate:v});
+ assert.equal(waiting.stage,'awaiting-media');
+ let fallback=await handoff({...input,id:'case-3'}, {store:store2,recover:[{id:'r',run:async()=>null}],website,telegram,validate:v});
+ assert.equal(fallback.mediaKind,'photo');
+ console.log('PASS: staged handoff video, retry, no duplicate and fallback');
+})().catch(e=>{console.error(e);process.exitCode=1});
