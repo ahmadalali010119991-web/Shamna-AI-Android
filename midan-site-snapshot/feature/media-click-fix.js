@@ -13,13 +13,21 @@ function openMedia(entry){ensure();previous=document.activeElement;modal.hidden=
  if(entry.kind==="video"){
   const embed=telegramEmbed(entry.postUrl),direct=safeLink(entry.direct);
   if(direct){el=document.createElement("video");el.controls=true;el.playsInline=true;el.preload="metadata";el.src=direct;el.addEventListener("error",()=>{if(embed&&!modal.hidden){const f=document.createElement("iframe");f.src=embed;f.allowFullscreen=true;f.allow="autoplay; encrypted-media; picture-in-picture; fullscreen";stage.replaceChildren(f)}else caption.textContent="تعذر تشغيل الفيديو من رابط المصدر."},{once:true})}
-  else if(embed){el=document.createElement("iframe");el.src=embed;el.allowFullscreen=true;el.allow="autoplay; encrypted-media; picture-in-picture; fullscreen";el.referrerPolicy="strict-origin-when-cross-origin"}
+  else if(embed||entry.embed){el=document.createElement("iframe");el.src=entry.embed||embed;el.allowFullscreen=true;el.allow="autoplay; encrypted-media; picture-in-picture; fullscreen";el.referrerPolicy="strict-origin-when-cross-origin";el.sandbox="allow-scripts allow-same-origin allow-presentation"}
   else{caption.textContent="لا يتوفر رابط تشغيل لهذا الفيديو بعد؛ الصورة المعروضة هي صورة معاينته.";entry.kind="image"}
  }
  if(entry.kind==="image"){let url=safeLink(entry.image);if(!url)return close();el=document.createElement("img");el.src=url;el.alt="صورة المنشور الأصلية";el.referrerPolicy="no-referrer"}
  stage.append(el);modal.querySelector("[data-mid-close]").focus()
 }
-function inspect(e){
+const videoMemo=new Map();
+async function resolveArticleVideo(id){
+ if(!id)return null;
+ if(videoMemo.has(id))return videoMemo.get(id);
+ const task=fetch("/api/news?videoFor="+encodeURIComponent(id),{cache:"no-store",signal:AbortSignal.timeout(9000)})
+ .then(r=>r.ok?r.json():null).then(d=>d?.ok&&["mp4","embed"].includes(d.kind)?d:null).catch(()=>null);
+ videoMemo.set(id,task);return task
+}
+async function inspect(e){
  const target=e.target;
  const hit=target.closest?.(".article-source-media a,.article-source-media button,.article-source-media img,.article-source-media video,.midan-card-media-button,.voice-post .article-source-media,.news-card .news-media img,.m-sports-card .article-source-media");
  if(!hit)return;
@@ -33,6 +41,13 @@ function inspect(e){
  e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
  const clip=card?.dataset?.midanVideo==="1"||!!video||/(?:فيديو|مقطع مصور|شاهد الفيديو)/i.test(card?.textContent?.slice(0,350)||"");
  const embed=telegramEmbed(postUrl);
+ const originalId=card?.dataset?.article||card?.querySelector?.("[data-save]")?.getAttribute("data-save");
+ let remoteVideo=null;
+ if(originalId&&!clip)remoteVideo=await resolveArticleVideo(originalId);
+ if(remoteVideo&&["mp4","embed"].includes(remoteVideo.kind)){
+   openMedia({kind:"video",direct:remoteVideo.kind==="mp4"?remoteVideo.url:null,embed:remoteVideo.kind==="embed"?remoteVideo.url:null,postUrl,caption:"فيديو الخبر الأصلي داخل ميدان الخبر"});
+   return;
+ }
  openMedia({kind:clip&& (video||embed)?"video":"image",direct:card?.dataset?.midanVideoUrl||video?.currentSrc||video?.src,image:img?.currentSrc||img?.src,postUrl:postUrl,caption:clip?"الفيديو الأصلي داخل ميدان الخبر":"صورة الخبر الأصلية"});
 }
 document.addEventListener("click",inspect,true);
