@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 6
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - run: pip install pillow==11.3.0
+      - run: pip install pillow==11.3.0 cairosvg==2.8.2
       - run: python midan-site-snapshot/source-logo-fetch.py
       - run: |
           set -euo pipefail
