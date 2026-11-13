@@ -70,3 +70,10 @@ The full locally-tested integration scaffold is distributed separately; this PR 
 - The required `ledger.reserve`, `ledger.markSent`, and `ledger.markUncertain` operations are an *interface*. A production persistent backend and reconciliation process have not been written or deployed.
 - Ambiguous post-submission timeouts are frozen as `uncertain` to prevent automatic duplicate posts. Recovery requires reconciling the actual Telegram message ID against records.
 - This adapter does not automatically fetch third-party videos, change the existing site, or claim successful live Telegram sending. Do not enable it while the existing sync-v3 publisher owns the channel.
+
+## Source HTML video discovery (staged)
+- `official-source-video-discovery.cjs` reads OpenGraph video metadata, Twitter video streams and HTML `<video>`/`<source>` references from explicitly allowlisted news publishers.
+- Does not follow redirects, caps HTML response size, and returns candidate links with `verified:false`.
+- A separate secure downloader/validator is mandatory before assigning `verified:true`; passing candidate links directly to the Telegram Bot API is forbidden by the staged publisher.
+- This is one HTML discovery connector, **not** comprehensive extraction for every social/video site; source authorizations and platform-specific access remain necessary.
+- Source pages and video URLs may be inaccessible from the deployment environment; no live publisher extraction is claimed.
