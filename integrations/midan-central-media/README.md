@@ -96,3 +96,11 @@ The full locally-tested integration scaffold is distributed separately; this PR 
 - `handoff-engine.cjs` now aborts on `ARTICLE_LEASE_LOST` instead of converting lost lease ownership into a recoverable provider error. Stale workers cannot continue to publish after losing their fence.
 - GitHub Actions run https://github.com/ahmadalali010119991-web/Shamna-AI-Android/actions/runs/43439110348 passed all regression groups including storage readback and lease fencing.
 - Next production gates: verify Blob access policy and shared media delivery, run a real write/read/delete smoke test without publishing, wire a guarded video URL consumer on the site, and use source-specific permitted media ingestion adapters before enabling public automatic video publication.
+
+## Public playback and shared-video handoff, 2026-11-13
+- `public-video-playback-check.cjs` checks anonymous HTTP HEAD, matching size/MIME, a `206` response to a byte range request, and video magic bytes; it does not transmit private tokens. This helps ensure both web browsers and Telegram can fetch the same public media.
+- A LIVE Vercel STAGING request to https://dallalna-telegram-bridge-p8dia1oqy-ahmadalali010119991-6976.vercel.app/api/health returned HTTP 200 with publiclyPlayable=true for MDN's public-domain flower.mp4 test fixture (1,128,375 bytes). It was not uploaded to the project's Blob store and was not posted as news.
+- `source-video-recovery.cjs` now requires `playback.check` before acknowledging a stored media URL. Invalid or inaccessible playback remains a retryable failure rather than publishing corrupted video or automatically replacing it with a photo.
+- `video-full-handoff.test.cjs` connects discovery, validated recovery, durable URL, anonymous playback receipt, and independent website/Telegram mock destinations. Proves Telegram retry cannot trigger a second website post, and completed video need not be re-downloaded.
+- GitHub Actions run https://github.com/ahmadalali010119991-web/Shamna-AI-Android/actions/runs/43440891822 passed all 17 test groups after these changes.
+- Existing production Vercel applications remain unchanged by this stage. Real shared Blob write/read and live video publishing to both destinations are still not verified. This feature branch is NOT the deployed Vercel project source.
