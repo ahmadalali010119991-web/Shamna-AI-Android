@@ -4,6 +4,7 @@ on:
     paths:
       - '.github/workflows/midan-field-media-browser-test.yml'
       - 'midan-site-snapshot/diagnostics/test-field-media.cjs'
+      - 'midan-site-snapshot/feature/field-feed-enhancer.js'
   workflow_dispatch:
 permissions:
   contents: write
