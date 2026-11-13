@@ -43,7 +43,9 @@ async function inspect(e){
  const embed=telegramEmbed(postUrl);
  const originalId=card?.dataset?.article||card?.querySelector?.("[data-save]")?.getAttribute("data-save");
  let remoteVideo=null;
- if(originalId&&!clip)remoteVideo=await resolveArticleVideo(originalId);
+ // Query the original video endpoint for every article, including clips with a thumbnail.
+ // Previously, the clip flag incorrectly prevented direct MP4 lookup.
+ if(originalId)remoteVideo=await resolveArticleVideo(originalId);
  if(remoteVideo&&["mp4","embed"].includes(remoteVideo.kind)){
    openMedia({kind:"video",direct:remoteVideo.kind==="mp4"?remoteVideo.url:null,embed:remoteVideo.kind==="embed"?remoteVideo.url:null,postUrl,caption:"فيديو الخبر الأصلي داخل ميدان الخبر"});
    return;
