@@ -1,0 +1,20 @@
+name: Inspect owned Telegram news post IDs safely
+on:
+  push:
+    paths: ['.github/workflows/midan-channel-post-inspector.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - run: pip install beautifulsoup4==4.13.4
+      - run: python midan-site-snapshot/diagnostics/channel_post_ids.py > midan-site-snapshot/diagnostics/channel-post-findings.txt 2>&1
+      - run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add midan-site-snapshot/diagnostics/channel-post-findings.txt
+          if ! git diff --cached --quiet; then git commit -m 'diag(midan): locate linked Telegram message'; git push; fi
