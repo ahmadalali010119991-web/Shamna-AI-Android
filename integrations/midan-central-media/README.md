@@ -37,3 +37,12 @@ The full locally-tested integration scaffold is distributed separately; this PR 
 - Leases expire, so long-running network operations must renew and ensure ownership. A late response after lease expiry is not an atomic distributed transaction.
 - \`recover\` adapters in the staged engine are interfaces only. There is **no production video extractor or 100 independent services** bundled with this branch.
 - Until actual Vercel services, credentials, and production store are wired and tested, this code is **not an enabled news publisher**.
+
+
+## Verified current runtime topology (2026-11-13)
+- Existing bridge: \`dallalna-telegram-bridge.vercel.app\`; its \`state-v3.js\` uses a dedicated \`telegram-bridge-state\` Supabase Edge Function with bot-token bearer authentication. It is **not** the unrelated \`shamna-kc\` database visible in the available Supabase connector.
+- Existing site: \`midan-al-khabar.vercel.app\`; its \`private-store.js\` persists records through private Vercel Blob. Its \`api/media.js\` is not a trusted event-ingest endpoint for this staged protocol.
+- Both current GET probes \`/api/health\` (bridge) and \`/api/news\` (website) returned HTTP 200 when last checked. No POST requests or publication were triggered.
+- \`signed-handoff.cjs\` adds an HMAC-SHA256 protocol with a 5-minute clock window and per-request random nonce. Verification requires a **durable, atomic** nonce consumer; an in-memory Set is never adequate for serverless production and is used only in unit tests.
+- Signing key and bridge token must remain server-only and must never be printed or embedded in the website frontend.
+- The source repository for this PR does **not** contain the existing Vercel production bridge/site deployments. Merging PR #1 alone will not activate the new protocol.
