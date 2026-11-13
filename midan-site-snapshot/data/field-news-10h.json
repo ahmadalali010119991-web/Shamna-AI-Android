@@ -95,42 +95,6 @@
       "video": false,
       "videoUrl": null,
       "imageUrl": null
-    },
-    {
-      "id": "voice-suhebb0-47973",
-      "sourceId": "suhebb0",
-      "author": "صهيب اليعربي",
-      "source": "قناة صهيب اليعربي",
-      "title": "#الحسكة أعلنت مديرية أوقاف الحسكة صرف رواتب العاملين في مدارس التعليم الشرعي التأسيسي عن شهري أيلول وتشرين الاول",
-      "fullText": "#الحسكة\nأعلنت مديرية أوقاف الحسكة صرف رواتب العاملين في مدارس التعليم الشرعي التأسيسي عن شهري أيلول وتشرين الاول",
-      "summary": "#الحسكة\nأعلنت مديرية أوقاف الحسكة صرف رواتب العاملين في مدارس التعليم الشرعي التأسيسي عن شهري أيلول وتشرين الاول",
-      "publishedAt": "2026-11-12T16:43:33Z",
-      "url": "https://t.me/suhebb0/47973",
-      "country": "سوريا",
-      "kind": "news",
-      "verification": "source_report",
-      "editorialTier": "source_attributed",
-      "video": false,
-      "videoUrl": null,
-      "imageUrl": null
-    },
-    {
-      "id": "voice-suhebb0-47971",
-      "sourceId": "suhebb0",
-      "author": "صهيب اليعربي",
-      "source": "قناة صهيب اليعربي",
-      "title": "#الرقة وفاة طفلتين وإصابة 4 أطفال آخرين بحالات تسمم جراء تناولهم فطراً برياً ساماً في مزرعة تشرين غرب مدينة الرقة.",
-      "fullText": "#الرقة\nوفاة طفلتين وإصابة 4 أطفال آخرين بحالات تسمم جراء تناولهم فطراً برياً ساماً في مزرعة تشرين غرب مدينة الرقة.",
-      "summary": "#الرقة\nوفاة طفلتين وإصابة 4 أطفال آخرين بحالات تسمم جراء تناولهم فطراً برياً ساماً في مزرعة تشرين غرب مدينة الرقة.",
-      "publishedAt": "2026-11-12T16:30:55Z",
-      "url": "https://t.me/suhebb0/47971",
-      "country": "سوريا",
-      "kind": "news",
-      "verification": "source_report",
-      "editorialTier": "source_attributed",
-      "video": false,
-      "videoUrl": null,
-      "imageUrl": null
     }
   ]
 }
