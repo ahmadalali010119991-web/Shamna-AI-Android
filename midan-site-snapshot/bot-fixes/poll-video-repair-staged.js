@@ -1,8 +1,8 @@
 'use strict';
 const crypto=require('node:crypto');
 const c=require('../lib/core'),v=require('../lib/voice-video-first');
-const oneTime='pv314UT5yBX_65lyuKOMmo4Cr6BHddID-1X8-hHvm38L5H_svaRH3g';
-function auth(req){const actual=String(req.headers['x-midan-restore']||'');const a=Buffer.from(actual),b=Buffer.from(oneTime);return a.length===b.length&&crypto.timingSafeEqual(a,b)}
+const oneTime=process.env.MIDAN_MEDIA_REPAIR_KEY||'';
+function auth(req){const actual=String(req.headers['x-midan-restore']||'');const a=Buffer.from(actual),b=Buffer.from(oneTime);return b.length>=32&&a.length===b.length&&crypto.timingSafeEqual(a,b)}
 module.exports=async(req,res)=>{
  if(req.method==='POST'&&req.query?.repair==='video552'){
   if(!auth(req))return c.reply(res,403,{ok:false,error:'Forbidden'});
