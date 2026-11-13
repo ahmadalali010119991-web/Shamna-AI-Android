@@ -77,3 +77,14 @@ The full locally-tested integration scaffold is distributed separately; this PR 
 - A separate secure downloader/validator is mandatory before assigning `verified:true`; passing candidate links directly to the Telegram Bot API is forbidden by the staged publisher.
 - This is one HTML discovery connector, **not** comprehensive extraction for every social/video site; source authorizations and platform-specific access remain necessary.
 - Source pages and video URLs may be inaccessible from the deployment environment; no live publisher extraction is claimed.
+
+## 2026-11-13 verified live video download and staged storage
+- NEW: video-download-verify.cjs performs a real bounded HTTPS media download (no redirects), explicit CDN host allowlist, Content-Type validation, MP4/WebM signature checks, byte count, and SHA256 hashing; bad/oversized files fail closed.
+- LIVE PREVIEW TEST (no channel posting): https://dallalna-telegram-bridge-qda8ye3ro-ahmadalali010119991-6976.vercel.app/api/health downloaded the openly licensed MDN flower.mp4 and returned 200 with verified=true, video/mp4, size=1128375, SHA256=0cd83d944a6ca7822b4a8306cecc60a36e859b041f6702c6a1ad9ead78924451.
+- NEW: verified-video-store.cjs checks the SHA256 again before storage, and requires a trusted HTTPS storage receipt. The configured put callback is an interface, not a live shared media store.
+- NEW: source-video-recovery.cjs composes source discovery -> download -> validation -> durable store with candidate fallbacks. It requires explicit source reuse permission and preserves temporary failures for retries.
+- All fourteen deterministic GitHub Actions regression groups passed in workflow run https://github.com/ahmadalali010119991-web/Shamna-AI-Android/actions/runs/43438165061.
+- The MDN preview demonstrates an actual downloaded binary on a Vercel server. The preview endpoint is a test fixture and does not publish a news item or upload it to shared storage.
+- Production channel and website are NOT switched to this staged generic video adapter. Previous direct Source99 photos 6/7 are separate verified live publications.
+- All-platform ingestion cannot be represented as universal: each platform needs an authorized access method and source-specific adapter. Social networks with access restrictions cannot be downloaded from a public URL alone.
+- Before promoting: configure a server-only approved shared video store, verify read-after-write/playback, wire signed site notification and Telegram delivery, then test media and duplicate reconciliation end-to-end with a real news source.
