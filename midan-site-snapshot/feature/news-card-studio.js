@@ -19,7 +19,19 @@ function sourceIdentity(name,url){
  if(/(?:^|\s|[–—:-])سانا(?:\s|$)|وكالة الأنباء.*السور/i.test(n)||/sana\.sy|sananews\.sy/.test(u))return {name:n,icon:"/source-logos/sana.png",key:"sana"};
  if(/الجزيرة|al[\s-]?jazeera/i.test(n)||/aljazeera\.net|aljazeera\.com/.test(u))return {name:n,icon:"/source-logos/aljazeera.png",key:"aljazeera"};
  if(/صهيب\s+اليعربي|suhaib[\s-]*al/i.test(n)||/t\.me\/(?:suhebb0|sohebb1993)/i.test(u))return {name:n,icon:"/source-logos/suhaib.png",key:"suhaib"};
- return {name:n||"غير محدد",icon:/^https:\/\//i.test(url||"")?"/api/source-logo?url="+encodeURIComponent(url):"",key:"other"};
+ var fallback="";
+ try{
+  var parsed=new URL(url||""),host=parsed.hostname.toLowerCase();
+  if(parsed.protocol==="https:"&&!parsed.username&&!parsed.password){
+   if(host==="t.me"||host==="telegram.me"){
+    var parts=parsed.pathname.split("/").filter(Boolean),handle=parts[0]==="s"?parts[1]:parts[0];
+    if(/^[a-zA-Z0-9_]{5,32}$/.test(handle||""))fallback="https://t.me/i/userpic/320/"+handle+".jpg";
+   }else if(host.indexOf(".")>0){
+    fallback="https://www.google.com/s2/favicons?domain="+encodeURIComponent(host)+"&sz=128";
+   }
+  }
+ }catch(e){}
+ return {name:n||"غير محدد",icon:fallback,key:"other"};
 }
 function safeDate(raw){
  if(!raw)return "";
