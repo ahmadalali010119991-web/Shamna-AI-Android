@@ -109,3 +109,5 @@ jobs:
 # Verify live production transactional media-retry queue after safe switch (2026-11-14).
 
 # Production test: consume disposable non-channel media queue job; no real Telegram post (2026-11-14).
+
+# Verify transient HTTP 503 video-watch retry in production (2026-11-14).
