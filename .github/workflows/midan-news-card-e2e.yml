@@ -1,4 +1,4 @@
-name: Midan production browser end-to-end image-card test
+name: Midan v3 image card no-overlap and logo tests
 on:
   push:
     paths: ['.github/workflows/midan-news-card-e2e.yml']
@@ -24,12 +24,13 @@ jobs:
           node <<'JS'
           const {chromium}=require('playwright');
           (async()=>{
-           let opts={headless:true};const fs=require('fs');
+           let opts={headless:true};const fs=require('fs');const feature=fs.readFileSync('midan-site-snapshot/feature/news-card-studio.js','utf8');
            if(fs.existsSync('/usr/bin/google-chrome'))opts.executablePath='/usr/bin/google-chrome';
            const browser=await chromium.launch(opts);
            try{
              const context=await browser.newContext({viewport:{width:412,height:915},acceptDownloads:true,userAgent:'Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 Chrome/140 Mobile Safari/537.36 MidanAlKhabarApp/1.3.9'});
              const page=await context.newPage();
+             await page.route('**/news-card-studio.js',route=>route.fulfill({status:200,contentType:'application/javascript',body:feature}));
              await page.goto('https://midan-al-khabar.vercel.app/',{waitUntil:'domcontentloaded',timeout:50000});
              await page.waitForSelector('#newsList',{timeout:20000});
              await page.evaluate(()=>{document.querySelector('#newsList').innerHTML='<article class="news-card" data-article="test-news-card-e2e"><div class="card-meta">سوريا</div><h3>خبر تجريبي لاختبار تصميم صورة الخبر داخل ميدان الخبر</h3><p class="card-desc">هذا نص تجريبي للبطاقة، وليس خبرًا حقيقيًا.</p><p class="source-name">ميدان الخبر</p><img src="/assets/icon-192-v2.png" alt="اختبار"></article>'});
@@ -54,14 +55,27 @@ jobs:
                if(result.warning)throw Error('Source logo failed: '+entry.source+' '+result.warning);
                if(!result.image.startsWith('data:image/png;base64,'))throw Error('PNG failed for '+entry.source);
              }
-             console.log('PASS: three source logos rendered + dynamic article PNG download');
+             for(const [fmt,dimensions] of Object.entries({portrait:[1080,1350],square:[1080,1080],story:[1080,1920],wide:[1600,900]})){
+               for(const photo of [true,false]){
+                 const result=await page.evaluate(async ({fmt,photo})=>{
+                   let src='';if(photo){const c=document.createElement('canvas');c.width=600;c.height=300;const g=c.getContext('2d');g.fillStyle='#987';g.fillRect(0,0,600,300);src=c.toDataURL('image/png')}
+                   const p=await window.MidanNewsCardStudio.render({title:'عنوان طويل لاختبار توازن العناصر النصية في قالب الصورة مع الحفاظ على الحدود بدون أي تداخل بين النص والصورة أو التذييل في التصميم النهائي',summary:'تغطية إخبارية توضيحية للتأكد من سلامة الهوامش والتباين في جميع الأبعاد المتاحة للمستخدم.',source:'سانا',date:'2026-11-13T08:20:00Z',photo:src},fmt);
+                   return {width:p.canvas.width,height:p.canvas.height,layout:p.layout,warning:p.warning,png:p.canvas.toDataURL('image/png').slice(0,22)};
+                 },{fmt,photo});
+                 if(result.width!==dimensions[0]||result.height!==dimensions[1]||!result.png.startsWith('data:image/png;'))throw Error('Bad '+fmt+' '+photo);
+                 if(result.warning)throw Error('Rendering warning '+fmt+': '+result.warning);
+                 if(result.layout.header+result.layout.footer>=result.height)throw Error('Invalid geometry '+fmt);
+                 console.log('PASS geometry '+fmt+' image='+photo+' '+result.width+'x'+result.height);
+               }
+             }
+             console.log('PASS: 3 local source logos, 4 geometries x 2 media modes, PNG download');
            }finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
       - name: Save passing test marker
         run: |
           set -euo pipefail
-          printf 'PASS: live Android-UA browser: news card, 3 source logos, PNG download, square size; %s\n' "$(date -u -Iseconds)" > midan-site-snapshot/feature/production-e2e.txt
+          printf 'PASS: new Midan V3 layout: 3 source logos, 4 formats x 2 media modes, browser PNG save; %s\n' "$(date -u -Iseconds)" > midan-site-snapshot/feature/production-e2e.txt
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add midan-site-snapshot/feature/production-e2e.txt
