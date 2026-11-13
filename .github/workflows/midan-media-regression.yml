@@ -23,6 +23,7 @@ jobs:
       - run: node integrations/midan-central-media/media-retry-queue.test.cjs
       - run: node integrations/midan-central-media/media-retry-gateway.test.cjs
       - run: node integrations/midan-central-media/news-video-watcher-retry.test.cjs
+      - run: node integrations/midan-central-media/video-watch-cadence.test.cjs
       - run: node --check integrations/midan-central-media/native-telegram-qa.cjs
       - run: node integrations/midan-central-media/production-bridge.test.cjs
 
