@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head><script data-midan-browser-gate="v1">(function(){'use strict';var u=navigator.userAgent||'';var app=/(?:\bwv\b|MidanAlKhabarApp\/\d)/i.test(u);if(!app&&(location.pathname==='/'||location.pathname==='/index.html'))location.replace('/open.html');})();</script>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a2f5a"><meta name="description" content="ميدان الخبر — رصد الأخبار والأحداث من سوريا والشرق الأوسط مع مصادر واضحة وحالات تحقق دقيقة.">
+<title>ميدان الخبر | سوريا والشرق الأوسط</title><meta property="og:image" content="https://midan-al-khabar.vercel.app/assets/midan-brand-2026-v2.webp"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://midan-al-khabar.vercel.app/assets/midan-brand-2026-v2.webp">
+<link rel="icon" type="image/png" href="/assets/icon-64-v2.png"><link rel="apple-touch-icon" href="/assets/icon-192-v2.png"><link rel="manifest" href="/manifest.webmanifest"><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<!-- Startup is nonblocking; feed skeletons handle network loading. -->
+<div class="ambient glow-a"></div><div class="ambient glow-b"></div>
+<div id="app" class="app-shell">
+  <aside class="side-panel" aria-label="التنقل الرئيسي">
+    <div class="side-brand"><img class="brand-icon" src="/assets/midan-brand-2026-v2.webp" alt="شعار ميدان الخبر"><div><strong>ميدان الخبر</strong><span>من الميدان إلى الحقيقة</span></div></div>
+    <div class="side-eyebrow">مساحتك الإخبارية</div>
+    <nav class="side-nav" id="desktopNav">
+      <button type="button" class="nav-btn active" data-view="home"><span class="nav-ico">⌂</span> الرئيسية</button>
+      <button type="button" class="nav-btn" data-view="breaking"><span class="nav-ico">ϟ</span> أهم الأحداث</button><button type="button" class="nav-btn" data-view="world"><span class="nav-ico">◎</span> العالم</button><button type="button" class="nav-btn" data-view="refugees"><span class="nav-ico">♧</span> اللاجئون واللجوء</button>
+      <button type="button" class="nav-btn" data-view="review"><span class="nav-ico">◌</span> متداول من المتابعين</button>
+      <button type="button" class="nav-btn" data-view="saved"><span class="nav-ico">▣</span> المحفوظات</button>
+      <button type="button" class="nav-btn" data-view="report"><span class="nav-ico">✉</span> أرسل خبرًا</button>
+      <button type="button" class="nav-btn" data-view="settings"><span class="nav-ico">⚙</span> الإعدادات</button>
+    </nav>
+    <div class="side-bottom"><div class="live-indicator"><i></i> متابعة المستجدات</div><p>منصة تجمع الأخبار من مصادرها، وتعرض درجة التحقق بوضوح.</p><button id="aboutSide" type="button" class="subtle-link">من نحن ←</button></div>
+  </aside>
+  <div class="main-area">
+    <header class="topbar">
+      <div class="mobile-brand"><img src="/assets/midan-brand-2026-v2.webp" alt=""><div><strong>ميدان الخبر</strong><span>سوريا أولًا • الشرق الأوسط</span></div></div>
+      <div class="desktop-top-title"><span class="eyebrow">المشهد الإخباري</span><strong>ابقَ أقرب إلى الحدث.</strong></div>
+      <div class="top-actions"><button type="button" class="round-btn" id="searchToggle" aria-label="بحث عن الأخبار" title="بحث"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.7" cy="10.7" r="6.3"/><path d="m15.5 15.5 5 5"/></svg></button><button type="button" class="round-btn" id="notifyToggle" aria-label="الإشعارات" title="الإشعارات"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg><span class="tiny-dot" id="notificationDot" hidden></span></button><button type="button" class="round-btn mobile-settings" id="settingsTop" aria-label="إعدادات"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg></button></div>
+    </header>
+    <main class="content" id="mainContent">
+      <div id="searchBar" class="search-bar" hidden><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="m14.5 14.5 6 6"/></svg><input id="searchInput" type="search" aria-label="ابحث عن خبر أو مدينة" placeholder="ابحث عن خبر، مدينة، أو موضوع..."><button id="searchClose" type="button" aria-label="إغلاق البحث">×</button></div>
+      <section class="hero" id="homeHero"><div class="hero-copy"><div class="hero-status"><span class="status-pulse"></span> <span>تغطية إخبارية متجددة</span><span class="hero-divider">|</span><span id="clockLabel">—</span></div><h1>الحدث أقرب<br><em>مما تتصور.</em></h1><p>من مدن سوريا وبلداتها إلى أهم أحداث الشرق الأوسط. أخبار من مصادر واضحة، بلا ضجيج.</p><div class="hero-btns"><button class="gold-btn" id="heroBreaking" type="button">أهم المستجدات <span>↖</span></button><button class="outline-btn" id="heroVerification" type="button">كيف نتحقق؟</button></div></div><div class="hero-art" aria-hidden="true"><div class="halo halo1"></div><div class="halo halo2"></div><img src="/assets/midan-brand-2026-v2.webp" alt=""><span class="floating-label label-one">سوريا أولًا</span><span class="floating-label label-two">رصد • مصادر • وضوح</span></div></section>
+      <section class="toolbar"><div class="section-intro"><div><span class="eyebrow">آخر التغطيات</span><h2 id="viewTitle">الموجز الإخباري</h2></div><button id="refreshBtn" type="button" class="refresh-btn" title="تحديث الأخبار">⟳ <span>تحديث</span></button></div><div class="editorial-hubs"><button type="button" data-view="home">الموجز</button><button type="button" data-view="world">🌍 أهم أحداث العالم</button><button type="button" data-view="refugees">🕊️ أخبار اللاجئين</button></div><div class="filter-wrap"><div class="pill-list" id="countryPills" aria-label="تصفية حسب الدولة"></div><div class="filters-second"><label class="select-label"><span>المنطقة</span><select id="provinceSelect" aria-label="اختر المحافظة"><option value="all">كل المناطق</option></select></label><label class="select-label"><span>النوع</span><select id="categorySelect" aria-label="اختر نوع الخبر"><option value="all">جميع الموضوعات</option><option value="security">ميداني وأمني</option><option value="politics">سياسي</option><option value="services">خدمات ومعيشة</option><option value="economy">اقتصاد</option><option value="society">مجتمع</option></select></label><span class="feed-updated" id="lastSync">لم تُحدّث البيانات بعد</span></div></div></section>
+      <section id="mainView" class="news-layout"><div class="feed-column"><div id="liveStrip" class="live-strip" hidden></div><div id="newsList" class="news-list" aria-live="polite"></div><div id="moreWrap" class="more-wrap" hidden><button id="moreButton" type="button" class="outline-btn">عرض المزيد من الأخبار ↓</button></div></div><aside class="right-column"><div class="info-panel"><div class="info-icon">◎</div><h3>الخبر مع مصدره</h3><p>نميّز بين ما نشرته المصادر، وما أمكن التحقق منه، وما لا يزال قيد التحقق.</p><button type="button" id="learnVerify" class="subtle-link">تعرّف إلى المنهجية ←</button></div><div class="info-panel compact"><h3>تنبيهات بلا إزعاج</h3><p>نختار الأحداث الحرجة والمهمة فقط. يمكنك تخصيص الدول والموضوعات.</p><button type="button" id="learnNotifications" class="subtle-link">ضبط الإشعارات ←</button></div></aside></section>
+      <section id="reportView" class="settings-view" hidden>
+<div class="settings-panel citizen-form">
+<div class="report-top-row"><button type="button" id="reportBack" class="report-back">↩ العودة إلى الأخبار</button><span class="eyebrow">شاركنا ما يحدث من حولك</span></div><h2>أرسل خبرًا من منطقتك</h2>
+<p>هل شاهدت حدثًا مهمًا؟ شارك التفاصيل بوضوح، وأرفق صورة أو فيديو قصيرًا من هاتفك إن توفر. لا يشترط وجود رابط منشور.</p>
+<div class="citizen-notice"><strong>مهم قبل الإرسال</strong><p>نراجع البلاغات المرسلة وننشر المقبول منها باسم مصدره ومع موقع الحدث. وعند عدم وجود تأكيد كافٍ نستخدم وصف «متداول».</p></div>
+<form id="citizenReportForm" class="report-form">
+<label>عنوان الخبر أو الحدث <input name="title" required minlength="12" maxlength="180" placeholder="مثال: سيول تغمر عددًا من الشوارع في..."></label>
+<div class="report-two"><label>المدينة أو المنطقة<input name="region" required minlength="2" maxlength="100" placeholder="اسم المنطقة والمحافظة فقط"></label>
+<label>موعد وقوع الحدث (تقريبي)<input type="datetime-local" name="occurredAt"></label></div>
+<label>ما الذي حدث بالتحديد؟<textarea name="description" rows="6" required minlength="30" maxlength="2000" placeholder="اذكر ما شاهدته بنفسك، وما سمعته من الآخرين، وتاريخ وقوع الحدث. تجنب إطلاق الاتهامات دون دليل."></textarea></label>
+<label>رابط الخبر أو المصدر الأصلي (اختياري)<input name="url" type="url" maxlength="1800" placeholder="https://..."></label>
+<label>أرفق فيديو أو صورة من هاتفك (اختياري)<input name="media" type="file" accept="video/mp4,video/webm,video/quicktime,video/ogg,image/jpeg,image/png,image/webp"></label>
+<p class="privacy-tip">الحد الأعلى للملف حاليًا 3 ميغابايت. للمقاطع الأكبر أرفق رابط الفيديو حتى يتاح توسيع التخزين. لا ترسل وجوه أشخاص أو معلومات حساسة دون إذن.</p>
+<label class="citizen-consent"><input name="consent" type="checkbox" required> أؤكد أن المعلومات المقدمة بحسب علمي وأن لدي حق مشاركة الملف المرفق، وأوافق على مراجعته قبل النشر.</label>
+<input name="website" class="sr-only" aria-hidden="true" tabindex="-1" autocomplete="off">
+<button type="submit" class="gold-btn" id="citizenSubmit">إرسال الخبر للمراجعة</button>
+<p id="reportStatus" role="status" aria-live="polite"></p>
+</form></div></section>
+<section id="settingsView" class="settings-view" hidden></section>
+      <section id="aboutView" class="about-view" hidden></section>
+      <footer class="site-footer"><span>© <span id="yearText"></span> ميدان الخبر</span><span>الأخبار من مصادرها الأصلية.</span><span class="m-news-social"><a href="https://www.tiktok.com/@alislam_almutab_book" target="_blank" rel="noopener noreferrer">تيك توك</a><a href="https://www.instagram.com/alislam_almutab_book/" target="_blank" rel="noopener noreferrer">إنستغرام</a></span></footer>
+    </main>
+  </div>
+  <nav class="bottom-nav" aria-label="التنقل السفلي"><button type="button" class="bottom-link active" data-view="home"><span class="bottom-icon">⌂</span><span>الرئيسية</span></button><button type="button" class="bottom-link" data-view="breaking"><span class="bottom-icon">ϟ</span><span>الأهم</span></button><button type="button" class="bottom-link" data-view="review"><span class="bottom-icon">◌</span><span>متداول</span></button><button type="button" class="bottom-link" data-view="saved"><span class="bottom-icon">▣</span><span>المحفوظة</span></button><button type="button" class="bottom-link" data-view="settings"><span class="bottom-icon">⚙</span><span>الإعدادات</span></button></nav>
+</div>
+<div id="overlay" class="overlay" hidden><div class="modal-backdrop" data-close="1"></div><section class="detail-sheet" id="modalContent" role="dialog" aria-modal="true" aria-label="التفاصيل"></section></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<script src="/report.js" defer></script><script src="/app.js" defer></script>
+<script data-midan-telegram-link="v1">(function(){'use strict';
+function mount(){
+ var s=document.getElementById('settingsView');if(!s||s.hidden||s.querySelector('#midanOfficialTelegram'))return;
+ var panel=document.createElement('section');panel.id='midanOfficialTelegram';panel.className='settings-panel';panel.style.cssText='margin:16px 0;padding:20px;border:1px solid rgba(240,188,85,.48);border-radius:19px;background:#102D4A;color:#F4F7FC;text-align:right';
+ var title=document.createElement('h3');title.textContent='قناة ميدان الخبر الرسمية';title.style.cssText='color:#F0BC55;margin:0 0 9px';
+ var desc=document.createElement('p');desc.textContent='تابع أخبارنا وتحديثاتنا مباشرة عبر قناتنا الرسمية على تيليجرام.';desc.style.cssText='margin:0 0 15px;color:#E1E8F2;line-height:1.8';
+ var a=document.createElement('a');a.href='https://t.me/maydan_alkhabar';a.target='_blank';a.rel='noopener noreferrer';a.textContent='✈ الانتقال إلى قناة ميدان الخبر';a.style.cssText='display:block;text-align:center;border-radius:13px;padding:13px 12px;background:#F0BC55;color:#06142B;font-size:15px;font-weight:700;text-decoration:none';
+ panel.append(title,desc,a);
+ var reference=Array.from(s.children).find(function(n){return (n.textContent||'').includes('الصيانة والترقية')||(n.textContent||'').includes('تحديثات التطبيق')});
+ if(reference)s.insertBefore(panel,reference);else s.appendChild(panel);
+}
+var scheduled=false;function schedule(){if(scheduled)return;scheduled=true;setTimeout(function(){scheduled=false;mount()},40)}
+var observer=new MutationObserver(schedule);observer.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['hidden']});
+document.addEventListener('DOMContentLoaded',schedule);schedule();
+})();</script>
+<script src="/sports-view.js?v=20261112" defer></script>
+</body></html>
