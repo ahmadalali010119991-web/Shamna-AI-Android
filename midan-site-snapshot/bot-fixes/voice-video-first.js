@@ -1,20 +1,32 @@
 'use strict';
 /* Video-first media routing. Never expose BOT_TOKEN, and fall back to prior news behavior
  * if the source channel disallows copying or source metadata is unavailable. */
-const NEWS_URL='https://raw.githubusercontent.com/ahmadalali010119991-web/Shamna-AI-Android/main/midan-site-snapshot/data/field-news-10h.json';
-const TOK_HOST='api.telegram.org',SOURCE='@suhebb0';
-let manifestPromise=null,installed=false;
-async function manifest(fetcher){
- if(!manifestPromise)manifestPromise=fetcher(NEWS_URL,{cache:'no-store',signal:AbortSignal.timeout(6500)})
- .then(r=>{if(!r.ok)throw Error('video manifest unavailable');return r.json()})
- .then(d=>new Set((d.items||[]).filter(x=>x.video&&x.url).map(x=>String(x.url).match(/t\.me\/suhebb0\/(\d+)/)?.[1]).filter(Boolean)))
- .catch(()=>new Set());
- return manifestPromise
-}
+const PUBLIC_SOURCE=/https?:\/\/t\.me\/([a-zA-Z0-9_]{5,32})\/(\d+)/gi;
+const videoCache=new Map(),VIDEO_TTL=3*60*1000;
+let installed=false;
 function originalPost(payload){
- const all=String(payload.caption||payload.text||'')+' '+JSON.stringify(payload.reply_markup||{});
- const m=all.match(/(?:https?:\/\/)?t\.me\/suhebb0\/(\d+)/i);
- return m?.[1]||null
+ const all=String(payload.caption||payload.text||"")+" "+JSON.stringify(payload.reply_markup||{});
+ const match=[...all.matchAll(PUBLIC_SOURCE)].find(m=>m[1].toLowerCase()!=="maydan_alkhabar");
+ return match?{handle:match[1],id:Number(match[2])}:null
+}
+async function sourceVideo(post,fetcher){
+ const key=post.handle+"/"+post.id,existing=videoCache.get(key);
+ if(existing&&Date.now()-existing.at<VIDEO_TTL)return existing.found;
+ let found=false;
+ try{
+  const u="https://t.me/s/"+post.handle+"?before="+(post.id+1);
+  const r=await fetcher(u,{signal:AbortSignal.timeout(6500),headers:{"User-Agent":"MidanNews/1.0"}});
+  if(r.ok){
+   const raw=await r.text(),mark='data-post="'+key+'"',start=raw.indexOf(mark);
+   if(start>=0){
+    const end=raw.indexOf('tgme_widget_message_wrap',start+mark.length),html=raw.slice(start,end>start?end:start+18000);
+    found=/tgme_widget_message_video_player|tgme_widget_message_video_thumb|Media is too big|tgme_widget_message_roundvideo_player/.test(html);
+   }
+  }
+ }catch(e){/* network problems leave original publisher unchanged */}
+ videoCache.set(key,{found,at:Date.now()});
+ if(videoCache.size>200){const first=videoCache.keys().next().value;videoCache.delete(first)}
+ return found
 }
 function install(){
  if(installed)return;installed=true;
@@ -26,12 +38,12 @@ function install(){
    if(!/^https:\/\/api\.telegram\.org\/bot[^\/]+\/(?:sendPhoto|sendMessage)$/i.test(raw)||typeof init?.body!=='string')return original.apply(this,arguments);
    const data=JSON.parse(init.body),from=originalPost(data);
    if(!from||!data.chat_id||!String(data.chat_id).trim())return original.apply(this,arguments);
-   const allowed=await manifest(original);
-   if(!allowed.has(from))return original.apply(this,arguments);
+   const isVideo=await sourceVideo(from,original);
+   if(!isVideo)return original.apply(this,arguments);
    const caption=String(data.caption||data.text||'');
    if(caption.length>980)return original.apply(this,arguments);
    const target=raw.replace(/\/(?:sendPhoto|sendMessage)$/i,'/copyMessage');
-   const copy={chat_id:data.chat_id,from_chat_id:SOURCE,message_id:Number(from),caption:caption};
+   const copy={chat_id:data.chat_id,from_chat_id:'@'+from.handle,message_id:from.id,caption:caption};
    if(data.parse_mode)copy.parse_mode=data.parse_mode;
    if(data.reply_markup)copy.reply_markup=data.reply_markup;
    const r=await original(target,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(copy),signal:AbortSignal.timeout(14000)});
