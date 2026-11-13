@@ -32,3 +32,5 @@ jobs:
       - run: node integrations/midan-central-media/telegram-bot-publisher.test.cjs
 
       - run: node integrations/midan-central-media/official-source-video-discovery.test.cjs
+
+      - run: node integrations/midan-central-media/private-source99-adapter.test.cjs
