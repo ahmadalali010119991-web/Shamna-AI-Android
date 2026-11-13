@@ -16,6 +16,10 @@ function attachMedia(card){
   const link=card.querySelector('.card-foot a[href]');
   url=safeLink(link?.href);
   id='voice-'+(url||'').slice(-100);
+ }else if(card.matches('.m-sports-card')){
+  const link=card.querySelector('.m-sports-source[href]');
+  url=safeLink(link?.href);
+  id='sports-'+(url||'').slice(-100);
  }else{
   id=card.getAttribute('data-article');
   const a=Array.isArray(articles)?articles.find(x=>String(x.id)===id):null;
@@ -82,7 +86,7 @@ function schedule(){
  },85);
 }
 function scan(){
- const cards=document.querySelectorAll('#newsList .news-card[data-article],#voicesPanel .voice-post');
+ const cards=document.querySelectorAll('#newsList .news-card[data-article],#voicesPanel .voice-post,#sportsView .m-sports-card');
  cards.forEach(attachMedia);
  if(!watcher&&pending.size)schedule();
 }
@@ -100,10 +104,12 @@ function setup(){
  }
  const root=document.querySelector('#newsList');
  const voices=document.querySelector('#voicesPanel');
+ const sports=document.querySelector('#sportsView');
  if('MutationObserver' in window){
   const observer=new MutationObserver(()=>scan());
-  for(const node of [root,voices])if(node)observer.observe(node,{childList:true,subtree:true});
+  for(const node of [root,voices,sports])if(node)observer.observe(node,{childList:true,subtree:true});
  }
+ document.addEventListener('click',e=>{if(e.target.closest?.('.m-sports-tab'))setTimeout(scan,250)},true);
  scan();
 }
 // Detail pages use the same source image, not a substitute image.
