@@ -1,0 +1,22 @@
+name: Verify Midan news-card addon without altering Android app
+on:
+  push:
+    paths: ['.github/workflows/midan-news-card-validation.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Verify syntax and expected current UI
+        run: |
+          set -euo pipefail
+          node --check midan-site-snapshot/feature/news-card-studio.js
+          grep -q 'id="newsList"' midan-site-snapshot/live/index-android.html
+          grep -q 'id="modalContent"' midan-site-snapshot/live/index-android.html
+          grep -q 'MidanNewsCardStudio' midan-site-snapshot/feature/news-card-studio.js
+          grep -q 'shareImagePng' midan-site-snapshot/feature/news-card-studio.js
+          grep -q 'saveImagePng' midan-site-snapshot/feature/news-card-studio.js
+          echo 'PASS: JavaScript syntax, production UI insertion points, Android save/share bridge names'
