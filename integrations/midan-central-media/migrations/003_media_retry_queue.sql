@@ -69,8 +69,10 @@ CREATE OR REPLACE FUNCTION public.midan_retry_complete(p_key text,p_token uuid,
 RETURNS boolean LANGUAGE plpgsql SECURITY INVOKER SET search_path=public,pg_temp AS $$
 DECLARE n integer;
 BEGIN
- IF p_telegram_message_id IS NULL OR p_telegram_message_id<=0 THEN
- RAISE EXCEPTION 'TELEGRAM_RECEIPT_REQUIRED'; END IF;
+ IF p_telegram_message_id IS NULL OR p_telegram_message_id<=0 OR
+ p_telegram_file_id IS NULL OR length(trim(p_telegram_file_id))<8 OR
+ length(p_telegram_file_id)>512 THEN
+ RAISE EXCEPTION 'CONFIRMED_TELEGRAM_VIDEO_REQUIRED'; END IF;
  UPDATE public.midan_media_retry_jobs
  SET state='completed',payload='{}'::jsonb,lease_token=NULL,lease_until=NULL,
  telegram_message_id=p_telegram_message_id,telegram_file_id=left(p_telegram_file_id,512),
