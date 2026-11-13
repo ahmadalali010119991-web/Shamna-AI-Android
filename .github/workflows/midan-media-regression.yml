@@ -49,3 +49,5 @@ jobs:
       - run: node integrations/midan-central-media/video-full-handoff.test.cjs
 
       - run: node integrations/midan-central-media/direct-video-recovery.test.cjs
+
+      - run: node integrations/midan-central-media/direct-video-url-policy.test.cjs
