@@ -69,6 +69,7 @@ const fakeState=[
   assert.equal(await fn(source,args,903,['third']),false,'reject unconfirmed persistence');
   state.failure(false);
   let blobs=0;
+  process.env.BLOB_READ_WRITE_TOKEN='test-only-token';
   globalThis.__testBlob={put:async()=>{blobs++}};
   assert.equal(await fn(source,args,904,[]),true);
   assert.equal(blobs,1);
@@ -77,5 +78,5 @@ const fakeState=[
   assert.equal(await fn(source,args,905,['failing_blob']),true);
   assert.equal(Object.keys(state.peek().jobs).length,3);
   console.log('PASS: Blob suspended -> Supabase queued, deduped, read-back and safe retries');
- }finally{delete globalThis.__testBlob;fs.rmSync(root,{recursive:true,force:true})}
+ }finally{delete process.env.BLOB_READ_WRITE_TOKEN;delete globalThis.__testBlob;fs.rmSync(root,{recursive:true,force:true})}
 })().catch(e=>{console.error(e);process.exitCode=1});
