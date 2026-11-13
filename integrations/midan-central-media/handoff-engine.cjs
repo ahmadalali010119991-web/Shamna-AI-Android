@@ -7,7 +7,7 @@ const {normalize,identity,publishDecision,mergeDestinations}=require('./media-co
  * completed sends after ambiguous timeouts; Telegram Bot API alone does not
  * provide an atomic idempotency guarantee.
  */
-async function handoff(raw,{store,recover=[],website,telegram,validate,allowPhotoFallback=true}={}){
+async function handoff(raw,{store,recover=[],website,telegram,validate,checkExternal,allowPhotoFallback=true}={}){
  if(typeof store?.transaction!=='function'||!website?.publish||!telegram?.publish||typeof validate!=='function')
   throw Error('DURABLE_STORE_AND_ADAPTERS_REQUIRED');
  const story=normalize(raw),key=identity(story);
@@ -64,6 +64,24 @@ async function handoff(raw,{store,recover=[],website,telegram,validate,allowPhot
     return {ok:false,stage:'awaiting-media',key,attempts:state.attempts};
   for(const [dest,client] of [['website',website],['telegram',telegram]]){
    if(state.destinations[dest]?.status==='sent')continue;
+   if(state.media?.durability==='source-dependent'){
+    try{
+     if(typeof checkExternal!=='function')throw Error('EXTERNAL_MEDIA_RECHECK_REQUIRED');
+     await assertLease();
+     const fresh=await checkExternal(state.media,story,dest);
+     if(!fresh||fresh.publiclyPlayable!==true||fresh.uri!==state.media.uri ||
+       fresh.sha256!==state.media.sha256)throw Error('EXTERNAL_MEDIA_NO_LONGER_PLAYABLE');
+    }catch(e){
+     if(e?.message==='ARTICLE_LEASE_LOST')throw e;
+     state.attempts['external-playback']={status:'retry',reason:String(e?.message||e).slice(0,100)};
+     // Only re-run discovery if no destination already uses the old URL.
+     // If one destination is live, hold for coordinated replacement.
+     if(!Object.values(state.destinations).some(x=>x?.status==='sent'))state.media=null;
+     await persist();
+     return {ok:false,stage:'awaiting-media',key,attempts:state.attempts,
+       destinations:state.destinations};
+    }
+   }
    try{
     await assertLease();
     const outcome=await client.publish(story,state.media,{idempotencyKey:key+':'+dest});
