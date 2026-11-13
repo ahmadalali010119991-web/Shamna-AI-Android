@@ -1,55 +1,12 @@
 {
   "pagesScanned": 2,
-  "approved": 3,
-  "rejected": 12,
+  "approved": 0,
+  "rejected": 2,
   "reasons": {
-    "insufficient_news_evidence": 6,
     "opinion_or_advice": 1,
-    "promotion": 1,
-    "unsourced_claim_requires_review": 2,
-    "very_short": 2
+    "very_short": 1
   },
   "excludedUrls": [
-    {
-      "url": "https://t.me/suhebb0/47975",
-      "reason": "unsourced_claim_requires_review"
-    },
-    {
-      "url": "https://t.me/suhebb0/47976",
-      "reason": "unsourced_claim_requires_review"
-    },
-    {
-      "url": "https://t.me/suhebb0/47977",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/47978",
-      "reason": "very_short"
-    },
-    {
-      "url": "https://t.me/suhebb0/47980",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/47981",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/47982",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/47983",
-      "reason": "promotion"
-    },
-    {
-      "url": "https://t.me/suhebb0/47984",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/47986",
-      "reason": "insufficient_news_evidence"
-    },
     {
       "url": "https://t.me/suhebb0/47988",
       "reason": "opinion_or_advice"
