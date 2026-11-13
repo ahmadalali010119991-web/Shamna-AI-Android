@@ -18,3 +18,5 @@ jobs:
           node-version: '22'
       - run: node integrations/midan-central-media/media-contract.test.cjs
       - run: node integrations/midan-central-media/handoff-engine.test.cjs
+
+      - run: node integrations/midan-central-media/supabase-lease-store.test.cjs
