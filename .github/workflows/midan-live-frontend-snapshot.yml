@@ -24,6 +24,7 @@ jobs:
             curl --fail --location --retry 2 --max-time 30 --silent --show-error "$url" -o "midan-site-snapshot/live/$f"
             test "$(wc -c < "midan-site-snapshot/live/$f")" -gt 500
           done
+          curl --fail --location --retry 2 --max-time 30 --silent --show-error -A "Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 Chrome/140 Mobile Safari/537.36 MidanAlKhabarApp/1.3.9" "https://midan-al-khabar.vercel.app/" -o midan-site-snapshot/live/index-android.html
           printf '%s\n' "# Public frontend snapshot from midan-al-khabar.vercel.app" "No backend code or secrets copied." > midan-site-snapshot/live/README.md
       - name: Commit snapshot (only public files)
         shell: bash
