@@ -24,16 +24,19 @@ const legacy=[
 ].join('\n');
 const fakeState=[
  "'use strict';",
- "let value=null,writes=0,fail=false;",
+ "let value=null,writes=0,version=0,fail=false,delayOne=false,conflicts=0;",
  "module.exports={",
- " read:async()=>value?{value:structuredClone(value)}:null,",
- " write:async(key,newValue)=>{",
- "  if(key!=='midan_media_video_retries_v4')throw Error('wrong key');",
+ " read:async()=>value?{value:structuredClone(value),updated_at:String(version)}:null,",
+ " call:async(op,key,newValue,options={})=>{",
+ "  if(op!=='write'||key!=='midan_media_video_retries_v4')throw Error('wrong operation');",
+ "  if(delayOne){delayOne=false;await new Promise(r=>setTimeout(r,20))}",
  "  if(fail)return {ok:false};",
- "  value=structuredClone(newValue);writes++;return {ok:true};",
+ "  const expected=options.expected_updated_at;",
+ "  if(expected!==(value?String(version):null)){conflicts++;return {ok:false,conflict:true}}",
+ "  value=structuredClone(newValue);version++;writes++;return {ok:true};",
  " },",
- " peek:()=>value,count:()=>writes,",
- " reset:()=>{value=null;writes=0;fail=false},",
+ " peek:()=>value,count:()=>writes,conflicts:()=>conflicts,delay:()=>{delayOne=true},",
+ " reset:()=>{value=null;writes=0;version=0;fail=false;delayOne=false;conflicts=0},",
  " failure:yes=>{fail=yes}",
  "};"
 ].join('\n');
@@ -77,6 +80,24 @@ const fakeState=[
   globalThis.__testBlob={put:async()=>{throw Error('limits-exceeded-suspended')}};
   assert.equal(await fn(source,args,905,['failing_blob']),true);
   assert.equal(Object.keys(state.peek().jobs).length,3);
-  console.log('PASS: Blob suspended -> Supabase queued, deduped, read-back and safe retries');
+  state.delay();
+  const concurrent=await Promise.all([
+    fn(source,args,906,['failure_a']),
+    fn(source,args,907,['failure_b'])
+  ]);
+  assert.deepEqual(concurrent,[true,true]);
+  assert.equal(Object.keys(state.peek().jobs).length,5,'both concurrent retries preserved');
+  assert.ok(state.peek().jobs['suhebb0:47990:906']);
+  assert.ok(state.peek().jobs['suhebb0:47990:907']);
+  assert.ok(state.conflicts()>0,'forced conflict must exercise revision retry');
+  const duplicateWrites=state.count();
+  const duplicates=await Promise.all([
+    fn(source,args,906,['duplicate_a']),
+    fn(source,args,906,['duplicate_b'])
+  ]);
+  assert.deepEqual(duplicates,[true,true]);
+  assert.equal(state.count(),duplicateWrites,'same pending job not overwritten');
+  assert.equal(Object.keys(state.peek().jobs).length,5);
+  console.log('PASS: suspended Blob durable CAS fallback, concurrent distinct jobs preserved, duplicate jobs deduplicated');
  }finally{delete process.env.BLOB_READ_WRITE_TOKEN;delete globalThis.__testBlob;fs.rmSync(root,{recursive:true,force:true})}
 })().catch(e=>{console.error(e);process.exitCode=1});
