@@ -67,3 +67,6 @@ jobs:
       - run: node integrations/midan-central-media/news-embed-video-buttons.test.cjs
 
       - run: node integrations/midan-central-media/sync-embed-video-watcher.test.cjs
+
+      - run: node integrations/midan-central-media/telegram-native-video-site-fallback.test.cjs
+      - run: node integrations/midan-central-media/article-video-ephemeral-compat.test.cjs
