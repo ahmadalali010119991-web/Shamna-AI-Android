@@ -102,7 +102,7 @@ def run():
    old=json.loads(OUT.read_text())
    for item in old.get("items",[]):
     stamp=dt.datetime.fromisoformat(item["publishedAt"].replace("Z","+00:00"))
-    if stamp>=CUTOFF and item["id"] not in allitems:allitems[item["id"]]=item
+    if stamp>=CUTOFF and item["id"] not in allitems and classify(item.get("fullText",""))[0]=="news":allitems[item["id"]]=item
   except Exception:pass
  rows=sorted(allitems.values(),key=lambda x:x["publishedAt"],reverse=True)
  payload={"schema":2,"windowHours":10,"publisher":"Midan Al Khabar","sources":[s["handle"] for s in SRC],"items":rows}
