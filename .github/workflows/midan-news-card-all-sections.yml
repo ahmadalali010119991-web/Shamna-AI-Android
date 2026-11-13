@@ -15,12 +15,23 @@ jobs:
       - run: npm install --no-save playwright@1.56.1
       - run: npx playwright install chromium
       - name: Run three feed card integration tests
-        run: node midan-site-snapshot/qa/test-all-news-sections.cjs
-      - name: Record success
+        id: check
+        shell: bash
         run: |
-          printf 'PASS: sports, Syrian field voices, ordinary feed cards; dynamic image generation; %s\n' "$(date -u -Iseconds)" > midan-site-snapshot/feature/all-sections-test.txt
+          set +e
+          node midan-site-snapshot/qa/test-all-news-sections.cjs > /tmp/test-all-sections.log 2>&1
+          rc=$?
+          cat /tmp/test-all-sections.log
+          mkdir -p midan-site-snapshot/feature
+          cp /tmp/test-all-sections.log midan-site-snapshot/feature/all-sections-log.txt
+          echo "result=$rc" >> "$GITHUB_OUTPUT"
+          exit "$rc"
+      - name: Record test results and diagnostics
+        if: always()
+        run: |
+          if [ "${{ steps.check.outputs.result }}" = "0" ]; then printf 'PASS: sports, Syrian field voices, ordinary feed cards; dynamic image generation; %s\n' "$(date -u -Iseconds)" > midan-site-snapshot/feature/all-sections-test.txt; else printf 'FAIL: see all-sections-log.txt\n' > midan-site-snapshot/feature/all-sections-test.txt; fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add midan-site-snapshot/feature/all-sections-test.txt
+          git add midan-site-snapshot/feature/all-sections-test.txt midan-site-snapshot/feature/all-sections-log.txt
           git commit -m 'test(midan): news image feature works across all sections'
           git push
