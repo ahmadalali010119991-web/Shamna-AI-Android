@@ -17,7 +17,11 @@ const original=[
  " if(video&&type==='video/mp4'&&String.fromCharCode(...buf.slice(4,8))!=='ftyp')throw Error('INVALID_VIDEO_SIGNATURE');",
  " return {type,blob:new Blob([arr],{type})};",
  "}",
- "module.exports={mediaBlob};"
+ "async function telegram(method,form){",
+ " const data={result:form.result};",
+ "  return data.result;",
+ " }",
+ "module.exports={mediaBlob,telegram};"
 ].join('\n');
 const mp4=Uint8Array.from([0,0,0,24,102,116,121,112,105,115,111,109,0,0,0,0,0,0,0,0,0,0,0,0]);
 const jpg=Uint8Array.from([255,216,255,224,1,2,3,4]);
@@ -34,6 +38,10 @@ const mock=(mime,bytes)=>async()=>({headers:{get:k=>k==='content-type'?mime:null
   assert.equal(photo.type,'image/jpeg');
   await assert.rejects(()=>m.mediaBlob('https://cdn.example.org/fake',{video:true,fetcher:mock('binary/octet-stream',jpg)}),/INVALID_VIDEO_SIGNATURE/);
   await assert.rejects(()=>m.mediaBlob('https://cdn.example.org/html',{video:true,fetcher:mock('text/html',mp4)}),/UNSUPPORTED_TYPE/);
+  await assert.rejects(()=>m.telegram('sendVideo',{result:{message_id:9}}),/TELEGRAM_VIDEO_RECEIPT_MISSING/);
+  assert.equal((await m.telegram('sendVideo',{result:{message_id:9,video:{file_id:'real-video'}}})).message_id,9);
+  await assert.rejects(()=>m.telegram('sendPhoto',{result:{message_id:9}}),/TELEGRAM_PHOTO_RECEIPT_MISSING/);
+  assert.equal((await m.telegram('sendPhoto',{result:{message_id:9,photo:[{file_id:'real-photo'}]}})).message_id,9);
   console.log('PASS: Source99 generic-MIME MP4 verification; photos unchanged; fake media rejected');
  }finally{fs.rmSync(folder,{recursive:true,force:true})}
 })().catch(e=>{console.error(e);process.exitCode=1});
