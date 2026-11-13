@@ -17,7 +17,7 @@ async function handoff(raw,{store,recover=[],website,telegram,validate,allowPhot
   routeIds.add(adapter.id);
  }
  if(story.mediaKind!=='text' && recover.length===0)throw Error('NO_MEDIA_RECOVERY_ADAPTERS');
- return store.transaction(key,async (state={},save)=>{
+ return store.transaction(key,async (state={},save,assertLease=async()=>{})=>{
   if(state.kind && state.kind!==story.mediaKind)throw Error('MEDIA_KIND_CONFLICT');
   state.kind=story.mediaKind;
   state.attempts=state.attempts||{};
@@ -29,6 +29,7 @@ async function handoff(raw,{store,recover=[],website,telegram,validate,allowPhot
     for(const adapter of recover){
      if(state.attempts[adapter.id]?.status==='exhausted')continue;
      try {
+      await assertLease();
       const candidate=await adapter.run(story);
       if(candidate && candidate.kind===story.mediaKind && await validate(candidate,story)){
        state.media=candidate;
@@ -63,6 +64,7 @@ async function handoff(raw,{store,recover=[],website,telegram,validate,allowPhot
   for(const [dest,client] of [['website',website],['telegram',telegram]]){
    if(state.destinations[dest]?.status==='sent')continue;
    try{
+    await assertLease();
     const outcome=await client.publish(story,state.media,{idempotencyKey:key+':'+dest});
     if(!outcome?.ok||!outcome.externalId)throw Error('UNCONFIRMED_'+dest);
     state.destinations=mergeDestinations(state.destinations,{[dest]:{status:'sent',externalId:String(outcome.externalId)}});
