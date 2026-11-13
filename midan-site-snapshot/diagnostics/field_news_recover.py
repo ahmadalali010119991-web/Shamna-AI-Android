@@ -15,6 +15,7 @@ UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/130.0 Safari/537.3
 SRC=[{"handle":"suhebb0","name":"صهيب اليعربي","outlet":"قناة صهيب اليعربي"}]
 NEWS_RE=re.compile(r"(?:إصابة|اصابة|وفاة|توفّي|توفي|قتل|قتيل|مقتل|إطلاق نار|قصف|اشتباك|انفجار|حريق|اعتقال|اعتقلت|أوقفت|سجلت|أعلن|أعلنت|أفادت|أكدت|صدرت|وزارة|مشفى|مستشفى|مظاهرة|احتجاج|تصريح|إغلاق|افتتاح|زيارة|اجتماع|انتشار|عثر|تشكيل لجنة|تحقيق|بيان|حملة|الحكومة|اشتباكات|تعرض|انهيار|توقيف|تفجير|ضربة|عاجل|الأسعار|سوريا|خدمات|الجيش|المحافظة|مناشد|استهداف|عقوبات|نزوح)",re.I)
 OPINION_RE=re.compile(r"(?:^|\s)(?:برأيي|في رأيي|أعتقد|أظن|تصوري|وجهة نظري|نصيحتي|لا تنس|لا تنسوا|افعل|افعلوا|تأمل|تذكر|تذكّر|اللهم|صباح الخير|مساء الخير|جمعة مباركة|مساء النور|دعاء|مقتطف|هذا رأيي)(?:\s|$)|(?:لا تمش|لا تيأس|ما تراه صواب|كن قويا|كن قويًا)",re.I)
+UNSOURCED_RE=re.compile(r"(?:من بريد الصفحة|من بريد القناة|من بريد المتابعين|كشف مصدر من داخل|مصدر مجهول|تناقل البعض دون مصدر)",re.I)
 HARM_RE=re.compile(r"(?:اشتر|خصم|عرض خاص|تابعونا الآن|إعلان تجاري|اشترك معنا)",re.I)
 def fetch(url):
  req=urllib.request.Request(url,headers={"User-Agent":UA,"Accept":"text/html"})
@@ -33,6 +34,7 @@ def text_content(node):
 def classify(t):
  if len(t.strip())<32:return "exclude","very_short"
  if OPINION_RE.search(t):return "exclude","opinion_or_advice"
+ if UNSOURCED_RE.search(t):return "exclude","unsourced_claim_requires_review"
  if HARM_RE.search(t) and not NEWS_RE.search(t):return "exclude","promotion"
  if NEWS_RE.search(t):return "news","factual_report"
  if re.search(r"#[\u0600-\u06ff]+\s+\S+",t) and len(t)>105 and re.search(r"(?:حدث|وقع|يتحدث|توجه|خرج|وصل|بدأ|استمر)",t):return "news","event_report"
