@@ -65,3 +65,5 @@ jobs:
       - run: node integrations/midan-central-media/source99-site-video-compat.test.cjs
 
       - run: node integrations/midan-central-media/news-embed-video-buttons.test.cjs
+
+      - run: node integrations/midan-central-media/sync-embed-video-watcher.test.cjs
