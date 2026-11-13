@@ -7,6 +7,7 @@
  */
 const {createHash}=require('node:crypto');
 const ALLOWED_MIMES=new Set(['video/mp4','video/quicktime','video/webm']);
+const GENERIC_MIMES=new Set(['application/octet-stream','binary/octet-stream']);
 const MAX_BYTES_DEFAULT=45_000_000;
 function checkedUrl(raw,allowedHosts){
  let u;try{u=new URL(raw)}catch{throw Error('INVALID_VIDEO_URL')}
@@ -43,7 +44,18 @@ function createVideoDownloader({allowedHosts,fetcher=globalThis.fetch,maxBytes=M
    const response=await fetcher(uri,{method:'GET',redirect:'manual',headers:{Accept:'video/mp4,video/webm,video/quicktime'},signal:ctrl.signal});
    if(!response||response.status<200||response.status>=300||response.redirected)throw Error('VIDEO_FETCH_FAILED');
    const type=String(response.headers.get('content-type')||'').split(';')[0].trim().toLowerCase();
-   if(!ALLOWED_MIMES.has(type))throw Error('VIDEO_CONTENT_TYPE_INVALID');
+   const genericType=GENERIC_MIMES.has(type);
+   if(!ALLOWED_MIMES.has(type)&&!genericType)throw Error('VIDEO_CONTENT_TYPE_INVALID');
+   // Generic CDN types are acceptable only for a declared .mp4/.mov/.webm
+   // path AND a matching binary signature. Never infer from a web page.
+   let verifiedType=type;
+   if(genericType){
+    const pathname=new URL(uri).pathname.toLowerCase();
+    if(/\.mp4$/.test(pathname))verifiedType='video/mp4';
+    else if(/\.webm$/.test(pathname))verifiedType='video/webm';
+    else if(/\.mov$/.test(pathname))verifiedType='video/quicktime';
+    else throw Error('GENERIC_VIDEO_EXTENSION_REQUIRED');
+   }
    const headerSize=Number(response.headers.get('content-length')||0);
    if(!Number.isSafeInteger(headerSize)||headerSize<0||headerSize>maxBytes)throw Error('VIDEO_TOO_LARGE');
    let total=0,chunks=[];
@@ -59,9 +71,9 @@ function createVideoDownloader({allowedHosts,fetcher=globalThis.fetch,maxBytes=M
    if(!total||total<16)throw Error('VIDEO_EMPTY_OR_TRUNCATED');
    if(headerSize&&headerSize!==total)throw Error('VIDEO_LENGTH_MISMATCH');
    const bytes=concat(chunks,total);chunks=[];
-   if(!validSignature(bytes,type))throw Error('VIDEO_SIGNATURE_INVALID');
+   if(!validSignature(bytes,verifiedType))throw Error('VIDEO_SIGNATURE_INVALID');
    const hash=createHash('sha256').update(bytes).digest('hex');
-   return {kind:'video',verified:true,uri,contentType:type,size:total,sha256:hash,
+   return {kind:'video',verified:true,uri,contentType:verifiedType,declaredContentType:type,size:total,sha256:hash,
     // Keep bytes server-side for a trusted uploader only. Never JSON serialize.
     bytes};
   }finally{
