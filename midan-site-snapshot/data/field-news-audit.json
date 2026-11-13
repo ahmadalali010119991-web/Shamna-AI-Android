@@ -1,19 +1,7 @@
 {
-  "pagesScanned": 2,
+  "pagesScanned": 1,
   "approved": 0,
-  "rejected": 2,
-  "reasons": {
-    "opinion_or_advice": 1,
-    "very_short": 1
-  },
-  "excludedUrls": [
-    {
-      "url": "https://t.me/suhebb0/47988",
-      "reason": "opinion_or_advice"
-    },
-    {
-      "url": "https://t.me/suhebb0/47989",
-      "reason": "very_short"
-    }
-  ]
+  "rejected": 0,
+  "reasons": {},
+  "excludedUrls": []
 }
