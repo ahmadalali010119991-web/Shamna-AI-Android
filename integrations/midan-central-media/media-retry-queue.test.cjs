@@ -48,7 +48,7 @@ test('idempotent insertion and exclusive claim',async()=>{
  const claims=await Promise.all([queue.claim(),queue.claim()]);
  assert.equal(claims.filter(Boolean).length,1);
  const job=claims.find(Boolean);
- assert.equal(await queue.complete(job.jobKey,'wrong',{messageId:552}),false);
+ assert.equal(await queue.complete(job.jobKey,'wrong',{messageId:552,fileId:'valid-file-552'}),false);
  assert.equal(await queue.renew(job.jobKey,job.leaseToken),true);
  assert.equal(await queue.complete(job.jobKey,job.leaseToken,{messageId:552,fileId:'verified'}),true);
  assert.equal(jobs.get(job.jobKey).state,'completed');
@@ -62,13 +62,14 @@ test('failed attempt retries; stale token cannot complete',async()=>{
  assert.equal(await queue.fail(first.jobKey,first.leaseToken,new Error('network')),true);
  const second=await queue.claim();
  assert.notEqual(second.leaseToken,first.leaseToken);
- assert.equal(await queue.complete(first.jobKey,first.leaseToken,{messageId:500}),false);
- assert.equal(await queue.complete(second.jobKey,second.leaseToken,{messageId:500}),true);
+ assert.equal(await queue.complete(first.jobKey,first.leaseToken,{messageId:500,fileId:'valid-file-500'}),false);
+ assert.equal(await queue.complete(second.jobKey,second.leaseToken,{messageId:500,fileId:'valid-file-500'}),true);
 });
 test('invalid identifiers, big payload, unconfirmed receipt rejected',async()=>{
  const {queue,calls}=fixture();
  assert.throws(()=>queue.keyFor({channel:'',sourceId:1,targetMessageId:1}),/INVALID_RETRY_ID/);
  await assert.rejects(()=>queue.complete('x','t',{}),/CONFIRMED_TELEGRAM_MESSAGE_ID_REQUIRED/);
+ await assert.rejects(()=>queue.complete('x','t',{messageId:123}),/CONFIRMED_TELEGRAM_VIDEO_FILE_ID_REQUIRED/);
  await assert.rejects(()=>queue.enqueue({channel:'source',sourceId:1,targetMessageId:1},
  {blob:'x'.repeat(25000)}),/RETRY_PAYLOAD_TOO_LARGE/);
  assert.equal(calls.length,0);
