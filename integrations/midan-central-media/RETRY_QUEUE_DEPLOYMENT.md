@@ -63,3 +63,12 @@ Date: 2026-11-13.
 - News publishing, deduplication, original messages, original linked sources, native APK files and Firebase notification configuration were not changed in this rollout.
 - The previous news-state Supabase remains the news source of truth; the user-owned `pjmjhlwwjmtcrtlabpoz` database handles the media-repair queue only.
 - Restore rollback by targeting deployment `dpl_GKwjdYq6BPboMtARJeSxCt9Rf3y5` (previous working production) if the optional watcher cadence causes regression. The media queue feature flag can be turned off and redeployed separately if needed.
+
+## Live source access limitation — Telegram message 664 (2026-11-14)
+- Real media repair job automatically entered `midan_media_retry_jobs` for `@maydan_alkhabar` message **664** with source `https://t.me/suhebb0/48013`.
+- The queue claimed it, attempted Telegram native forward/copy and direct media routes, then persisted failures with delayed retry; attempts reached **3** in the last direct query.
+- The source post's public Telegram preview shows a `tgme_widget_message_video_player not_supported` element. A trusted `cdn4.telesco.pe` thumbnail resource was checked with an actual HEAD request: **Content-Type image/jpeg, length 8,538 bytes**. That resource is NOT a video and must never be uploaded as MP4.
+- Neither the normal `/s/...` view nor the `?embed=1` view exposed a verified direct MP4 for that particular post. Telegram `copyMessage`/`forwardMessage` returned message not found. Searching for a verified, lawful mirror did not identify a matching original video.
+- The existing text retains the linked original source. The worker must not fabricate the absent video or substitute another clip.
+- **Not completed:** Native video repair of message 664, unless the Telegram source later exposes a permitted video file or its owner makes the original media available. Keep the retry/failure record; do not delete an unresolved real job.
+- This limitation is separate from the successful real native-video test on temporary message 663, whose original video was accessible.
