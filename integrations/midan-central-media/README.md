@@ -88,3 +88,11 @@ The full locally-tested integration scaffold is distributed separately; this PR 
 - Production channel and website are NOT switched to this staged generic video adapter. Previous direct Source99 photos 6/7 are separate verified live publications.
 - All-platform ingestion cannot be represented as universal: each platform needs an authorized access method and source-specific adapter. Social networks with access restrictions cannot be downloaded from a public URL alone.
 - Before promoting: configure a server-only approved shared video store, verify read-after-write/playback, wire signed site notification and Telegram delivery, then test media and duplicate reconciliation end-to-end with a real news source.
+
+## 2026-11-13 durable readback and fencing safety
+- `verified-video-store.cjs` now requires an independent HEAD/read-after-write confirmation of the exact storage pathname, URL, media size and Content-Type. A successful PUT alone is not a publication acknowledgement.
+- `vercel-blob-video-store.cjs` binds this contract to Vercel Blob `put` and `head`, with a backend-only token and an explicit approved public blob hostname. It is tested against the service interface, not a live configured Blob store.
+- This adapter requires a PUBLIC media-capable Blob store or separately designed private media relay. The existing private store must not be presumed to return public playback URLs. No new Blob store has been purchased/created or connected.
+- `handoff-engine.cjs` now aborts on `ARTICLE_LEASE_LOST` instead of converting lost lease ownership into a recoverable provider error. Stale workers cannot continue to publish after losing their fence.
+- GitHub Actions run https://github.com/ahmadalali010119991-web/Shamna-AI-Android/actions/runs/43439110348 passed all regression groups including storage readback and lease fencing.
+- Next production gates: verify Blob access policy and shared media delivery, run a real write/read/delete smoke test without publishing, wire a guarded video URL consumer on the site, and use source-specific permitted media ingestion adapters before enabling public automatic video publication.
