@@ -38,3 +38,28 @@ Date: 2026-11-13.
 - Pre-existing warning from `news-embed-video-buttons` continues to return `HTTP_503` intermittently, also seen on older deployments before the migration. News sync is not blocked by that auxiliary watcher.
 - News deduplication remains in the original Supabase state system; only the video-repair queue moved. Roll back promptly by setting the production Vercel environment flag `MIDAN_MEDIA_RETRY_ENABLED=false` and redeploying if a regression occurs.
 - Production secret values must never appear in the repository or logs. Retry-completion receipts persist with payload scrubbed; temporary media bytes are not stored in this queue.
+
+## Live verification and clean-up — 2026-11-14
+
+### Native Telegram media delivery and durable receipt: CONFIRMED
+- A one-time GitHub-OIDC-authenticated test executed from the existing Vercel Telegram bridge, against the actual `@maydan_alkhabar` channel.
+- It created temporary test message **663**, edited that same message to native video using MDN's CC0 flower.mp4, and received a Telegram `video.file_id`.
+- The new Supabase queue accepted and claimed the job, and its completion RPC committed the Telegram receipt: `videoConfirmed=true`, `queueStored=true`, `queueCompleted=true`.
+- Telegram returned `deleted=true` for message 663 in the same invocation. GitHub Actions run: https://github.com/ahmadalali010119991-web/Shamna-AI-Android/actions/runs/43517960771 — success.
+- The disposable completed Supabase row with `telegram_message_id=663` was deleted, and a fresh row count confirmed **0**.
+- The temporary QA endpoint was fully removed from production (original `api/push-test.js` restored, `lib/native-telegram-qa.js` absent), and the one-time GitHub workflow step was removed; run https://github.com/ahmadalali010119991-web/Shamna-AI-Android/actions/runs/43518071397 succeeded.
+- **Scope:** Confirms actual Telegram media editing and database receipt, but not guaranteed extraction of videos from every third-party media platform, nor a successful real-media retry from this worker for a pre-existing failed news message. Retain original source and licensing restrictions.
+
+### Optional video-watch HTTP 503 hardening
+- `news-video-watcher-retry.cjs` preserves the existing watcher and tries a secondary native fetch on HTTP 503, then bounded backoff. Regression run https://github.com/ahmadalali010119991-web/Shamna-AI-Android/actions/runs/43516788878 passed.
+- One real production sync (https://github.com/ahmadalali010119991-web/Shamna-AI-Android/actions/runs/43517178203) scanned 60 channel messages without HTTP 503.
+- Intermittent HTTP 503 subsequently recurred on minute-based background checks. This is an optional watcher and never blocks news.
+- `video-watch-cadence.cjs` runs the watcher in UTC ten-minute windows (or immediately when new articles were sent) while leaving the main engine every-minute publishing and media queue untouched. Regression run `43518633736` passed.
+- Final restored production deployment: **`dpl_21mVccwmrN8d537pozAeZhE3BQxB`**, READY at `dallalna-telegram-bridge.vercel.app`. The canonical health and state endpoints both returned HTTP 200.
+- Post-rollout GitHub OIDC sync https://github.com/ahmadalali010119991-web/Shamna-AI-Android/actions/runs/43518945765 succeeded. Its watcher response was `skipped:10_minute_window`, while the queue backend remained `midan-postgres-retry-queue` with no job errors.
+- **Caveat:** This reduces optional upstream request load; it does not prove that all future upstream HTTP 503 responses have been eliminated. If they recur on the ten-minute window, investigate site API reliability separately.
+
+### Confirmed unchanged
+- News publishing, deduplication, original messages, original linked sources, native APK files and Firebase notification configuration were not changed in this rollout.
+- The previous news-state Supabase remains the news source of truth; the user-owned `pjmjhlwwjmtcrtlabpoz` database handles the media-repair queue only.
+- Restore rollback by targeting deployment `dpl_GKwjdYq6BPboMtARJeSxCt9Rf3y5` (previous working production) if the optional watcher cadence causes regression. The media queue feature flag can be turned off and redeployed separately if needed.
