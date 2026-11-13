@@ -4,7 +4,16 @@
  * readable with privileged storage credentials. Never follow redirects or
  * trust arbitrary URLs. This is transport validation, not source authenticity.
  */
-const {validSignature}=require('./video-download-verify.cjs');
+function validPrefix(prefix,mime){
+ if(!(prefix instanceof Uint8Array)||prefix.length<16)return false;
+ if(mime==='video/webm')return prefix[0]===26&&prefix[1]===69&&prefix[2]===223&&prefix[3]===163;
+ if(mime==='video/mp4'||mime==='video/quicktime'){
+  const marker=String.fromCharCode(...prefix.slice(4,8));
+  const box=new DataView(prefix.buffer,prefix.byteOffset,4).getUint32(0);
+  return marker==='ftyp'&&box>=16&&box<4096;
+ }
+ return false;
+}
 function approvedUrl(raw,hosts){
  let u;try{u=new URL(raw)}catch{throw Error('PLAYBACK_URL_INVALID')}
  if(u.protocol!=='https:'||u.username||u.password||u.port||u.hash||
@@ -46,7 +55,7 @@ function createPublicVideoPlaybackCheck({allowedHosts=[],fetcher=globalThis.fetc
    }finally{await reader.cancel().catch(()=>{})}
    if(count!==32)throw Error('PUBLIC_VIDEO_RANGE_TRUNCATED');
    const prefix=new Uint8Array(32);let offset=0;for(const c of chunks){prefix.set(c,offset);offset+=c.length}
-   if(!validSignature(prefix,item.contentType))throw Error('PUBLIC_VIDEO_SIGNATURE_INVALID');
+   if(!validPrefix(prefix,item.contentType))throw Error('PUBLIC_VIDEO_SIGNATURE_INVALID');
    return {...item,publiclyPlayable:true,playbackVerifiedAt:new Date().toISOString()};
   }finally{clearTimeout(timer)}
  }};
