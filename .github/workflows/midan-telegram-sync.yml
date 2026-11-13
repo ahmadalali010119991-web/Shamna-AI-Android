@@ -1,3 +1,4 @@
+# Trigger authenticated production sync after Private_Source99 auto-publication fix 2026-11-13. Source posts 6 and 7; existing queue prevents duplicates.
 # Production v4 media recovery reporting smoke-trigger 2026-11-13.
 # Incident 552 queue diagnostics live-check 2026-11-13.
 # Diagnose Supabase fallback state interface after Blob suspension (2026-11-13).
