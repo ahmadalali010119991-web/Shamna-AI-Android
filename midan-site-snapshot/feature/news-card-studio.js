@@ -19,6 +19,7 @@ function sourceIdentity(name,url){
  if(/(?:^|\s|[–—:-])سانا(?:\s|$)|وكالة الأنباء.*السور/i.test(n)||/sana\.sy|sananews\.sy/.test(u))return {name:n,icon:"/source-logos/sana.png",key:"sana"};
  if(/الجزيرة|al[\s-]?jazeera/i.test(n)||/aljazeera\.net|aljazeera\.com/.test(u))return {name:n,icon:"/source-logos/aljazeera.png",key:"aljazeera"};
  if(/صهيب\s+اليعربي|suhaib[\s-]*al/i.test(n)||/t\.me\/(?:suhebb0|sohebb1993)/i.test(u))return {name:n,icon:"/source-logos/suhaib.png",key:"suhaib"};
+ if(/بي\s*بي\s*سي|bbc(?:\s*news)?/i.test(n)||/bbc\.(?:com|co\.uk)/i.test(u))return {name:n,icon:"/source-logos/bbc.png",key:"bbc"};
  var fallback="";
  try{
   var parsed=new URL(url||""),host=parsed.hostname.toLowerCase();
