@@ -1,0 +1,3 @@
+PASS: public recovered news feed, complete text and verified source URL; count=7
+Error: Opinion remains in feed
+    at /home/runner/work/Shamna-AI-Android/Shamna-AI-Android/midan-site-snapshot/diagnostics/test-field-media.cjs:24:60
