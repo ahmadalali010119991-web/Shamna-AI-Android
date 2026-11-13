@@ -13,6 +13,13 @@ function replaceOnce(from,to){
   throw Error('MIDAN_RETRY_LEDGER_PATCH_ANCHOR_MISSING_OR_AMBIGUOUS');
  source=source.replace(from,to);
 }
+// Edge Functions accept the state/ namespace; the legacy unprefixed key is rejected.
+replaceOnce("const STATE_QUEUE_KEY='midan_media_video_retries_v4';",
+ "const STATE_QUEUE_KEY='state/v3-media-video-retries-v4';");
+// The background worker must use the version it originally read, not issue
+// another read immediately before writing.
+replaceOnce("const result=await state.write(STATE_QUEUE_KEY,data);",
+ "const result=await state.call('write',STATE_QUEUE_KEY,data,previous?{expected_updated_at:previous.updated_at}:{});");
 const fallback=[
  "async function saveMediaRetrySupabase(record){",
  " const state=require('./state-v3'),key=STATE_QUEUE_KEY;",
@@ -31,7 +38,7 @@ const fallback=[
  "   }",
  "   data.jobs[id]=record;",
  "   data.updatedAt=new Date().toISOString();",
- "   const saved=await state.call('write',key,data,previous?{expected_updated_at:previous.updated_at}:{expected_updated_at:null});",
+ "   const saved=await state.call('write',key,data,previous?{expected_updated_at:previous.updated_at}:{});",
  "   if(!saved||saved.ok!==true)continue;",
  "   const checked=await state.read(key);",
  "   if(checked?.value?.jobs?.[id]||",
