@@ -45,14 +45,23 @@ jobs:
              await page.waitForTimeout(750);
              const square=await page.locator('#mcs-preview').evaluate(async e=>{const img=new Image();img.src=e.src;await img.decode();return [img.naturalWidth,img.naturalHeight]});
              if(square[0]!==1080||square[1]!==1080)throw Error('Square size failed');
-             console.log('PASS: dynamic news button, modal, branded image PNG 1080x1350, downloaded PNG, square 1080x1080');
+             for(const entry of [{source:'سانا',key:'sana'},{source:'الجزيرة',key:'aljazeera'},{source:'صهيب اليعربي',key:'suhaib'}]){
+               const result=await page.evaluate(async (entry)=>{
+                 const p=await window.MidanNewsCardStudio.render({title:'عنوان خبري توضيحي لاختبار بطاقة ميدان الخبر',summary:'هذا محتوى اختباري فقط.',source:entry.source,date:'2026-11-13T08:20:00Z'},'portrait');
+                 return {key:p.sourceLogo,warning:p.warning,image:p.canvas.toDataURL('image/png').slice(0,22)};
+               },entry);
+               if(result.key!==entry.key)throw Error('Wrong source identity '+entry.source+': '+result.key);
+               if(result.warning)throw Error('Source logo failed: '+entry.source+' '+result.warning);
+               if(!result.image.startsWith('data:image/png;base64,'))throw Error('PNG failed for '+entry.source);
+             }
+             console.log('PASS: three source logos rendered + dynamic article PNG download');
            }finally{await browser.close()}
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
       - name: Save passing test marker
         run: |
           set -euo pipefail
-          printf 'PASS: live Android-UA browser: article card button, modal, PNG, download, square size; %s\n' "$(date -u -Iseconds)" > midan-site-snapshot/feature/production-e2e.txt
+          printf 'PASS: live Android-UA browser: news card, 3 source logos, PNG download, square size; %s\n' "$(date -u -Iseconds)" > midan-site-snapshot/feature/production-e2e.txt
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add midan-site-snapshot/feature/production-e2e.txt
