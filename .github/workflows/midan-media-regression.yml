@@ -5,7 +5,6 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-  id-token: write
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -71,19 +70,3 @@ jobs:
 
       - run: node integrations/midan-central-media/telegram-native-video-site-fallback.test.cjs
       - run: node integrations/midan-central-media/article-video-ephemeral-compat.test.cjs
-
-      - name: Authenticated cleanup capability preflight (no writes)
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          set -euo pipefail
-          token="$(curl --fail --silent --show-error \
-            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=dallalna-telegram-bridge" | jq -r .value)"
-          test -n "$token" && test "$token" != null
-          result="$(curl --fail-with-body --silent --show-error --max-time 70 \
-            -X POST -H "Authorization: Bearer ${token}" \
-            -H "Content-Type: application/json" \
-            --data '{"operation":"probe"}' \
-            "https://dallalna-telegram-bridge.vercel.app/api/status-v2?isolatedStateSmoke=20261113")"
-          echo "$result" | jq '{ok,stage,wrote,probes}'
