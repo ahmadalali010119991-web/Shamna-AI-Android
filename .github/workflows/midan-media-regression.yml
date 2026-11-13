@@ -41,3 +41,5 @@ jobs:
 
       - run: node integrations/midan-central-media/verified-video-store.test.cjs
       - run: node integrations/midan-central-media/source-video-recovery.test.cjs
+
+      - run: node integrations/midan-central-media/vercel-blob-video-store.test.cjs
