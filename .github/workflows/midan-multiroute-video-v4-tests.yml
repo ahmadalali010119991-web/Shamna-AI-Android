@@ -4,6 +4,7 @@ on:
     paths:
       - 'midan-site-snapshot/bot-fixes/video-resilience-v4.js'
       - 'midan-site-snapshot/bot-fixes/test-video-resilience-v4.cjs'
+      - 'midan-site-snapshot/bot-fixes/test-video-state-fallback.cjs'
       - '.github/workflows/midan-multiroute-video-v4-tests.yml'
   workflow_dispatch:
 permissions:
@@ -21,4 +22,6 @@ jobs:
           node --check midan-site-snapshot/bot-fixes/video-resilience-v4.js
           node --check midan-site-snapshot/bot-fixes/sync-v3-multiroute.js
       - name: Test copy, forward, direct MP4, upload, recovery and idempotence
-        run: node midan-site-snapshot/bot-fixes/test-video-resilience-v4.cjs
+        run: |
+          node midan-site-snapshot/bot-fixes/test-video-resilience-v4.cjs
+          node midan-site-snapshot/bot-fixes/test-video-state-fallback.cjs
