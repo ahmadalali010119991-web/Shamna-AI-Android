@@ -113,3 +113,5 @@ jobs:
 # Verify transient HTTP 503 video-watch retry in production (2026-11-14).
 
 # Verify site-news alternate transport for video watcher in production (2026-11-14).
+
+# Verify optional ten-minute video watcher cadence after production rollout (2026-11-14).
