@@ -10,12 +10,17 @@ test('transient 503 is retried; unrelated Telegram and other URLs are not retrie
   fs.writeFileSync(path.join(temp,'news-embed-video-buttons-legacy.cjs'),
    "module.exports={repair:async({fetcher})=>{await fetcher('https://midan-al-khabar.vercel.app/api/news');await fetcher('https://t.me/s/maydan_alkhabar');return true;}}");
   const retry=require(path.join(temp,'news-embed-video-buttons.js'));
-  let site=0,telegram=0;
-  const result=await retry.repair({fetcher:async url=>{
-   if(url.includes('midan-al-khabar')){site++;return {status:site<3?503:200};}
-   telegram++;return {status:200};
-  }});
-  assert.equal(result,true);assert.equal(site,3);assert.equal(telegram,1);
+  let site=0,secondary=0,telegram=0;
+  const beforeFetch=globalThis.fetch;
+  globalThis.fetch=async()=>{secondary++;return {status:200}};
+  try{
+   const result=await retry.repair({fetcher:async url=>{
+    if(url.includes('midan-al-khabar')){site++;return {status:503};}
+    telegram++;return {status:200};
+   }});
+   assert.equal(result,true);assert.equal(site,1);assert.equal(secondary,1);
+   assert.equal(telegram,1);
+  }finally{globalThis.fetch=beforeFetch;}
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
 });
 test('persistent 503 returns after exactly three attempts',async()=>{
@@ -25,8 +30,12 @@ test('persistent 503 returns after exactly three attempts',async()=>{
   fs.writeFileSync(path.join(temp,'news-embed-video-buttons-legacy.cjs'),
    "module.exports={repair:async({fetcher})=>(await fetcher('https://midan-al-khabar.vercel.app/api/news')).status}");
   const retry=require(path.join(temp,'news-embed-video-buttons.js'));
-  let count=0;
-  assert.equal(await retry.repair({fetcher:async()=>{count++;return {status:503}}}),503);
-  assert.equal(count,3);
+  let count=0,secondary=0;
+  const beforeFetch=globalThis.fetch;
+  globalThis.fetch=async()=>{secondary++;return {status:503}};
+  try{
+   assert.equal(await retry.repair({fetcher:async()=>{count++;return {status:503}}}),503);
+   assert.equal(count,2);assert.equal(secondary,1);
+  }finally{globalThis.fetch=beforeFetch;}
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
 });
