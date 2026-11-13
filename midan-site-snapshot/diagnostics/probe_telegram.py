@@ -21,3 +21,12 @@ try:
   meta=[{'tag':v.name,'attrs':v.attrs,'snippet':str(v)[:1600]} for v in videos[:3]]
   print(json.dumps({'id':num,'videos':meta},ensure_ascii=False)[:4500])
 except Exception as e:print('MEDIA_ERROR',str(e)[:350])
+
+try:
+ req=urllib.request.Request("https://t.me/s/suhebb0",headers={"User-Agent":"Mozilla/5.0"})
+ with urllib.request.urlopen(req,timeout=22) as f:txt=f.read().decode("utf-8","replace")
+ p=txt.find('data-post="suhebb0/47987"');seg=txt[p:p+8500]
+ for marker in ("tgme_widget_message_video","<video","data-video","mp4","telesco.pe"):
+  off=seg.find(marker)
+  if off>=0:print("VIDEO_MARKER_47987",marker,seg[max(0,off-220):off+1250])
+except Exception as e:print("MARKER_ERROR",str(e))
