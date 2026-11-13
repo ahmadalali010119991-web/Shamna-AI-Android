@@ -4,8 +4,8 @@
  * A single stored immutable URL can be supplied to site and Telegram. No fallback
  * to a photo while this adapter has a pending retry.
  */
-function createSourceVideoRecovery({discovery,downloader,store,canReuse}={}){
- if(!discovery?.discover||!downloader?.download||!store?.persist||
+function createSourceVideoRecovery({discovery,downloader,store,playback,canReuse}={}){
+ if(!discovery?.discover||!downloader?.download||!store?.persist||!playback?.check||
     typeof canReuse!=='function')throw Error('VIDEO_RECOVERY_DEPENDENCIES_REQUIRED');
  return {id:'source-discovered-video-to-durable-store',async run(story){
   if(!story?.sourceUrl)throw Error('SOURCE_URL_REQUIRED');
@@ -24,7 +24,9 @@ function createSourceVideoRecovery({discovery,downloader,store,canReuse}={}){
     const persisted=await store.persist(verified);
     if(!persisted?.verified||persisted?.kind!=='video'||!persisted.uri)
      throw Error('DURABLE_MEDIA_CONFIRMATION_MISSING');
-    return persisted;
+    const ready=await playback.check(persisted);
+    if(ready?.publiclyPlayable!==true||ready?.sha256!==persisted.sha256)throw Error('VIDEO_PUBLIC_PLAYBACK_UNCONFIRMED');
+    return ready;
    }catch(e){errors.push(String(e?.message||e).slice(0,100));}
   }
   if(errors.length)throw Error('VIDEO_RECOVERY_RETRY:'+errors.slice(0,3).join(','));
