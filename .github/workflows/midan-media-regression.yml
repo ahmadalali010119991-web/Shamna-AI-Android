@@ -36,3 +36,5 @@ jobs:
       - run: node integrations/midan-central-media/private-source99-adapter.test.cjs
 
       - run: node integrations/midan-central-media/source99-direct-publisher.test.cjs
+
+      - run: node integrations/midan-central-media/video-download-verify.test.cjs
