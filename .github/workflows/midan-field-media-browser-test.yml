@@ -1,0 +1,39 @@
+name: Validate full text, opinion filter and in-app Telegram video
+on:
+  push:
+    paths:
+      - '.github/workflows/midan-field-media-browser-test.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: {persist-credentials: true}
+      - run: npm install --no-save playwright@1.56.1
+      - run: npx playwright install chromium
+      - name: Run restored-field-browser test and preserve evidence
+        shell: bash
+        run: |
+          set +e
+          node midan-site-snapshot/diagnostics/test-field-media.cjs > /tmp/midan-field-media-test.txt 2>&1
+          rc=$?
+          cp /tmp/midan-field-media-test.txt midan-site-snapshot/diagnostics/field-media-browser-test.txt
+          cat /tmp/midan-field-media-test.txt
+          exit "$rc"
+      - name: Commit status for review
+        if: always()
+        shell: bash
+        run: |
+          set -e
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add midan-site-snapshot/diagnostics/field-media-browser-test.txt
+          if ! git diff --cached --quiet; then
+            git commit -m 'test(midan): browser integration for restored news and media'
+            git pull --rebase
+            git push
+          fi
