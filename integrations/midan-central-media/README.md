@@ -55,3 +55,10 @@ The full locally-tested integration scaffold is distributed separately; this PR 
 - Never expose the service-role key or shared signing secret to the browser.
 - A queued job is NOT a published news article. Actual site/Telegram publishing, media extraction, and reconciliation require additional production integration.
 - These are staged library modules, not deployed HTTP endpoints on either existing Vercel application.
+
+## End-to-end mocked regression
+- Run `node integrations/midan-central-media/end-to-end.test.cjs`.
+- Uses test-only simulated ingress, queue, media recovery, website and Telegram publishing.
+- Covers video, photo and text publication, replays, video recovery, partial Telegram outage and independent destination replay protection.
+- **No real Telegram message was sent, no actual video was downloaded, and no deployed Vercel application is modified by this test.**
+- Staging rollout requires the actual Vercel project source and production state integration, not only this Android-repository branch.
