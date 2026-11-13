@@ -1,0 +1,29 @@
+name: Validate Android WebView back-navigation without APK update
+on:
+  push:
+    paths:
+      - '.github/workflows/midan-android-back-browser.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - run: npm install --no-save playwright@1.56.1
+      - run: npx playwright install chromium
+      - shell: bash
+        run: |
+          set +e
+          node midan-site-snapshot/diagnostics/test-android-back.cjs > midan-site-snapshot/diagnostics/back-browser-result.txt 2>&1
+          rc=$?
+          cat midan-site-snapshot/diagnostics/back-browser-result.txt
+          exit "$rc"
+      - if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add midan-site-snapshot/diagnostics/back-browser-result.txt
+          if ! git diff --cached --quiet; then git commit -m 'test(midan): verify WebView back navigation behavior'; git pull --rebase; git push; fi
