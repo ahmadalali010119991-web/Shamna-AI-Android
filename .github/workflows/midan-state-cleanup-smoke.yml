@@ -36,3 +36,5 @@ jobs:
             "${ENDPOINT}")"
           echo "$result" | jq '{ok,stage,delete,stillAbsent,written,error}'
           echo "$result" | jq -e '.stage == "delete_probe" or .stage == "delete_probe_unsupported" or .stage == "read_or_probe_failed"' >/dev/null
+
+# Rerun the isolated live-data deletion preflight with authenticated GitHub OIDC.
