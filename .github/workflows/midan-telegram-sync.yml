@@ -1,4 +1,5 @@
 # Production v4 media recovery reporting smoke-trigger 2026-11-13.
+# Incident 552 queue diagnostics live-check 2026-11-13.
 name: Publish Midan news and app updates to Telegram
 # Trigger one authenticated production sync after multi-route media v4 deployment (2026-11-13).
 # Live Syrian field voices enabled; preserve source attribution and prevent replay.
