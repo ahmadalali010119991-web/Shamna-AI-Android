@@ -89,14 +89,17 @@ async function render(item,format){
  // Footer separated from content and made highly legible on all photo backgrounds.
  var footTop=h-footerHeight;g.fillStyle="#06162d";g.fillRect(0,footTop,w,footerHeight);
  g.fillStyle="#f0bc55";g.fillRect(margin,footTop+12,w-2*margin,4);
- var sourceY=footTop+(land?61:82);
+ var sourceY=footTop+(land?61:82);var dateText=safeDate(item.date);
  var sourceName=identity.name.slice(0,46);
  var sourceIconSize=land?45:57,sourceLogoX=w-margin-sourceIconSize,logoY=sourceY-sourceIconSize+11;
- rounded(g,w-margin-2,sourceY-sourceIconSize+2,sourceIconSize+8,sourceIconSize+8,9,"#f4f7fc");
+ rounded(g,sourceLogoX-5,logoY-5,sourceIconSize+10,sourceIconSize+10,9,"#f4f7fc");
  if(logo) {g.save();g.beginPath();g.roundRect(sourceLogoX,logoY-1,sourceIconSize,sourceIconSize,7);g.clip();var sc=Math.min(sourceIconSize/logo.naturalWidth,sourceIconSize/logo.naturalHeight);g.drawImage(logo,sourceLogoX+(sourceIconSize-logo.naturalWidth*sc)/2,logoY-1+(sourceIconSize-logo.naturalHeight*sc)/2,logo.naturalWidth*sc,logo.naturalHeight*sc);g.restore()}
  else drawText(g,"م",w-margin-10,sourceY-4,30,"#1a3659","right",800);
- drawText(g,"المصدر: "+sourceName,w-margin-sourceIconSize-20,sourceY-2,land?26:30,"#f4f7fc","right",700);
- var dateText=safeDate(item.date);if(dateText)drawText(g,dateText,margin,sourceY-2,land?23:26,"#cbd5e1","left",400);
+ var textWidth=w-2*margin-sourceIconSize-(dateText?320:90);g.font="700 "+(land?26:30)+"px system-ui,Tahoma,sans-serif";
+ var sourceCaption="المصدر: "+sourceName;
+ while(sourceCaption.length>9&&g.measureText(sourceCaption).width>textWidth){sourceName=sourceName.slice(0,-1);sourceCaption="المصدر: "+sourceName+"…"}
+ drawText(g,sourceCaption,w-margin-sourceIconSize-20,sourceY-2,land?26:30,"#f4f7fc","right",700);
+ if(dateText)drawText(g,dateText,margin,sourceY-2,land?23:26,"#cbd5e1","left",400);
  // Clear Telegram identity, independent of original source attribution.
  var rowY=land?footTop+99:footTop+136,rowH=land?65:75;
  rounded(g,margin,rowY,w-2*margin,rowH,22,"#0c315a","#f0bc55");
