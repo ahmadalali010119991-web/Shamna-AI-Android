@@ -14,11 +14,20 @@ jobs:
         with: {persist-credentials: true}
       - run: npm install --no-save playwright@1.56.1
       - run: npx playwright install chromium
-      - run: node midan-site-snapshot/qa/test-premium-card.cjs
-      - run: |
+      - name: Capture browser test outcome
+        shell: bash
+        run: |
+          set +e
+          node midan-site-snapshot/qa/test-premium-card.cjs > /tmp/midan-premium-test.log 2>&1
+          rc=$?
+          cp /tmp/midan-premium-test.log midan-site-snapshot/qa/premium-test-log.txt
+          cat /tmp/midan-premium-test.log
+          exit "$rc"
+      - if: always()
+        run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add midan-site-snapshot/qa/previews
+          git add midan-site-snapshot/qa/previews midan-site-snapshot/qa/premium-test-log.txt
           if ! git diff --cached --quiet; then
             git commit -m 'test(midan): verified premium card previews with logos'
             git push
