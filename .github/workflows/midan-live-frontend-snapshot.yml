@@ -19,7 +19,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p midan-site-snapshot/live
-          for f in index.html reader.html open.html app.js app-inner.js app-legacy.js enhancements.js geo-unified.js source-images.js sports-view.js; do
+          for f in index.html reader.html open.html app.js app-inner.js app-legacy.js enhancements.js geo-unified.js source-images.js sports-view.js video-inline.js; do
             if [ "$f" = "index.html" ]; then url="https://midan-al-khabar.vercel.app/"; else url="https://midan-al-khabar.vercel.app/$f"; fi
             curl --fail --location --retry 2 --max-time 30 --silent --show-error "$url" -o "midan-site-snapshot/live/$f"
             test "$(wc -c < "midan-site-snapshot/live/$f")" -gt 500
