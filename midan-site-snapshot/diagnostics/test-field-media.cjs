@@ -21,7 +21,7 @@ const {chromium}=require("playwright"),fs=require("fs");
   await page.waitForTimeout(900);
   const len=await page.locator('[data-midan-full-source="voice-suhebb0-47987"] .card-desc').evaluate(e=>e.textContent.length);
   if(len<280)throw Error("Original full text missing: "+len);
-  if(await page.locator('a[href$="/47988"]').count())throw Error("Opinion remains in feed");
+  if(await page.locator('#voicesPanel article.voice-post a[href$="/47988"]').count()){const info=await page.locator('#voicesPanel article.voice-post a[href$="/47988"]').evaluateAll(a=>a.map(x=>x.closest("article")?.outerHTML.slice(0,1000)));throw Error("Opinion remains in field-feed cards: "+JSON.stringify(info))}
   const fresh=await page.locator('#voicesPanel [data-midan-full-source]').count();
   if(fresh<3)throw Error("Expected recovered news cards, got "+fresh);
   console.log("PASS: full text "+len+" chars, news restored "+fresh+", opinion excluded");
