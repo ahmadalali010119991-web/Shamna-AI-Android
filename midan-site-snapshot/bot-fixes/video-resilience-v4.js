@@ -292,7 +292,7 @@ async function retryPending(native=globalThis.__MIDAN_NEWS_RAW_FETCH||globalThis
    await seedMissingIncident(blob,entries);
    entries=(await blob.list({prefix:RETRY_PREFIX,limit:100})).blobs||[];
   }catch(e){return {skipped:'ledger_unavailable'}}
-  let success=0,failed=0,scanned=0;
+  let success=0,failed=0,scanned=0;const failures=[];
   for(const row of entries.filter(r=>!r.pathname.includes('/done/')).slice(0,2)){
    let job;try{job=await native(row.url,{signal:AbortSignal.timeout(9000)}).then(r=>r.json())}catch{continue}
    if(job.schema!==4||job.nextRetry>Date.now()||job.attempts>=12)continue;scanned++;
@@ -304,14 +304,15 @@ async function retryPending(native=globalThis.__MIDAN_NEWS_RAW_FETCH||globalThis
     }
     await blob.del(row.url);success++;
    }catch(e){
-    failed++;job.attempts++;job.errors=[...(job.errors||[]).slice(-5),String(e.message||e).slice(0,130)];
+    failed++;failures.push({sourceId:job.sourceId,target:job.targetMessageId,reason:String(e.message||e).slice(0,260)});job.attempts++;job.errors=[...(job.errors||[]).slice(-5),String(e.message||e).slice(0,130)];
     const intervals=[300000,900000,3600000,21600000,43200000,86400000];
     job.nextRetry=Date.now()+intervals[Math.min(job.attempts,intervals.length-1)];
     try{await blob.put(row.pathname,JSON.stringify(job),{access:'public',addRandomSuffix:false,allowOverwrite:true,contentType:'application/json',cacheControlMaxAge:60})}catch{}
    }
   }
   if(scanned)console.info('Midan video retries',{scanned,success,failed});
-  return {scanned,success,failed};
+  const done=(await blob.list({prefix:RETRY_PREFIX+'done/voice-552.json',limit:1}).catch(()=>({blobs:[]}))).blobs||[];
+  return {scanned,success,failed,done552:done.length>0,failures};
  })().finally(()=>{running=null});
  return running;
 }
