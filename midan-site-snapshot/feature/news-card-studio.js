@@ -55,7 +55,7 @@ function mcsLines(ctx,raw,width,maxLines){
   var kept="";for(var ch of word){if(ctx.measureText(kept+ch+"…").width>width)break;kept+=ch}return kept+"…"}
  for(var i=0;i<words.length;i++){
   var word=fitOne(words[i]),next=line?line+" "+word:word;
-  if(ctx.measureText(next)<=width){line=next;continue}
+  if(ctx.measureText(next).width<=width){line=next;continue}
   if(line){result.push(line);line=word}else {result.push(word);line=""}
   if(result.length>=maxLines){truncated=i<words.length-1||!!line;break}
  }
