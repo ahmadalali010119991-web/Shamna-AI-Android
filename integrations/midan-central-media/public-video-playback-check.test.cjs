@@ -35,7 +35,7 @@ const ok=async (_url,opts)=>{
  const badMedia=createPublicVideoPlaybackCheck({allowedHosts:['public.blob.vercel-storage.com'],fetcher:async(_u,opts)=>
   opts.method==='HEAD'
     ?resp({status:200,headers:{'content-length':String(size),'content-type':'video/mp4'}})
-    :resp({status:206,headers:{'content-range':'bytes 0-31/'+size},body:Uint8Array.from([0,...prefix.slice(1)])})});
+    :resp({status:206,headers:{'content-range':'bytes 0-31/'+size},body:Uint8Array.from([...prefix.slice(0,4),0,...prefix.slice(5)])})});
  await assert.rejects(()=>badMedia.check(item),/SIGNATURE_INVALID/);
  const wrongSize=createPublicVideoPlaybackCheck({allowedHosts:['public.blob.vercel-storage.com'],fetcher:async()=>resp({status:200,headers:{'content-length':'88','content-type':'video/mp4'}})});
  await assert.rejects(()=>wrongSize.check(item),/LENGTH_MISMATCH/);
