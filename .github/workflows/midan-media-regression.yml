@@ -20,6 +20,7 @@ jobs:
       - run: node integrations/midan-central-media/handoff-engine.test.cjs
 
       - run: node integrations/midan-central-media/supabase-lease-store.test.cjs
+      - run: node integrations/midan-central-media/media-retry-queue.test.cjs
 
       - run: node integrations/midan-central-media/signed-handoff.test.cjs
 
