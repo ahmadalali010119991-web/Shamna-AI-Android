@@ -25,3 +25,16 @@ Date: 2026-11-13.
 7. Retain compact completed job receipts against duplicates. Discard temporary video bytes immediately on confirmed delivery or TTL expiry.
 
 **Do not merge or deploy this staging work as though the production media fault is fixed.** Unit tests are mock-backed, not a live database or Telegram delivery test.
+
+
+## Production status — 2026-11-14
+
+- Supabase project `pjmjhlwwjmtcrtlabpoz` (`midan-al-khabar-media`) created in user-owned Shamna AI organization; `003_media_retry_queue.sql` applied with RLS enabled and no anonymous/authenticated read privileges.
+- Supabase Edge gateway `midan-media-retry` deployed with shared-secret request authentication; dedicated sensitive `MIDAN_MEDIA_RETRY_BRIDGE_KEY` stored on Vercel, not exposed to browsers or clients.
+- Existing bridge production deployment `dpl_DwEFnLNWCTQiFURD4bgfQ1kqyKBz` activated with `MIDAN_MEDIA_RETRY_ENABLED=true`. Canonical `https://dallalna-telegram-bridge.vercel.app` health and status-v2 returned HTTP 200.
+- Authenticated GitHub Actions sync run `43512022828` returned `mediaRecovery.backend=midan-postgres-retry-queue`, scanned=0, failed=0.
+- Authenticated production sync `43512368528` exercised a **disposable synthetic, non-channel** failed-video job; Supabase row recorded attempts=1, state=pending, error=`source_video_not_detected: post_not_found`, and a delayed `run_after`. The test row was then deleted, and the database verified empty.
+- **This validates the real intake/claim/error-persistence pipeline, not a successful native-video edit.** No real Telegram video message has yet been confirmed repaired by this backend. Do not claim proof of a successful video edit without a Telegram message ID, confirmed video file ID, and verified source correspondence.
+- Pre-existing warning from `news-embed-video-buttons` continues to return `HTTP_503` intermittently, also seen on older deployments before the migration. News sync is not blocked by that auxiliary watcher.
+- News deduplication remains in the original Supabase state system; only the video-repair queue moved. Roll back promptly by setting the production Vercel environment flag `MIDAN_MEDIA_RETRY_ENABLED=false` and redeploying if a regression occurs.
+- Production secret values must never appear in the repository or logs. Retry-completion receipts persist with payload scrubbed; temporary media bytes are not stored in this queue.
