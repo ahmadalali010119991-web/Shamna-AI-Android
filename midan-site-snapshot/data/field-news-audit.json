@@ -1,19 +1,15 @@
 {
   "pagesScanned": 2,
-  "approved": 5,
-  "rejected": 13,
+  "approved": 3,
+  "rejected": 12,
   "reasons": {
-    "insufficient_news_evidence": 7,
+    "insufficient_news_evidence": 6,
     "opinion_or_advice": 1,
     "promotion": 1,
     "unsourced_claim_requires_review": 2,
     "very_short": 2
   },
   "excludedUrls": [
-    {
-      "url": "https://t.me/suhebb0/47974",
-      "reason": "insufficient_news_evidence"
-    },
     {
       "url": "https://t.me/suhebb0/47975",
       "reason": "unsourced_claim_requires_review"
