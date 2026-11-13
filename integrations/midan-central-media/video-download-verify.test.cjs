@@ -16,6 +16,15 @@ function maker(get,opts={}){return createVideoDownloader({allowedHosts:[host],fe
  assert.equal(ok.bytes.byteLength,mp4.length);
  assert.match(ok.sha256,/^[a-f0-9]{64}$/);
  assert.equal(ok.uri,uri);
+ const generic=await maker(()=>response(mp4,{type:'binary/octet-stream'})).download(candidate);
+ assert.equal(generic.verified,true);
+ assert.equal(generic.contentType,'video/mp4');
+ assert.equal(generic.declaredContentType,'binary/octet-stream');
+ const genericApp=await maker(()=>response(mp4,{type:'application/octet-stream'})).download(candidate);
+ assert.equal(genericApp.contentType,'video/mp4');
+ await assert.rejects(()=>maker(()=>response(new Uint8Array(28),{type:'binary/octet-stream'})).download(candidate),/SIGNATURE_INVALID/);
+ await assert.rejects(()=>maker(()=>response(mp4,{type:'text/html'})).download(candidate),/CONTENT_TYPE_INVALID/);
+ await assert.rejects(()=>maker(()=>response(mp4,{type:'binary/octet-stream'})).download({...candidate,uri:'https://cdn.example.org/watch?id=123'}),/GENERIC_VIDEO_EXTENSION_REQUIRED/);
  assert.equal(validSignature(mp4,'video/mp4'),true);
  assert.equal(validSignature(new Uint8Array(27),'video/mp4'),false);
  const webm=Uint8Array.from([26,69,223,163,...new Array(20).fill(1)]);
