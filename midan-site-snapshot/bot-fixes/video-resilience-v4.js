@@ -178,27 +178,106 @@ function install(){
   return response;
  }
 }
-async function getVideoFile(native,api,src,chat){
- const temp=await botCall(native,api,'forwardMessage',{chat_id:chat,from_chat_id:'@'+src.channel,message_id:src.id,disable_notification:true},18000);
- const mid=temp?.message_id;
+async function getVideoFile(native,api,source,chat){
+ const staging=process.env.MEDIA_STAGING_CHAT_ID||chat,temporary=[],errors=[];
+ const remove=async()=>{for(const messageId of temporary.reverse())try{await botCall(native,api,'deleteMessage',{chat_id:staging,message_id:messageId},8000)}catch(e){console.warn('Temporary staging message cleanup failed',messageId)}};
  try{
-  if(!mediaOK(temp))throw Error('source_forward_does_not_expose_video');
-  return {fileId:temp.video?.file_id||temp.document?.file_id,mediaType:temp.video?'video':'document'};
- }finally{
-  if(mid)try{await botCall(native,api,'deleteMessage',{chat_id:chat,message_id:mid},9000)}catch(e){console.warn('temporary video forward cleanup failed')}
- }
+  // A. Direct forward from the public source; Bot API returns a verified Video.file_id.
+  try{
+   const msg=await botCall(native,api,'forwardMessage',{chat_id:staging,from_chat_id:'@'+source.channel,message_id:source.id,disable_notification:true},15000);
+   if(msg?.message_id)temporary.push(msg.message_id);
+   if(mediaOK(msg))return {fileId:msg.video?.file_id||msg.document?.file_id,via:'source_forward'};
+   errors.push('forward_returned_no_video');
+  }catch(e){errors.push('forward:'+String(e.message||e).slice(0,90))}
+  // B. Some public channels permit copying but not forwarding.
+  // Copy to a temporary message, forward THAT message within the owned chat to obtain a file_id.
+  try{
+   const copy=await botCall(native,api,'copyMessage',{chat_id:staging,from_chat_id:'@'+source.channel,message_id:source.id,disable_notification:true},15000);
+   if(!copy?.message_id)throw Error('source_copy_no_message');
+   temporary.push(copy.message_id);
+   const reforward=await botCall(native,api,'forwardMessage',{chat_id:staging,from_chat_id:staging,message_id:copy.message_id,disable_notification:true},12000);
+   if(reforward?.message_id)temporary.push(reforward.message_id);
+   if(mediaOK(reforward))return {fileId:reforward.video?.file_id||reforward.document?.file_id,via:'copy_then_owned_forward'};
+   errors.push('copied_message_not_video');
+  }catch(e){errors.push('copy:'+String(e.message||e).slice(0,90))}
+  throw Error('no_native_video_file_id: '+errors.join('; '));
+ }finally{await remove()}
 }
-async function repairTarget(job,native,api){
- const source={channel:job.channel,id:job.sourceId,url:job.source},state=await sourceMedia(source,native);
- if(!state.hasVideo)throw Error('source_video_not_detected');
- const video=await getVideoFile(native,api,source,job.destination);
- const media={type:'video',media:video.fileId,caption:job.caption||'',supports_streaming:true};
+async function publicTargetIsVideo(native,chat,messageId){
+ try{
+  const channel=String(chat).replace(/^@/,'');
+  if(!/^[a-zA-Z0-9_]{5,32}$/.test(channel))return false;
+  const r=await native('https://t.me/s/'+channel+'?before='+(Number(messageId)+1),{signal:AbortSignal.timeout(8500)});
+  if(!r.ok)return false;
+  const raw=await r.text(),m='data-post="'+channel+'/'+messageId+'"',start=raw.indexOf(m);
+  if(start<0)return false;
+  const next=raw.indexOf('data-post="',start+m.length),slice=raw.slice(start,next>start?next:start+16000);
+  return VIDEO_MARK.test(slice);
+ }catch{return false}
+}
+async function editWithUrl(native,api,job,url){
+ const media={type:'video',media:url,caption:job.caption||'',supports_streaming:true};
  if(job.parse_mode)media.parse_mode=job.parse_mode;
  const request={chat_id:job.destination,message_id:job.targetMessageId,media};
  if(job.reply_markup)request.reply_markup=job.reply_markup;
- const msg=await botCall(native,api,'editMessageMedia',request,20000);
- if(!mediaOK(msg))throw Error('editMessageMedia_did_not_return_video');
- return {ok:true,message_id:job.targetMessageId};
+ const msg=await botCall(native,api,'editMessageMedia',request,25000);
+ if(!mediaOK(msg))throw Error('edit_by_url_did_not_return_video');
+ return {ok:true,via:'publisher_video_url',message_id:job.targetMessageId}
+}
+async function editWithUpload(native,api,job,url){
+ const blob=await boundedDownload(native,url),form=new FormData();
+ form.set('chat_id',String(job.destination));form.set('message_id',String(job.targetMessageId));
+ const media={type:'video',media:'attach://clip',caption:job.caption||'',supports_streaming:true};
+ if(job.parse_mode)media.parse_mode=job.parse_mode;
+ form.set('media',JSON.stringify(media));
+ if(job.reply_markup)form.set('reply_markup',JSON.stringify(job.reply_markup));
+ form.set('clip',blob,'original.mp4');
+ const r=await native(endpoint(api,'editMessageMedia'),{method:'POST',body:form,signal:AbortSignal.timeout(45000)});
+ const v=await r.json().catch(()=>null);
+ if(!r.ok||!v?.ok||!mediaOK(v.result))throw Error('edit_multipart_failed_'+String(v?.description||r.status).slice(0,120));
+ return {ok:true,via:'bounded_mp4_upload',message_id:job.targetMessageId}
+}
+async function repairTarget(job,native,api){
+ const source={channel:job.channel,id:job.sourceId,url:job.source};
+ if(await publicTargetIsVideo(native,job.destination,job.targetMessageId))return {ok:true,via:'already_video',message_id:job.targetMessageId};
+ const state=await sourceMedia(source,native);
+ if(!state.hasVideo)throw Error('source_video_not_detected: '+state.reason);
+ const errors=[];
+ // A/B. Retrieve reusable Telegram file_id (forward or copy -> internal forward).
+ try{
+  const video=await getVideoFile(native,api,source,job.destination);
+  const media={type:'video',media:video.fileId,caption:job.caption||'',supports_streaming:true};
+  if(job.parse_mode)media.parse_mode=job.parse_mode;
+  const request={chat_id:job.destination,message_id:job.targetMessageId,media};
+  if(job.reply_markup)request.reply_markup=job.reply_markup;
+  const msg=await botCall(native,api,'editMessageMedia',request,22000);
+  if(!mediaOK(msg))throw Error('editMessageMedia_returned_no_video');
+  return {ok:true,via:video.via,message_id:job.targetMessageId};
+ }catch(e){errors.push('telegram_native:'+String(e.message||e).slice(0,170))}
+ // C/D. Publisher-hosted direct MP4 URL, then bounded multipart upload if the URL route fails.
+ for(const u of state.urls){
+  try{return await editWithUrl(native,api,job,u)}catch(e){errors.push('url:'+String(e.message||e).slice(0,110))}
+  try{return await editWithUpload(native,api,job,u)}catch(e){errors.push('upload:'+String(e.message||e).slice(0,110))}
+ }
+ throw Error('all_video_repair_routes_failed: '+errors.slice(-5).join(' | ').slice(0,700));
+}
+const INCIDENT={
+ schema:4,source:'https://t.me/suhebb0/47987',channel:'suhebb0',sourceId:47987,
+ destination:'@maydan_alkhabar',targetMessageId:552,attempts:0,createdAt:Date.now(),nextRetry:Date.now(),
+ caption:['🎙️ الميدان السوري | أصوات الميدان','','#الرقة','يناشد المواطن محمد حجو والد الطفل يحيى وزارة الصحة تشكيل لجنة تحقيق مستقلة من خارج محافظة الرقة لكشف ملابسات وفاة طفله بعد 8 أيام من إدخاله إلى المشفى الوطني، وسط اتهامات بالإهمال الطبي.','','كما طالب الجهات القضائية بمتابعة الشكوى المقدمة ومحاسبة كل من يثبت تقصيره أو مسؤوليته عن الوفاة.','','✍️ المصدر: صهيب اليعربي','🔗 المنشور الأصلي: https://t.me/suhebb0/47987','#الميدان_السوري'].join('\n'),
+ reply_markup:{inline_keyboard:[[{text:'اقرأ المصدر الأصلي',url:'https://t.me/suhebb0/47987'}]]},
+ errors:[],parse_mode:''
+};
+async function seedMissingIncident(blob,entries){
+ const path=RETRY_PREFIX+'suhebb0-47987-552.json',donePath=RETRY_PREFIX+'done/voice-552.json';
+ const complete=(await blob.list({prefix:donePath,limit:2})).blobs||[];
+ if(complete.length)return false;
+ if(entries.some(b=>b.pathname===path))return false;
+ try{
+  await blob.put(path,JSON.stringify({...INCIDENT,createdAt:Date.now(),nextRetry:Date.now()}),
+   {access:'public',addRandomSuffix:false,allowOverwrite:false,contentType:'application/json',cacheControlMaxAge:60});
+  return true;
+ }catch(e){return false}
 }
 async function retryPending(native=globalThis.__MIDAN_NEWS_RAW_FETCH||globalThis.fetch){
  if(running)return running;
@@ -207,13 +286,21 @@ async function retryPending(native=globalThis.__MIDAN_NEWS_RAW_FETCH||globalThis
   const blob=blobAPI();if(!blob)return {skipped:'no_blob_sdk'};
   const api='https://api.telegram.org/bot'+process.env.TELEGRAM_BOT_TOKEN+'/sendMessage';
   let entries;
-  try{entries=(await blob.list({prefix:RETRY_PREFIX,limit:60})).blobs||[]}catch(e){return {skipped:'ledger_unavailable'}}
+  try{
+   entries=(await blob.list({prefix:RETRY_PREFIX,limit:100})).blobs||[];
+   await seedMissingIncident(blob,entries);
+   entries=(await blob.list({prefix:RETRY_PREFIX,limit:100})).blobs||[];
+  }catch(e){return {skipped:'ledger_unavailable'}}
   let success=0,failed=0,scanned=0;
-  for(const row of entries.slice(0,12)){
+  for(const row of entries.filter(r=>!r.pathname.includes('/done/')).slice(0,12)){
    let job;try{job=await native(row.url,{signal:AbortSignal.timeout(9000)}).then(r=>r.json())}catch{continue}
    if(job.schema!==4||job.nextRetry>Date.now()||job.attempts>=12)continue;scanned++;
    try{
-    await repairTarget(job,native,api);
+    const repair=await repairTarget(job,native,api);
+    if(job.targetMessageId===552&&job.channel==='suhebb0'){
+      await blob.put(RETRY_PREFIX+'done/voice-552.json',JSON.stringify({source:job.source,messageId:552,completedAt:new Date().toISOString(),route:repair.via}),
+        {access:'public',addRandomSuffix:false,allowOverwrite:true,contentType:'application/json'});
+    }
     await blob.del(row.url);success++;
    }catch(e){
     failed++;job.attempts++;job.errors=[...(job.errors||[]).slice(-5),String(e.message||e).slice(0,130)];
