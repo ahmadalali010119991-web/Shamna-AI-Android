@@ -8,6 +8,7 @@ for tag,path in [('voices','/api/citizen?voices=public'),('news','/api/news'),('
   req=urllib.request.Request(base+path,headers=headers)
   with urllib.request.urlopen(req,timeout=32) as x: d=json.load(x)
   rows=d.get('items',d.get('articles',[])) if isinstance(d,dict) else d
+  if tag=='voices' and isinstance(d,dict): print('VOICES_PROFILES',json.dumps([{'name':v.get('name'),'url':v.get('url'),'outlet':v.get('outlet')} for v in d.get('profiles',[])],ensure_ascii=False))
   if not isinstance(rows,list):rows=[]
   cutoff=datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(hours=10)
   recent=[]
