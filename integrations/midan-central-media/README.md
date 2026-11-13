@@ -62,3 +62,11 @@ The full locally-tested integration scaffold is distributed separately; this PR 
 - Covers video, photo and text publication, replays, video recovery, partial Telegram outage and independent destination replay protection.
 - **No real Telegram message was sent, no actual video was downloaded, and no deployed Vercel application is modified by this test.**
 - Staging rollout requires the actual Vercel project source and production state integration, not only this Android-repository branch.
+
+## Staged real Telegram Bot API transport adapter
+- `telegram-bot-publisher.cjs` implements actual HTTPS Bot API request formation for `sendVideo`, `sendPhoto`, and `sendMessage`; it is tested through a mock HTTP transport so nothing is posted to the real channel.
+- The adapter only accepts video/photo candidates with `verified:true`. A downloader/validation service must set this after validating the media, **not** based only on a page URL or filename.
+- `fileId` must be obtained from a trusted incoming Bot API media message, or an already accessible, validated HTTPS direct media URL must be provided.
+- The required `ledger.reserve`, `ledger.markSent`, and `ledger.markUncertain` operations are an *interface*. A production persistent backend and reconciliation process have not been written or deployed.
+- Ambiguous post-submission timeouts are frozen as `uncertain` to prevent automatic duplicate posts. Recovery requires reconciling the actual Telegram message ID against records.
+- This adapter does not automatically fetch third-party videos, change the existing site, or claim successful live Telegram sending. Do not enable it while the existing sync-v3 publisher owns the channel.
