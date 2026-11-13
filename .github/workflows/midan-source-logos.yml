@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - '.github/workflows/midan-source-logos.yml'
+      - 'midan-site-snapshot/source-logo-fetch.py'
   workflow_dispatch:
 permissions:
   contents: write
