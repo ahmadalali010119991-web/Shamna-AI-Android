@@ -97,6 +97,19 @@ jobs:
             fi
           fi
 
+          # One-time native video test: temporary channel message is deleted by the bridge.
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            qa_response="$(curl --silent --show-error --max-time 110 \
+              -X POST -H "Authorization: Bearer ${token}" \
+              -H "Content-Type: application/json" --data '{}' \
+              "https://dallalna-telegram-bridge.vercel.app/api/push-test")"
+            printf '%s\n' "$qa_response" | jq '{ok,videoConfirmed,queueStored,queueCompleted,deleted,messageId,error}'
+            if ! printf '%s\n' "$qa_response" | jq -e '.ok == true and .deleted == true and .videoConfirmed == true and .queueCompleted == true' >/dev/null; then
+              echo "::error::Temporary native-video test did not fully pass; inspect cleanup status."
+              exit 1
+            fi
+          fi
+
 # Social button repair: align existing Telegram channel posts with @alislam_almutab_book on both platforms.
 # Editorial test: inside Syria > Syrians abroad/refugees > major Middle East > exceptional world, no unrelated stories.
 
