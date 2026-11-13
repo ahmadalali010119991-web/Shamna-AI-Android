@@ -59,7 +59,7 @@ jobs:
             "${BRIDGE_URL}")"
           # Do not report a successful CI run when the publisher returned HTTP 200
           # with ok:false, an error field, or invalid JSON.
-          printf '%s\n' "$response" | jq '{ok,status,error,seeded,sentNews,sentVoices,sentApps,pendingNews,eligibleCount,publicationGuard,rates,errors,mediaRecovery}'
+          printf '%s\n' "$response" | jq '{ok,status,error,seeded,sentNews,sentVoices,sentApps,pendingNews,eligibleCount,publicationGuard,rates,errors,mediaRecovery,videoWatchButtons}'
           if ! printf '%s\n' "$response" | jq -e 'type == "object" and .ok == true and (.error == null or .error == "")' >/dev/null; then
             echo "::error::Midan Telegram bridge reported a publishing failure; inspect its response and Vercel runtime logs."
             exit 1
