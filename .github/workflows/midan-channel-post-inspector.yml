@@ -1,7 +1,7 @@
 name: Inspect owned Telegram news post IDs safely
 on:
   push:
-    paths: ['.github/workflows/midan-channel-post-inspector.yml']
+    paths: ['.github/workflows/midan-channel-post-inspector.yml','midan-site-snapshot/diagnostics/channel_post_ids.py']
   workflow_dispatch:
 permissions:
   contents: write
