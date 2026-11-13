@@ -31,7 +31,7 @@ const fallback=[
  "   }",
  "   data.jobs[id]=record;",
  "   data.updatedAt=new Date().toISOString();",
- "   const saved=await state.write(key,data);",
+ "   const saved=await state.call('write',key,data,previous?{expected_updated_at:previous.updated_at}:{expected_updated_at:null});",
  "   if(!saved||saved.ok!==true)continue;",
  "   const checked=await state.read(key);",
  "   if(checked?.value?.jobs?.[id]||",
