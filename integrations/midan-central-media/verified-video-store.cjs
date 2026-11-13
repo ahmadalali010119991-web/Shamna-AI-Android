@@ -6,8 +6,8 @@ const {createHash}=require('node:crypto');
  * URL must be returned by storage before downstream publication.
  * Source reuse permission must be checked by the caller.
  */
-function createVerifiedVideoStore({put,storagePrefix='midan-media/videos',allowedStorageHosts=[]}={}){
- if(typeof put!=='function'||!Array.isArray(allowedStorageHosts)||allowedStorageHosts.length===0)
+function createVerifiedVideoStore({put,head,storagePrefix='midan-media/videos',allowedStorageHosts=[]}={}){
+ if(typeof put!=='function'||typeof head!=='function'||!Array.isArray(allowedStorageHosts)||allowedStorageHosts.length===0)
   throw Error('DURABLE_PUBLIC_MEDIA_STORE_REQUIRED');
  if(!/^[a-z0-9/_-]{4,100}$/.test(storagePrefix)||storagePrefix.includes('..'))
   throw Error('INVALID_STORAGE_PREFIX');
@@ -31,6 +31,13 @@ function createVerifiedVideoStore({put,storagePrefix='midan-media/videos',allowe
     !allowedStorageHosts.map(x=>String(x).toLowerCase()).includes(url.hostname.toLowerCase())||
     !String(stored.pathname||'').endsWith('/'+video.sha256+suffix))
     throw Error('MEDIA_STORAGE_UNTRUSTED_RECEIPT');
+   // A successful PUT is not sufficient: check persisted object via independent
+   // HEAD before signaling ready to the website or Telegram.
+   const storedCheck=await head(path);
+   if(!storedCheck||storedCheck.pathname!==path||
+      storedCheck.size!==video.size||storedCheck.contentType!==video.contentType||
+      storedCheck.url!==url.href)
+    throw Error('MEDIA_STORAGE_READBACK_MISMATCH');
    return {kind:'video',uri:url.href,verified:true,sha256:video.sha256,
     size:video.size,contentType:video.contentType,origin:video.uri,storagePath:path};
   }
