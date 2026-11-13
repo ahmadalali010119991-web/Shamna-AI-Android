@@ -17,5 +17,6 @@ module.exports={...base,async run(...args){
  if(media.status==='rejected')console.error('Midan video retry worker',String(media.reason?.message||media.reason).slice(0,170));
  else if(media.value?.failed)console.warn('Midan pending video updates',media.value);
  if(news.status==='rejected')throw news.reason;
- return news.value;
+ const mediaRecovery=media.status==='fulfilled'?media.value:{error:String(media.reason?.message||media.reason).slice(0,180)};
+ return news.value&&typeof news.value==='object'?{...news.value,mediaRecovery}:news.value;
 }};
