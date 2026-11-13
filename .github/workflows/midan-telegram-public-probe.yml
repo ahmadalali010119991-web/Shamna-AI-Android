@@ -1,7 +1,7 @@
 name: Diagnose direct Telegram source completeness
 on:
   push:
-    paths: ['.github/workflows/midan-telegram-public-probe.yml']
+    paths: ['.github/workflows/midan-telegram-public-probe.yml', 'midan-site-snapshot/diagnostics/probe_telegram.py']
   workflow_dispatch:
 permissions:
   contents: write
