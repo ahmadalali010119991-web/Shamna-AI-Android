@@ -66,5 +66,33 @@ const v=async m=>!!m.uri;
    store:lostStore,website:noPosts,telegram:noPosts,validate:v
  }),/ARTICLE_LEASE_LOST/);
  assert.equal(postCount,0,'publisher must never send after lease ownership is lost');
- console.log('PASS: 12 central handoff regression assertions including exclusive lease-loss protection');
+ let externalPublished=[],playable=true,firstSendFails=true;
+ const externalRoute={id:'verified-original-direct',run:async()=>({kind:'video',
+  uri:'https://cdn.example.org/stable.mp4',sha256:'a'.repeat(64),
+  verified:true,publiclyPlayable:true,durability:'source-dependent'})};
+ const extStore=durable();
+ const extWeb={publish:async(_story,_media)=>{externalPublished.push('website');return {ok:true,externalId:'site-1'}}};
+ const extTg={publish:async(_story,_media)=>{
+  externalPublished.push('telegram');
+  if(firstSendFails)throw Error('temporary telegram outage');
+  return {ok:true,externalId:'telegram-1'};
+ }};
+ const extCheck=async media=>playable?media:null;
+ const externalCtx={store:extStore,recover:[externalRoute],website:extWeb,telegram:extTg,
+  validate:async x=>x.verified===true,checkExternal:extCheck};
+ const a=await handoff({...base,id:'external-video'},externalCtx);
+ assert.equal(a.stage,'partially-published');
+ assert.deepEqual(externalPublished,['website','telegram']);
+ playable=false;firstSendFails=false;
+ const b=await handoff({...base,id:'external-video'},externalCtx);
+ assert.equal(b.stage,'awaiting-media','must not retry Telegram with expired external media');
+ assert.deepEqual(externalPublished,['website','telegram']);
+ playable=true;
+ const done=await handoff({...base,id:'external-video'},externalCtx);
+ assert.equal(done.stage,'complete');
+ assert.deepEqual(externalPublished,['website','telegram','telegram']);
+ const absent=await handoff({...base,id:'external-absent-check'},{
+  ...externalCtx,store:durable(),checkExternal:undefined});
+ assert.equal(absent.stage,'awaiting-media','external media never publishes without source recheck');
+ console.log('PASS: 16 central handoff assertions, lease loss, source URL recheck and no duplicate');
 })().catch(e=>{console.error(e);process.exitCode=1});
