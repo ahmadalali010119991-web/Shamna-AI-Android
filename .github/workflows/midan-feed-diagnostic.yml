@@ -1,7 +1,7 @@
 name: Midan diagnose missing field posts and video metadata
 on:
   push:
-    paths: ['.github/workflows/midan-feed-diagnostic.yml']
+    paths: ['.github/workflows/midan-feed-diagnostic.yml', 'midan-site-snapshot/diagnostics/inspect_feeds.py']
   workflow_dispatch:
 permissions:
   contents: write
