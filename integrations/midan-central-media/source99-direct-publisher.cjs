@@ -12,9 +12,18 @@ function extractMedia(html,id,kind){
   .find(x=>new RegExp('data-post="Private_Source99/'+id+'"(?!\\d)').test(x));
  if(!block)return null;
  const pattern=kind==='video'
-  ? /<video\b[^>]*\bsrc=["']([^"']+)["']/i
+  // Telegram exposes native clips under tgme_widget_message_video,
+  // sometimes on a <video> and sometimes as a descendant <source>.
+  ? /<(?:video|source)\b[^>]*\bsrc=["']([^"']+)["']/i
   : /background-image:\s*url\(\s*['"]?([^'")]+)['"]?\s*\)/i;
- const raw=block.match(pattern)?.[1];
+ let raw=block.match(pattern)?.[1];
+ if(kind==='video'&&!raw){
+  for(const tag of block.match(/<[^>]{1,1100}>/g)||[]){
+   if(!/tgme_widget_message_video/i.test(tag))continue;
+   raw=tag.match(/\b(?:src|data-video|data-src)=["']([^"']+)["']/i)?.[1];
+   if(raw)break;
+  }
+ }
  if(!raw)return null;
  try{
   const url=new URL(decode(raw),TELEGRAM);
@@ -81,6 +90,9 @@ function createSource99Publisher({fetcher=fetch,once,botToken,chatId='@maydan_al
       const mediaUrl=extractMedia(html,post.id.split('-').at(-1),isVideo?'video':'photo');
       if(!mediaUrl)throw Error('ORIGINAL_MEDIA_NOT_FOUND');
       const {blob,type}=await mediaBlob(mediaUrl,{fetcher,video:isVideo});
+      // Telegram Bot API sendVideo is an MPEG4 player. Do not mislabel a
+      // QuickTime or WebM stream as an MP4 upload.
+      if(isVideo&&type!=='video/mp4')throw Error('VIDEO_TRANSCODING_REQUIRED');
       const form=new FormData();
       form.set('chat_id',chatId);form.set('parse_mode','HTML');
       form.set('caption',caption.slice(0,1024));
