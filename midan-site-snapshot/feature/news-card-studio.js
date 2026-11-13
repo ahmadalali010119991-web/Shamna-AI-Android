@@ -200,7 +200,7 @@ function install(){
  var lastId=null,root=document.body;
  document.addEventListener("click",function(e){var el=e.target.closest?.("[data-open]");if(el)lastId=el.getAttribute("data-open")},true);
  function attach(node){
-  if(!node||node.querySelector(":scope > .mcs-create")||!node.querySelector("h2,h3"))return;
+  if(!node||node.querySelector(".mcs-create")||!node.querySelector("h2,h3"))return;
   var b=document.createElement("button");b.className="mcs-create";b.type="button";b.textContent="▣ إنشاء صورة الخبر";
   b.setAttribute("aria-label","إنشاء صورة الخبر");
   b.addEventListener("click",function(e){
