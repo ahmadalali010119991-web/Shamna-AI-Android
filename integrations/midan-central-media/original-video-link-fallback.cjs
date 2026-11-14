@@ -40,7 +40,7 @@ async function linkOriginal(job,{fetcher=globalThis.fetch,botToken}={}){
   {method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload),signal:AbortSignal.timeout(17000)});
  const packet=await res.json().catch(()=>null);
  if(!res.ok||packet?.ok!==true||packet?.result?.message_id!==Number(job.targetMessageId)){
-  return {linked:false,reason:'telegram_markup_edit_not_confirmed'};
+  return {linked:false,reason:'telegram_markup_edit_not_confirmed:'+String(packet?.description||res.status||'unknown').slice(0,120)};
  }
  return {linked:true,source,messageId:Number(job.targetMessageId),mode:'original_source_link_only'};
 }
