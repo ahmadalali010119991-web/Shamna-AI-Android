@@ -6,7 +6,8 @@
  * currency/gold/fuel posts, and non-news notifications are unaffected.
  */
 const capturedFetch=globalThis.fetch;
-const MAX_IMAGE=9_000_000;
+const quality=require('./original-photo-quality');
+const MAX_IMAGE=quality.DOCUMENT_MAX;
 const MAX_PAGE=2_000_000;
 const timeout=ms=>AbortSignal.timeout(ms);
 const htmlDecode=x=>String(x||'').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;|&apos;|&#x27;/gi,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>');
@@ -114,19 +115,31 @@ function validPhoto(b,type){
   return false;
 }
 async function originalImage(url){
-  const page=await fetched(url,{maxBytes:MAX_PAGE});
+  // For Telegram sources, inspect only the exact source post; a channel page
+  // contains neighbouring posts whose images must never be republished by mistake.
+  const post=quality.telegramPost(url);
+  const pageUrl=post?'https://t.me/s/'+post.channel+'?before='+(post.id+1):url;
+  const page=await fetched(pageUrl,{maxBytes:MAX_PAGE});
   if(!/text\/html|application\/xhtml/i.test(page.type))return {status:'no-html'};
   const html=page.buffer.toString('utf8');
-  const candidates=extractMetaImages(html,page.url);
+  const scoped=post?quality.isolatedTelegramHtml(html,post):html;
+  if(post&&!scoped)return {status:'image-unavailable'};
+  const candidates=extractMetaImages(scoped,page.url);
   if(!candidates.length)return {status:'no-image'};
-  for(const candidate of candidates.slice(0,3)){
+  const found=[];
+  for(const candidate of candidates.slice(0,7)){
     try{
       const img=await fetched(candidate,{binary:true,maxBytes:MAX_IMAGE});
-      if(validPhoto(img.buffer,img.type))
-        return {status:'image',buffer:img.buffer,url:img.url,mime:img.buffer[0]===0xff?'image/jpeg':'image/png'};
-    }catch(e){console.warn('Original publisher photo inaccessible:',e.message)}
+      if(validPhoto(img.buffer,img.type)){
+        const entry=quality.admissible({
+          buffer:img.buffer,url:img.url,mime:img.buffer[0]===0xff?'image/jpeg':'image/png'});
+        if(entry)found.push(entry);
+      }
+    }catch(e){console.warn('Original publisher photo inaccessible:',String(e.message).slice(0,120))}
   }
-  return {status:'image-unavailable'}; // NEVER silently treat known pictured article as text-only.
+  const selected=quality.choose(found);
+  if(selected)return {status:'image',...selected,delivery:quality.mode(selected)};
+  return {status:'image-unavailable'};
 }
 function makeCaption(text,url){
   const clean=htmlDecode(String(text).replace(/<[^>]*>/g,' ')
@@ -160,10 +173,14 @@ function install(){
           form.append(k,typeof body[k]==='object'?JSON.stringify(body[k]):String(body[k]));
         }
         const caption=makeCaption(body.text,origin);
-        form.append('photo',new Blob([result.buffer],{type:result.mime}),'miden-news-source.'+(result.mime==='image/png'?'png':'jpg'));
+        const asDocument=result.delivery==='document';
+        const ext=result.mime==='image/png'?'png':'jpg';
+        form.append(asDocument?'document':'photo',
+          new Blob([result.buffer],{type:result.mime}),'midan-original.'+ext);
         form.append('caption',caption.caption);
         form.append('caption_entities',JSON.stringify(caption.caption_entities));
-        const target=String(url).replace(/\/sendMessage(\?.*)?$/i,'/sendPhoto$1');
+        const target=String(url).replace(/\/sendMessage(\?.*)?$/i,
+          asDocument?'/sendDocument$1':'/sendPhoto$1');
         return prior.call(this,target,{...init,body:form,headers:undefined});
       }
       if(result.status==='image-unavailable'){
