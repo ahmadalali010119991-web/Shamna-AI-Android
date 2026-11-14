@@ -1,0 +1,25 @@
+name: Midan original image quality regression
+on:
+  push:
+    branches: [fix/midan-original-photo-quality-20261114]
+    paths:
+      - 'telegram-shared/news-original-photo.js'
+      - 'telegram-shared/original-photo-quality.js'
+      - 'telegram-shared/original-photo-quality.test.cjs'
+      - '.github/workflows/midan-photo-quality-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check telegram-shared/news-original-photo.js
+      - run: node --check telegram-shared/original-photo-quality.js
+      - run: node --check telegram-shared/original-photo-quality.test.cjs
+      - run: node --test telegram-shared/original-photo-quality.test.cjs
