@@ -39,11 +39,14 @@ test('missing native file_id never marks retry completed; verified result does',
   fs.writeFileSync(path.join(dir,'state-v3.js'),"module.exports={read:async()=>null,write:async()=>({ok:false}),call:async()=>({ok:false})}");
   const calls=[],job={channel:'source',sourceId:33,source:'https://t.me/source/33',destination:'@maydan_alkhabar',targetMessageId:551};
   let claimed=false;
+  fs.writeFileSync(path.join(dir,'original-video-link-fallback.js'),
+   "module.exports={linkOriginal:async()=>({linked:true,messageId:551,source:'https://t.me/source/33'})}");
   fs.writeFileSync(path.join(dir,'media-retry-gateway.js'),[
   "module.exports={createMediaRetryGateway:()=>({",
   "enqueue:async(id,payload)=>{globalThis.__queueCalls.push(['enqueue',id,payload]);return {accepted:true}},",
   "claim:async()=>globalThis.__returnClaim?{jobKey:'x',leaseToken:'lease',payload:globalThis.__sampleJob}:null,",
   "complete:async(...args)=>{globalThis.__queueCalls.push(['complete',...args]);return true},",
+  "linkSource:async(...args)=>{globalThis.__queueCalls.push(['linkSource',...args]);return true},"
   "fail:async(...args)=>{globalThis.__queueCalls.push(['fail',...args]);return true}",
   "})}"
   ].join('\n'));
@@ -72,6 +75,12 @@ test('missing native file_id never marks retry completed; verified result does',
   assert.equal(out.success,1);
   const complete=calls.find(c=>c[0]==='complete');
   assert.equal(complete[3].videoFileId,'confirmed-video-file-12345');
+  m.repairTarget=async()=>{throw Error('all_video_repair_routes_failed: inaccessible')};
+  out=await m.retryPending();
+  assert.equal(out.linkedOriginal,1);
+  assert.equal(out.nativeVideo,false);
+  assert.equal(calls.at(-1)[0],'linkSource');
+
  }finally{
   keys.forEach(k=>old[k]===undefined?delete process.env[k]:process.env[k]=old[k]);
   delete globalThis.__queueCalls;delete globalThis.__sampleJob;delete globalThis.__returnClaim;
