@@ -46,7 +46,7 @@ test('missing native file_id never marks retry completed; verified result does',
   "enqueue:async(id,payload)=>{globalThis.__queueCalls.push(['enqueue',id,payload]);return {accepted:true}},",
   "claim:async()=>globalThis.__returnClaim?{jobKey:'x',leaseToken:'lease',payload:globalThis.__sampleJob}:null,",
   "complete:async(...args)=>{globalThis.__queueCalls.push(['complete',...args]);return true},",
-  "linkSource:async(...args)=>{globalThis.__queueCalls.push(['linkSource',...args]);return true},"
+  "linkSource:async(...args)=>{globalThis.__queueCalls.push(['linkSource',...args]);return true},",
   "fail:async(...args)=>{globalThis.__queueCalls.push(['fail',...args]);return true}",
   "})}"
   ].join('\n'));
