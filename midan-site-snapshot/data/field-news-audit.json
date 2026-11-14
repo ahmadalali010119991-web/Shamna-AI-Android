@@ -1,20 +1,12 @@
 {
-  "pagesScanned": 3,
-  "approved": 8,
-  "rejected": 14,
+  "pagesScanned": 2,
+  "approved": 5,
+  "rejected": 11,
   "reasons": {
-    "insufficient_news_evidence": 12,
+    "insufficient_news_evidence": 9,
     "very_short": 2
   },
   "excludedUrls": [
-    {
-      "url": "https://t.me/suhebb0/47996",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/47998",
-      "reason": "insufficient_news_evidence"
-    },
     {
       "url": "https://t.me/suhebb0/47999",
       "reason": "insufficient_news_evidence"
@@ -58,10 +50,6 @@
     {
       "url": "https://t.me/suhebb0/48014",
       "reason": "very_short"
-    },
-    {
-      "url": "https://t.me/suhebb0/47994",
-      "reason": "insufficient_news_evidence"
     }
   ]
 }
