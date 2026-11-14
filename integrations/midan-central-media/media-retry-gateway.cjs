@@ -41,6 +41,12 @@ function createMediaRetryGateway({projectUrl,bridgeKey,fetcher=globalThis.fetch,
     throw Error('CONFIRMED_TELEGRAM_NATIVE_VIDEO_REQUIRED');
    return call('complete',{p_key:key,p_token:token,p_telegram_message_id:messageId,p_telegram_file_id:videoFileId});
   },
+  async linkSource(key,token,{messageId,source}={}){
+   if(!Number.isSafeInteger(messageId)||messageId<=0||
+      !/^https:\/\/t\.me\/[A-Za-z0-9_]{5,32}\/[1-9][0-9]{0,12}$/.test(String(source||'')))
+    throw Error('ORIGINAL_SOURCE_RECEIPT_REQUIRED');
+   return call('link_source',{p_key:key,p_token:token,p_telegram_message_id:messageId,p_source_url:source});
+  },
   fail:(key,token,error)=>call('fail',{p_key:key,p_token:token,p_error:String(error?.message||error||'unknown').slice(0,240)})
  };
 }
