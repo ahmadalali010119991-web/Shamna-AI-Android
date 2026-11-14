@@ -1,0 +1,79 @@
+name: Midan media pipeline regression
+on:
+  pull_request:
+    paths: ['integrations/midan-central-media/**', '.github/workflows/midan-media-regression.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - run: node integrations/midan-central-media/media-contract.test.cjs
+      - run: node integrations/midan-central-media/handoff-engine.test.cjs
+
+      - run: node integrations/midan-central-media/supabase-lease-store.test.cjs
+      - run: node integrations/midan-central-media/media-retry-queue.test.cjs
+      - run: node integrations/midan-central-media/media-retry-gateway.test.cjs
+      - run: node integrations/midan-central-media/news-video-watcher-retry.test.cjs
+      - run: node integrations/midan-central-media/original-video-link-fallback.test.cjs
+      - run: node integrations/midan-central-media/video-watch-cadence.test.cjs
+      - run: node --check integrations/midan-central-media/native-telegram-qa.cjs
+      - run: node integrations/midan-central-media/production-bridge.test.cjs
+
+      - run: node integrations/midan-central-media/signed-handoff.test.cjs
+
+      - run: node integrations/midan-central-media/handoff-http-handler.test.cjs
+
+      - run: node integrations/midan-central-media/ingress-persistence.test.cjs
+
+      - run: node integrations/midan-central-media/end-to-end.test.cjs
+
+      - run: node integrations/midan-central-media/telegram-bot-publisher.test.cjs
+
+      - run: node integrations/midan-central-media/official-source-video-discovery.test.cjs
+
+      - run: node integrations/midan-central-media/private-source99-adapter.test.cjs
+
+      - run: node integrations/midan-central-media/source99-direct-publisher.test.cjs
+
+      - run: node integrations/midan-central-media/video-download-verify.test.cjs
+
+      - run: node integrations/midan-central-media/verified-video-store.test.cjs
+      - run: node integrations/midan-central-media/source-video-recovery.test.cjs
+
+      - run: node integrations/midan-central-media/vercel-blob-video-store.test.cjs
+
+      - run: node integrations/midan-central-media/public-video-playback-check.test.cjs
+
+      - run: node integrations/midan-central-media/video-full-handoff.test.cjs
+
+      - run: node integrations/midan-central-media/direct-video-recovery.test.cjs
+
+      - run: node integrations/midan-central-media/direct-video-url-policy.test.cjs
+
+      - run: node integrations/midan-central-media/private-source99-site-video.test.cjs
+
+      - run: node integrations/midan-central-media/production-news-original-video.test.cjs
+
+      - run: node integrations/midan-central-media/news-video-mime-compat.test.cjs
+
+      - run: node integrations/midan-central-media/source99-video-mime-compat.test.cjs
+
+      - run: node integrations/midan-central-media/voice-video-retry-supabase-compat.test.cjs
+
+      - run: node integrations/midan-central-media/source99-site-video-compat.test.cjs
+
+      - run: node integrations/midan-central-media/news-embed-video-buttons.test.cjs
+
+      - run: node integrations/midan-central-media/sync-embed-video-watcher.test.cjs
+
+      - run: node integrations/midan-central-media/telegram-native-video-site-fallback.test.cjs
+      - run: node integrations/midan-central-media/article-video-ephemeral-compat.test.cjs
