@@ -129,6 +129,7 @@ module.exports.retryPending=async function(...args){
      }
      throw Error('SOURCE_LINK_RECEIPT_NOT_STORED');
     }
+    console.warn('Midan original source link not confirmed:',String(outcome.reason||'unavailable').slice(0,150));
    }catch(fallbackError){
     console.warn('Midan source video fallback',String(fallbackError?.message||fallbackError).slice(0,120));
    }
