@@ -114,6 +114,25 @@ module.exports.retryPending=async function(...args){
   return {backend,scanned:1,success:1,failed:0,targetMessageId:job.targetMessageId,via:repaired.via};
  }catch(e){
   const reason=String(e?.message||e).slice(0,150);
+  // Native video cannot be copied from some public Telegram posts ("Media is too big").
+  // Never claim that the video was uploaded. Only edit the original message's source button.
+  if(reason.includes('all_video_repair_routes_failed')){
+   try{
+    const {linkOriginal}=require('./original-video-link-fallback');
+    const outcome=await linkOriginal(claim.payload,{fetcher:native,botToken});
+    if(outcome.linked){
+     const stored=await gateway.linkSource(claim.jobKey,claim.leaseToken,{
+      messageId:outcome.messageId,source:outcome.source});
+     if(stored===true){
+      return {backend,scanned:1,success:0,failed:0,linkedOriginal:1,
+        targetMessageId:outcome.messageId,nativeVideo:false,reason:'source_video_too_large'};
+     }
+     throw Error('SOURCE_LINK_RECEIPT_NOT_STORED');
+    }
+   }catch(fallbackError){
+    console.warn('Midan source video fallback',String(fallbackError?.message||fallbackError).slice(0,120));
+   }
+  }
   try{await gateway.fail(claim.jobKey,claim.leaseToken,reason)}catch(err){console.error('Midan retry failure persistence',String(err?.message||err).slice(0,100))}
   return {backend,scanned:1,success:0,failed:1,reason};
  }
