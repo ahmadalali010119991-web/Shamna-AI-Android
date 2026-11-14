@@ -65,9 +65,9 @@ test('Telegram publisher chooses source-matched high-resolution document, not wr
   assert.equal(form.get('chat_id'),'@maydan_alkhabar');
   assert.ok(form.get('document') instanceof Blob);
   assert.equal((await form.get('document').arrayBuffer()).byteLength,13000);
-  assert.match(form.get('caption'),'المصدر');
+  assert.match(form.get('caption'),/المصدر/);
   assert.equal(JSON.parse(form.get('reply_markup')).inline_keyboard[0][0].url,source);
- }finally{globalThis.fetch=initial;}
+ }finally{globalThis.fetch=initial;delete globalThis.__MIDAN_ORIGINAL_PHOTO_INSTALLED;}
 });
 test('small image keeps ordinary Telegram inline photo presentation',async()=>{
  const initial=globalThis.fetch,source='https://example.org/article';
