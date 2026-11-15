@@ -7,6 +7,42 @@
   ],
   "items": [
     {
+      "id": "voice-suhebb0-48069",
+      "sourceId": "suhebb0",
+      "author": "صهيب اليعربي",
+      "source": "قناة صهيب اليعربي",
+      "title": "مدير إدارة الإعلام والاتصال في وزارة الدفاع عاصم غليون: 📌 ننفي صحة المتداول عبر بعض وسائل الإعلام حول فصل \"220 ضابطاً وجندياً\" من قوى حرس الحدود وما نُسب إليهم من اد",
+      "fullText": "مدير إدارة الإعلام والاتصال في وزارة الدفاع عاصم غليون:\n\n📌 ننفي صحة المتداول عبر بعض وسائل الإعلام حول فصل \"220 ضابطاً وجندياً\" من قوى حرس الحدود وما نُسب إليهم من ادعاءات\n\n📌 نهيب بضرورة تحري الدقة واعتماد المصادر الرسمية في نقل الأخبار المتعلقة بوزارة الدفاع.",
+      "summary": "مدير إدارة الإعلام والاتصال في وزارة الدفاع عاصم غليون:\n\n📌 ننفي صحة المتداول عبر بعض وسائل الإعلام حول فصل \"220 ضابطاً وجندياً\" من قوى حرس الحدود وما نُسب إليهم من ادعاءات\n\n📌 نهيب بضرورة تحري الدقة واعتماد المصادر الرسمية في نقل الأخبار المتعلقة بوزارة الدفاع.",
+      "publishedAt": "2026-11-15T18:39:41Z",
+      "url": "https://t.me/suhebb0/48069",
+      "country": "سوريا",
+      "kind": "news",
+      "verification": "source_report",
+      "editorialTier": "source_attributed",
+      "video": false,
+      "videoUrl": null,
+      "imageUrl": null
+    },
+    {
+      "id": "voice-suhebb0-48064",
+      "sourceId": "suhebb0",
+      "author": "صهيب اليعربي",
+      "source": "قناة صهيب اليعربي",
+      "title": "منتخب سوريا يتراجع مرتبتين في تصنيف \"فيفا\" الآني، ليصبح في المركز الـ88 عالمياً والـ11 عربياً والـ12 آسيوياً.",
+      "fullText": "منتخب سوريا يتراجع مرتبتين في تصنيف \"فيفا\" الآني، ليصبح في المركز الـ88 عالمياً والـ11 عربياً والـ12 آسيوياً.",
+      "summary": "منتخب سوريا يتراجع مرتبتين في تصنيف \"فيفا\" الآني، ليصبح في المركز الـ88 عالمياً والـ11 عربياً والـ12 آسيوياً.",
+      "publishedAt": "2026-11-15T15:51:15Z",
+      "url": "https://t.me/suhebb0/48064",
+      "country": "سوريا",
+      "kind": "news",
+      "verification": "source_report",
+      "editorialTier": "source_attributed",
+      "video": false,
+      "videoUrl": null,
+      "imageUrl": null
+    },
+    {
       "id": "voice-suhebb0-48059",
       "sourceId": "suhebb0",
       "author": "صهيب اليعربي",
@@ -112,7 +148,7 @@
       "editorialTier": "source_attributed",
       "video": false,
       "videoUrl": null,
-      "imageUrl": "https://cdn4.telesco.pe/file/N70SmZjERF3PuQ823cwgKfx7m8iM_MPRuYkyIpd82pFGXCd6ePpzmtl3bETRloxX6aZcl-f4fv4EOwNpWhHirikgFNKZJa_iOw1BRu-5Ew_1kw7f4wVWYepAxALkzKHpuUjmdPBNBiI9dDn_9Ahs-7uoWqmMjSAVbLSm4q1EAZzatYIDPWSQiv0uzPY6HqIUgaCFNT4dpDvYDsir_d6M1i66Db8v3YOgfeN85rR8NQSfepa1qMwHYnQNRITPCdMNeSto_hUkJFpQVZOTSmOQjL6g5QgFTZuwjc_c2srmxk4xoWGdAQ7QunlZuXlnLr_ImFmvh6wAqC3Auf7aUw2RUQ.jpg"
+      "imageUrl": "https://cdn4.telesco.pe/file/vj2mZ-ognUb9MJpjFFu0vFVV0TbOqu30Omxne1mnLPv9Y9aiYNQWoKwXRR3BsNz8y_8wQvVg8zS7pJJh0z4px833Ki8i3SZFWeLN3Hm9iMIqr-q68rsfr5Bsg4PAqwUCBgMIaKXwLQd8scH1gov7J2snOrC7EJdiMAqlTqmWY0kJWLVN8rSAeWpDr_gR7yzpVwGj1HCEcEWJwg3rylJaXu8KwO-rcTL-OZP4is4wNOElReAh1JCIywCVO_nMHXT9NKW0GwiKpAuyRq34RSy4_amyZSgm3Ci9CjVaxk9V1rdG7aRxlO02pMM87--GqZDfqGy94NR6boFA9hn-kr7x8w.jpg"
     }
   ]
 }
