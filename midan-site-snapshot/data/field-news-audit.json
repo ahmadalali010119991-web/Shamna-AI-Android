@@ -1,26 +1,33 @@
 {
-  "pagesScanned": 2,
-  "approved": 2,
-  "rejected": 4,
+  "pagesScanned": 3,
+  "approved": 11,
+  "rejected": 6,
   "reasons": {
-    "insufficient_news_evidence": 3,
-    "very_short": 1
+    "insufficient_news_evidence": 6
   },
   "excludedUrls": [
     {
-      "url": "https://t.me/suhebb0/48075",
+      "url": "https://t.me/suhebb0/48080",
       "reason": "insufficient_news_evidence"
     },
     {
-      "url": "https://t.me/suhebb0/48076",
+      "url": "https://t.me/suhebb0/48085",
       "reason": "insufficient_news_evidence"
     },
     {
-      "url": "https://t.me/suhebb0/48077",
-      "reason": "very_short"
+      "url": "https://t.me/suhebb0/48089",
+      "reason": "insufficient_news_evidence"
     },
     {
-      "url": "https://t.me/suhebb0/48078",
+      "url": "https://t.me/suhebb0/48093",
+      "reason": "insufficient_news_evidence"
+    },
+    {
+      "url": "https://t.me/suhebb0/48097",
+      "reason": "insufficient_news_evidence"
+    },
+    {
+      "url": "https://t.me/suhebb0/48079",
       "reason": "insufficient_news_evidence"
     }
   ]
