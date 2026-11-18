@@ -1,0 +1,24 @@
+{
+  "baselineDeployment": "dpl_BpkDQRMizp2dpmtPqUfekiBuptiW",
+  "files": [
+    "app-legacy.js",
+    "source-images.js",
+    "media-click-fix.js",
+    "style.css",
+    "app-inner.js",
+    "sw.js",
+    "sw-legacy.js"
+  ],
+  "unchangedSourceCount": 145,
+  "scope": "preview only",
+  "cache": {
+    "maxAgeMinutes": 30,
+    "maxRows": 120
+  },
+  "checks": [
+    "JS syntax",
+    "card hidden full text retained",
+    "title detail target"
+  ],
+  "note": "No production promotion; no bot or DB changes."
+}
