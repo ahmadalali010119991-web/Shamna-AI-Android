@@ -1,5 +1,6 @@
 'use strict';
 const {normalize,identity,publishDecision,mergeDestinations}=require('./media-contract.cjs');
+const {createBrandedTelegram}=require('./branded-telegram.cjs');
 /**
  * Staged integration — not wired to production.
  * store.transaction() MUST serialize each article and persist save() durably.
@@ -7,10 +8,11 @@ const {normalize,identity,publishDecision,mergeDestinations}=require('./media-co
  * completed sends after ambiguous timeouts; Telegram Bot API alone does not
  * provide an atomic idempotency guarantee.
  */
-async function handoff(raw,{store,recover=[],website,telegram,validate,checkExternal,allowPhotoFallback=true}={}){
+async function handoff(raw,{store,recover=[],website,telegram,validate,checkExternal,allowPhotoFallback=true,branding}={}){
  if(typeof store?.transaction!=='function'||!website?.publish||!telegram?.publish||typeof validate!=='function')
   throw Error('DURABLE_STORE_AND_ADAPTERS_REQUIRED');
  const story=normalize(raw),key=identity(story);
+ const telegramPublisher=branding?createBrandedTelegram({...branding,publisher:telegram}):telegram;
  const routeIds=new Set();
  for(const adapter of recover){
   if(!adapter?.id||typeof adapter.run!=='function'||routeIds.has(adapter.id))throw Error('INVALID_OR_DUPLICATE_ADAPTER');
@@ -62,7 +64,7 @@ async function handoff(raw,{store,recover=[],website,telegram,validate,checkExte
    photoVerified:state.media?.kind==='photo',recoveryExhausted,hasPendingRetries});
   if(decision.status.startsWith('awaiting-'))
     return {ok:false,stage:'awaiting-media',key,attempts:state.attempts};
-  for(const [dest,client] of [['website',website],['telegram',telegram]]){
+  for(const [dest,client] of [['website',website],['telegram',telegramPublisher]]){
    if(state.destinations[dest]?.status==='sent')continue;
    if(state.media?.durability==='source-dependent'){
     try{
