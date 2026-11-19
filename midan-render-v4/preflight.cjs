@@ -9,8 +9,25 @@ execFileSync('ffmpeg',['-version'],{stdio:'ignore',timeout:5000});
 execFileSync('ffprobe',['-version'],{stdio:'ignore',timeout:5000});
 archive.fill(0);
 if(process.argv.includes('--check-only')){console.log('ciphertext and dependencies verified');process.exit(0)}
+const os=require('node:os');
+function syntheticTest(){
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'midan-preflight-'));
+ const out=path.join(dir,'synthetic.mp4');
+ const started=Date.now();
+ try{
+  execFileSync('ffmpeg',['-hide_banner','-loglevel','error','-nostdin','-y','-f','lavfi','-i','testsrc2=size=640x360:rate=25:duration=3','-f','lavfi','-i','sine=frequency=440:sample_rate=48000:duration=3','-f','lavfi','-i','sine=frequency=880:sample_rate=48000:duration=3','-filter_complex','[0:v]drawbox=x=12:y=12:w=64:h=32:color=blue@0.8:t=fill[v];[2:a]volume=0.08[bed];[1:a][bed]amix=inputs=2:duration=first:normalize=0[a]','-map','[v]','-map','[a]','-c:v','libx264','-threads','1','-preset','veryfast','-pix_fmt','yuv420p','-c:a','aac','-b:a','96k','-movflags','+faststart','-t','3',out],{stdio:'ignore',timeout:25000});
+  const meta=JSON.parse(execFileSync('ffprobe',['-v','error','-show_streams','-show_format','-of','json',out],{timeout:5000,maxBuffer:200000}).toString());
+  const v=meta.streams.find(x=>x.codec_type==='video'),a=meta.streams.find(x=>x.codec_type==='audio');
+  if(v?.codec_name!=='h264'||v.width!==640||v.height!==360||a?.codec_name!=='aac'||Math.abs(Number(meta.format?.duration)-3)>0.15||fs.statSync(out).size<1000)throw Error('SYNTHETIC_OUTPUT_INVALID');
+  execFileSync('ffmpeg',['-v','error','-nostdin','-i',out,'-f','null','-'],{stdio:'ignore',timeout:10000});
+  const result={passed:true,codec:v.codec_name,audioCodec:a.codec_name,width:v.width,height:v.height,seconds:Number(meta.format.duration),bytes:fs.statSync(out).size,elapsedMs:Date.now()-started,syntheticOnly:true};
+  console.info(JSON.stringify({event:'midan-synthetic-transcode',...result}));
+  return result;
+ }finally{fs.rmSync(dir,{recursive:true,force:true})}
+}
+const synthetic=syntheticTest();
 http.createServer((req,res)=>{
  const health=req.method==='GET'&&req.url==='/health';
  res.writeHead(health?200:503,{'content-type':'application/json','cache-control':'no-store'});
- res.end(JSON.stringify({ok:false,ready:false,mode:'build-verification-only',archiveVerified:true,dependenciesVerified:true,processingEnabled:false}));
+ res.end(JSON.stringify({ok:false,ready:false,mode:'build-verification-only',archiveVerified:true,dependenciesVerified:true,processingEnabled:false,synthetic}));
 }).listen(Number(process.env.PORT||8080),'0.0.0.0');
