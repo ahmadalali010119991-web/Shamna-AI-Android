@@ -9,6 +9,11 @@ execFileSync('ffmpeg',['-version'],{stdio:'ignore',timeout:5000});
 execFileSync('ffprobe',['-version'],{stdio:'ignore',timeout:5000});
 archive.fill(0);
 if(process.argv.includes('--check-only')){console.log('ciphertext and dependencies verified');process.exit(0)}
+// Keep the build-only test unchanged; enable the authenticated worker only with an explicit runtime flag.
+if(process.env.MIDAN_WORKER_ENABLED==='1'){
+ require('./bootstrap.cjs');
+ return;
+}
 const os=require('node:os');
 function syntheticTest(){
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'midan-preflight-'));
