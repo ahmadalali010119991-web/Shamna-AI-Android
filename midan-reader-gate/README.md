@@ -1,0 +1,1 @@
+Read-only evidence candidate. The registry must be explicitly approved and pinned to numeric Telegram channel IDs. No production configuration, credentials, forwarding, publishing or edit path is included. Tests are mocked MTProto responses. Not activated.
