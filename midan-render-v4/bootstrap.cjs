@@ -1,7 +1,7 @@
 'use strict';
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),crypto=require('node:crypto'),{spawn,spawnSync}=require('node:child_process');
 const HASH='2741fa3592e30d94a17be131fda036eab5ab23ab8ec524b2ba096e935c5f6cf1';
-const CIPHER_HASH='5602868b67b16ba4a92497d09e2b3cf5be261a78813b2ec176fda4df6d2040d0';
+const CIPHER_HASH='a9f5899263d726833e0fe1cc36c195187e537f92a13129d5e1ef9785aa17ada9';
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
 const keyHex=process.env.MIDAN_ARCHIVE_KEY||'';
 delete process.env.MIDAN_ARCHIVE_KEY;
