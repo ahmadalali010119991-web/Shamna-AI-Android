@@ -1,22 +1,7 @@
 {
-  "pagesScanned": 2,
-  "approved": 6,
-  "rejected": 3,
-  "reasons": {
-    "insufficient_news_evidence": 3
-  },
-  "excludedUrls": [
-    {
-      "url": "https://t.me/suhebb0/48208",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/48210",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/48211",
-      "reason": "insufficient_news_evidence"
-    }
-  ]
+  "pagesScanned": 1,
+  "approved": 0,
+  "rejected": 0,
+  "reasons": {},
+  "excludedUrls": []
 }
