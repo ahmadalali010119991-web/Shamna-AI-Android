@@ -1,1 +1,0 @@
-PASS: live production JS, 3 official source images and preserved news UI
