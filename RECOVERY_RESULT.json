@@ -1,0 +1,237 @@
+[
+  {
+    "path": "android-back-guard.js",
+    "state": "unavailable_or_mismatch",
+    "expected": "4169e88c70474924756dc7a055c03b2fd733f022"
+  },
+  {
+    "path": "app-inner.js",
+    "state": "unavailable_or_mismatch",
+    "expected": "b94a45ecc7957a4d819079f1d21bfa07bff7b637"
+  },
+  {
+    "path": "app-legacy.js",
+    "state": "unavailable_or_mismatch",
+    "expected": "fa959c12312bfa02c210febdc09f1fc369d36ea7"
+  },
+  {
+    "path": "app.js",
+    "state": "unavailable_or_mismatch",
+    "expected": "3a3d3c2a2cca0d4b5c9fa96a581782af2516ed89"
+  },
+  {
+    "path": "archive.html",
+    "state": "unavailable_or_mismatch",
+    "expected": "9ab3db5329ed6898a08c2caf470d042c323f5f8b"
+  },
+  {
+    "path": "assets/icon-192-v2.png",
+    "state": "unavailable_or_mismatch",
+    "expected": "f2da6a7df0246bb57ac7f8752e33c80ffb298d2a"
+  },
+  {
+    "path": "assets/icon-192.png",
+    "state": "unavailable_or_mismatch",
+    "expected": "f2da6a7df0246bb57ac7f8752e33c80ffb298d2a"
+  },
+  {
+    "path": "assets/icon-512-optimized.png",
+    "state": "unavailable_or_mismatch",
+    "expected": "f50ee4a07073372419f1c0adfbec80bbda76407e"
+  },
+  {
+    "path": "assets/icon-512-v2.webp",
+    "state": "unavailable_or_mismatch",
+    "expected": "a2287c2e7d1e47e43e64e74303feed678066be1d"
+  },
+  {
+    "path": "assets/midan-brand-2026-v2.webp",
+    "state": "unavailable_or_mismatch",
+    "expected": "a2287c2e7d1e47e43e64e74303feed678066be1d"
+  },
+  {
+    "path": "assets/midan-brand-2026.webp",
+    "state": "unavailable_or_mismatch",
+    "expected": "a2287c2e7d1e47e43e64e74303feed678066be1d"
+  },
+  {
+    "path": "assets/icon-512.png",
+    "state": "unavailable_or_mismatch",
+    "expected": "ae91ff156b84beacac65d6c350b25d05889ae61a"
+  },
+  {
+    "path": "assets/icon-64-v2.png",
+    "state": "unavailable_or_mismatch",
+    "expected": "433b49654d9bf1d2faea9c3abec339a70e956d89"
+  },
+  {
+    "path": "assets/icon-64.png",
+    "state": "unavailable_or_mismatch",
+    "expected": "433b49654d9bf1d2faea9c3abec339a70e956d89"
+  },
+  {
+    "path": "assets/icon-96-v2.png",
+    "state": "unavailable_or_mismatch",
+    "expected": "bc62e3da80c992088d36485be425c7050a825d7a"
+  },
+  {
+    "path": "editor.html",
+    "state": "unavailable_or_mismatch",
+    "expected": "c1231239b1a42bb47e5be9f1dcffb1b32ebf5018"
+  },
+  {
+    "path": "enhancements.js",
+    "state": "unavailable_or_mismatch",
+    "expected": "2c8a9dad09762a60372b2472def869f9c0ab296b"
+  },
+  {
+    "path": "field-feed-enhancer.js",
+    "state": "unavailable_or_mismatch",
+    "expected": "8a43abed5eefd3ab035670d914521badf87ed0f0"
+  },
+  {
+    "path": "geo-unified.js",
+    "state": "unavailable_or_mismatch",
+    "expected": "d92e8e738146f39a8b7ec822b2c142b33dc97ae7"
+  },
+  {
+    "path": "hasibat.html",
+    "state": "unavailable_or_mismatch",
+    "expected": "60fbdcd988cef5c5f5613b0a6e1c4eca752c716a"
+  },
+  {
+    "path": "index.html",
+    "state": "unavailable_or_mismatch",
+    "expected": "0064ac5fb9d880c57288f42b0a538402e11d9ace"
+  },
+  {
+    "path": "layout-stability.js",
+    "state": "unavailable_or_mismatch",
+    "expected": "5d1796169995ef886e85d17d234692085e50c4c6"
+  },
+  {
+    "path": "live-feed-events.js",
+    "state": "unavailable_or_mismatch",
+    "expected": "e3c5f6cf5a83d4fb8022518e13ae7dda896dfa4a"
+  },
+  {
+    "path": "manifest.webmanifest",
+    "state": "unavailable_or_mismatch",
+    "expected": "cb3eeacfcd93e2f8fe8dc2b7ce66f32567df894b"
+  },
+  {
+    "path": "media-click-fix.js",
+    "state": "unavailable_or_mismatch",
+    "expected": "b9f2e8c44b7a3625be697e5243c3772f3a19e1c6"
+  },
+  {
+    "path": "midan-editorial.css",
+    "state": "unavailable_or_mismatch",
+    "expected": "83cf83f988b74b5fbb1373ffeba7ab3cc00e6f28"
+  },
+  {
+    "path": "midan-editorial.js",
+    "state": "unavailable_or_mismatch",
+    "expected": "2d1f18271934ab9943310c55e650b135b6ccc2d1"
+  },
+  {
+    "path": "native-push-ui.js",
+    "state": "unavailable_or_mismatch",
+    "expected": "d1262f6460774746df059705b131509d343448ec"
+  },
+  {
+    "path": "news-card-studio.js",
+    "state": "unavailable_or_mismatch",
+    "expected": "04dcc3cee049fdedfb60bae10c24476e13064b64"
+  },
+  {
+    "path": "open.html",
+    "state": "unavailable_or_mismatch",
+    "expected": "ae0e1265a1d1730a7febefe263476f6e751a0556"
+  },
+  {
+    "path": "reader.html",
+    "state": "unavailable_or_mismatch",
+    "expected": "4f3baaab1f033b11cd9268418805e2dfae6b1a4e"
+  },
+  {
+    "path": "reader.js",
+    "state": "unavailable_or_mismatch",
+    "expected": "e7965591fea8b17bf0a29439662506c1dacd153e"
+  },
+  {
+    "path": "refugees-live.js",
+    "state": "unavailable_or_mismatch",
+    "expected": "f99ed24c2799e3f28e2fc715e9a90abec431ded1"
+  },
+  {
+    "path": "report.js",
+    "state": "unavailable_or_mismatch",
+    "expected": "bce13c7082588f2e68f26e48e81b3eac4bb23a0d"
+  },
+  {
+    "path": "source-images.js",
+    "state": "unavailable_or_mismatch",
+    "expected": "d4a9a06c6616c5ec3d4c68a0ca8f303d051354d9"
+  },
+  {
+    "path": "source-logos/aljazeera.png",
+    "state": "unavailable_or_mismatch",
+    "expected": "92523d4680d47e683d07b2cc1ddf4cf0533cfe6b"
+  },
+  {
+    "path": "source-logos/bbc.png",
+    "state": "unavailable_or_mismatch",
+    "expected": "100ca58f7bc42043394150d7942c84aa129f4fac"
+  },
+  {
+    "path": "source-logos/sana.png",
+    "state": "unavailable_or_mismatch",
+    "expected": "6a3d2d86adcaa77712664741e2d4d5fbacedf8cd"
+  },
+  {
+    "path": "source-logos/suhaib.png",
+    "state": "unavailable_or_mismatch",
+    "expected": "837e211d469e40017e82ee9970fc8e7aeeaf07c9"
+  },
+  {
+    "path": "sports-view.js",
+    "state": "unavailable_or_mismatch",
+    "expected": "ce38c8a041b36f584fc12d4768ff33aa41bb1e0c"
+  },
+  {
+    "path": "story.html",
+    "state": "unavailable_or_mismatch",
+    "expected": "18d3b12de85582a4ca48743a2d65b1998ee81f50"
+  },
+  {
+    "path": "style-legacy.css",
+    "state": "unavailable_or_mismatch",
+    "expected": "d4d53396db4c3ff630d1e5c4ae36789ba08f5da6"
+  },
+  {
+    "path": "style.css",
+    "state": "unavailable_or_mismatch",
+    "expected": "eb4adc5ebaf636178d1d171028365b049b9e63cc"
+  },
+  {
+    "path": "sw-legacy.js",
+    "state": "unavailable_or_mismatch",
+    "expected": "c4eddd65f61f7196a6832bb3a627765284cb9081"
+  },
+  {
+    "path": "sw.js",
+    "state": "unavailable_or_mismatch",
+    "expected": "2bdc2dcb05e96bcdaf10e60c0e852c144d5458e1"
+  },
+  {
+    "path": "video-inline.js",
+    "state": "unavailable_or_mismatch",
+    "expected": "ec7713b4a3a36271dd11ba347654507e72adfc57"
+  },
+  {
+    "path": "world-regions.js",
+    "state": "unavailable_or_mismatch",
+    "expected": "1ea9c4ac8459ba69bc9440af81515adce9c037b3"
+  }
+]
