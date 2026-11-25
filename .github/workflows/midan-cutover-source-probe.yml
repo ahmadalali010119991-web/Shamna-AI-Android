@@ -1,0 +1,35 @@
+name: Midan cutover and private-source availability
+on:
+  push:
+    branches: [midan-book-recovery-20261125]
+    paths: ['.github/workflows/midan-cutover-source-probe.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check old hosts and public source visibility without changing channel
+        shell: bash
+        run: |
+          set -eu
+          for pair in 'legacy_site https://midan-al-khabar.vercel.app/' 'legacy_bridge https://dallalna-telegram-bridge.vercel.app/' 'owner_source https://t.me/s/Private_Source99' 'channel https://t.me/s/maydan_alkhabar'; do
+            read -r name url <<< "$pair"
+            curl -sS --max-time 15 -o "$name.html" -w "$name HTTP %{http_code} bytes %{size_download}\n" "$url" || true
+          done
+          python3 - <<'PY'
+          import re,pathlib
+          for name in ['legacy_site','legacy_bridge']:
+              p=pathlib.Path(name+'.html')
+              if p.exists():
+                  s=p.read_text(errors='replace')
+                  print(name,'paused_marker',bool(re.search(r'DEPLOYMENT_PAUSED|PROJECT_PAUSED|This deployment is paused|This project is paused',s,re.I)))
+          for name,channel in [('owner_source','Private_Source99'),('channel','maydan_alkhabar')]:
+              p=pathlib.Path(name+'.html')
+              if p.exists():
+                  s=p.read_text(errors='replace')
+                  ids=re.findall(r'data-post=["\']'+re.escape(channel)+r'/(\d+)["\']',s,re.I)
+                  print(name,'visible_posts',len(set(ids)),'latest_id',max(map(int,ids),default=0),'history',('tgme_channel_history' in s))
+          PY
