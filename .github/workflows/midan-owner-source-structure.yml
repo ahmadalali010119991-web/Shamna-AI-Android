@@ -1,0 +1,26 @@
+name: Inspect owner source HTML structure
+on:
+  push:
+    branches: [midan-book-recovery-20261125]
+    paths: ['.github/workflows/midan-owner-source-structure.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - run: |
+          curl -fLsS --max-time 20 'https://t.me/s/Private_Source99' -o source.html
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          import re
+          s=open('source.html').read()
+          parts=re.split(r'data-post="Private_Source99/(\d+)"',s,flags=re.I)
+          for i in range(1,len(parts),2):
+              id,html=parts[i:i+2]
+              dates=re.findall(r'<time\b[^>]*datetime="([^"]+)"',html)
+              text=re.findall(r'class="[^"]*tgme_widget_message_text[^"]*"',html)
+              print('post',id,'dates',dates,'text_nodes',len(text),'photo',html.count('tgme_widget_message_photo_wrap'),'video',html.count('tgme_widget_message_video_player'))
+          PY
