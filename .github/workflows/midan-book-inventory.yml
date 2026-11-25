@@ -1,0 +1,38 @@
+name: Recover verified original embedded books (inventory only)
+on:
+  push:
+    branches: [midan-book-recovery-20261125]
+    paths: ['.github/workflows/midan-book-inventory.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify original published APK and inventory embedded PDFs
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fLsS --retry 2 --max-time 60 'https://github.com/ahmadalali010119991-web/Shamna-AI-Android/releases/download/hasibat-v1.8.25/Hasibat-AlLira-v1.8.25.apk' -o original.apk
+          printf '%s  original.apk\n' '7e33b13e78027a27ead931aa1f8bc739e20880598f7fb162d3b6cffb611575d4' | sha256sum -c
+          python3 - <<'PY'
+          import zipfile, hashlib, json
+          with zipfile.ZipFile('original.apk') as z:
+              result=[]
+              for entry in z.infolist():
+                  if entry.filename.lower().endswith('.pdf'):
+                      body=z.read(entry)
+                      assert body.startswith(b'%PDF-')
+                      result.append({'path':entry.filename,'size':len(body),'sha256':hashlib.sha256(body).hexdigest()})
+              assert len(result)>=2
+              print(json.dumps(result,ensure_ascii=False))
+              with open('verified-book-inventory.json','w') as f:json.dump(result,f,ensure_ascii=False,indent=2)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-book-inventory
+          path: verified-book-inventory.json
+          retention-days: 7
+          if-no-files-found: error
