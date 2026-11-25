@@ -1,0 +1,46 @@
+name: Verify Midan complete news share in Chrome
+on:
+  push:
+    branches: [midan-book-recovery-20261125]
+    paths: ['.github/workflows/midan-complete-news-share-smoke.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Exercise actual complete news packets with mock native receiver
+        shell: bash
+        run: |
+          set -eu
+          export CHROME_PATH="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          cat > test.mjs <<'JS'
+          import assert from 'node:assert/strict';
+          import {spawn} from 'node:child_process';
+          import {writeFileSync} from 'node:fs';
+          const chrome=spawn(process.env.CHROME_PATH,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--remote-debugging-port=9222','--remote-allow-origins=*','--window-size=390,844','about:blank'],{stdio:'ignore'});
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          try{
+          let tabs;
+          for(let i=0;i<40;i++){try{tabs=await(await fetch('http://localhost:9222/json/list')).json();break}catch{await sleep(250)}}
+          assert(tabs?.length,'Chrome startup');const ws=new WebSocket(tabs.find(x=>x.type==='page').webSocketDebuggerUrl);await new Promise((resolve,reject)=>{ws.onopen=resolve;ws.onerror=reject});
+          let seq=0;const pending=new Map();ws.onmessage=e=>{const m=JSON.parse(e.data);const p=pending.get(m.id);if(p){pending.delete(m.id);clearTimeout(p.timer);m.error?p.reject(Error(m.error.message)):p.resolve(m.result)}};
+          function cdp(method,params={}){return new Promise((resolve,reject)=>{const id=++seq,timer=setTimeout(()=>{pending.delete(id);reject(Error('CDP timeout '+method))},120000);pending.set(id,{resolve,reject,timer});ws.send(JSON.stringify({id,method,params}))})}
+          async function ev(expression){const r=await cdp('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result.value}
+          await cdp('Page.enable');await cdp('Page.navigate',{url:'https://midan-archive.midan-khabar.workers.dev/'});
+          let ready=false;for(let i=0;i<60;i++){try{ready=await ev("typeof MidanAwarenessCard==='object'&&typeof awarenessMessages!=='undefined'&&document.querySelector('#awarenessText')?.textContent.length>10");if(ready)break}catch{}await sleep(500)}assert(ready,'Live generator loaded');
+          const result=await ev("(async()=>{const results=[];for(const id of [1599,1221]){await openArticle('m:'+id,false);const a=selected;if(!a||a.channelMessageId!==id)throw Error('article '+id);const packets=[];let packet=null;window.MidanNewsShare={onmessage:null,postMessage(raw){const m=JSON.parse(raw);if(m.op==='begin')packet={text:m.text,count:m.count,files:[]};if(m.op==='append')packet.files.push({index:m.index,data:m.data});if(m.op==='finish')packets.push(packet);if(m.op==='cancel')packet=null;queueMicrotask(()=>this.onmessage?.({data:JSON.stringify({id:m.request,ok:true,code:m.op==='finish'?'CHOOSER_OPENED':'OK'})}))}};await prepareFullNews(a);const p=packets[0];const status=document.querySelector('#shareStatus').textContent;if(!p){results.push({id,success:false,status,photos:a.imageCount});continue}if(p.count!==a.imageCount||p.files.length!==p.count||!p.text.includes(a.fullText)||!p.text.includes('https://t.me/maydan_alkhabar')||!p.text.includes('https://www.instagram.com/alislam_almutab_book/')||!p.text.includes('https://www.tiktok.com/@alislam_almutab_book'))throw Error('packet '+id);for(let i=0;i<p.files.length;i++){if(p.files[i].index!==i||!p.files[i].data.startsWith('data:image/png;base64,iVBORw0KGgo'))throw Error('PNG '+id)}results.push({id,success:true,photos:p.count,bodyChars:a.fullText.length,status});if(id===1599){const card=await MidanNewsCardStudio.render({title:a.title,summary:'',source:a.source,date:a.publishedAt,sourceUrl:a.sourceUrl,photo:a.imageUrl,photoFallback:a.sharePhotoUrls[0]},'portrait');if(!card.layout.photo||card.layout.titleLayout.lines.join(' ')!==MidanNewsCardStudio.clean(a.title))throw Error('title layout');window.testPng=card.canvas.toDataURL('image/png').split(',')[1];}closeArticle(false)}return results})()");
+          console.log('LIVE SHARE RESULTS '+JSON.stringify(result));
+          assert.equal(result.find(x=>x.id===1599)?.success,true,'reported article must share');
+          assert.equal(result.find(x=>x.id===1221)?.success,true,'multi-photo article must share');
+          const sample=await ev("window.testPng");writeFileSync('news-1599-render.png',Buffer.from(sample,'base64'));ws.close();
+          }finally{chrome.kill('SIGTERM')}
+          JS
+          node test.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: news-1599-render
+          path: news-1599-render.png
+          retention-days: 3
