@@ -1,0 +1,275 @@
+name: Prepare offline Android build tools (no signing secrets)
+on:
+  push:
+    branches: [midan-local-android-toolchain-20261125]
+    paths: ['.github/workflows/midan-offline-toolchain.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+          cache-disabled: true
+      - name: Resolve exactly the Android dependencies used by Midan
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+          mkdir -p probe/app/src/main
+          cat > probe/settings.gradle <<'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name = 'MidanToolchainProbe'
+          include ':app'
+          EOF
+          cat > probe/build.gradle <<'EOF'
+          plugins {
+            id 'com.android.application' version '8.7.3' apply false
+            id 'com.google.gms.google-services' version '4.5.0' apply false
+          }
+          EOF
+          cat > probe/app/build.gradle <<'EOF'
+          plugins { id 'com.android.application'; id 'com.google.gms.google-services' }
+          android {
+            namespace 'com.midanalkhabar.app'
+            compileSdk 35
+            defaultConfig { applicationId 'com.midanalkhabar.app'; minSdk 26; targetSdk 35; versionCode 16; versionName '1.3.12' }
+            buildFeatures { buildConfig true }
+            compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+          }
+          dependencies {
+            implementation 'androidx.core:core:1.13.1'
+            implementation 'androidx.webkit:webkit:1.12.1'
+            implementation 'com.google.android.gms:play-services-base:18.5.0'
+            implementation platform('com.google.firebase:firebase-bom:35.1.0')
+            implementation 'com.google.firebase:firebase-messaging'
+          }
+          EOF
+          printf 'android.useAndroidX=true\norg.gradle.jvmargs=-Xmx2048m\n' > probe/gradle.properties
+          printf '<manifest xmlns:android="http://schemas.android.com/apk/res/android"><application android:label="Toolchain probe"/></manifest>\n' > probe/app/src/main/AndroidManifest.xml
+          cat > probe/app/google-services.json <<'EOF'
+          {"project_info":{"project_number":"123456789012","project_id":"offline-probe","storage_bucket":"offline-probe.appspot.com"},"client":[{"client_info":{"mobilesdk_app_id":"1:123456789012:android:abcdef1234567890","android_client_info":{"package_name":"com.midanalkhabar.app"}},"api_key":[{"current_key":"AIzaSyOfflineToolchainProbe00000000000"}]}],"configuration_version":"1"}
+          EOF
+          export GRADLE_USER_HOME="$PWD/gradle-cache"
+          gradle -p probe --no-daemon --console=plain :app:assembleRelease
+          gradle -p probe --no-daemon --offline --console=plain :app:assembleRelease
+          GRADLE_DIR="$(dirname "$(dirname "$(readlink -f "$(command -v gradle)")")")"
+          mkdir -p offline/gradle offline/cache/caches offline/sdk/platforms offline/sdk/build-tools transfer
+          cp -a "$GRADLE_DIR/." offline/gradle/
+          cp -a "$GRADLE_USER_HOME/caches/modules-2" offline/cache/caches/
+          find offline/cache -type f \( -name '*.lock' -o -name 'gc.properties' \) -delete
+          cp -a "$ANDROID_HOME/platforms/android-35" offline/sdk/platforms/
+          cp -a "$ANDROID_HOME/build-tools/35.0.0" offline/sdk/build-tools/
+          if [ -d "$ANDROID_HOME/licenses" ]; then cp -a "$ANDROID_HOME/licenses" offline/sdk/; fi
+          tar -C offline -czf offline-toolchain.tar.gz .
+          sha256sum offline-toolchain.tar.gz | tee transfer/SHA256.txt
+          split -d -a 2 -b 24M offline-toolchain.tar.gz transfer/toolchain.part.
+          ls -lh transfer
+          test "$(find transfer -name 'toolchain.part.*' | wc -l)" -le 24
+      - uses: actions/upload-artifact@v4
+        with:
+          name: midan-toolchain-sha256
+          path: transfer/SHA256.txt
+          retention-days: 3
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('transfer/toolchain.part.00') != '' }}
+        with:
+          name: midan-toolchain-00
+          path: transfer/toolchain.part.00
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('transfer/toolchain.part.01') != '' }}
+        with:
+          name: midan-toolchain-01
+          path: transfer/toolchain.part.01
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('transfer/toolchain.part.02') != '' }}
+        with:
+          name: midan-toolchain-02
+          path: transfer/toolchain.part.02
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('transfer/toolchain.part.03') != '' }}
+        with:
+          name: midan-toolchain-03
+          path: transfer/toolchain.part.03
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('transfer/toolchain.part.04') != '' }}
+        with:
+          name: midan-toolchain-04
+          path: transfer/toolchain.part.04
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('transfer/toolchain.part.05') != '' }}
+        with:
+          name: midan-toolchain-05
+          path: transfer/toolchain.part.05
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('transfer/toolchain.part.06') != '' }}
+        with:
+          name: midan-toolchain-06
+          path: transfer/toolchain.part.06
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('transfer/toolchain.part.07') != '' }}
+        with:
+          name: midan-toolchain-07
+          path: transfer/toolchain.part.07
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('transfer/toolchain.part.08') != '' }}
+        with:
+          name: midan-toolchain-08
+          path: transfer/toolchain.part.08
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('transfer/toolchain.part.09') != '' }}
+        with:
+          name: midan-toolchain-09
+          path: transfer/toolchain.part.09
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('transfer/toolchain.part.10') != '' }}
+        with:
+          name: midan-toolchain-10
+          path: transfer/toolchain.part.10
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('transfer/toolchain.part.11') != '' }}
+        with:
+          name: midan-toolchain-11
+          path: transfer/toolchain.part.11
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('transfer/toolchain.part.12') != '' }}
+        with:
+          name: midan-toolchain-12
+          path: transfer/toolchain.part.12
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('transfer/toolchain.part.13') != '' }}
+        with:
+          name: midan-toolchain-13
+          path: transfer/toolchain.part.13
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('transfer/toolchain.part.14') != '' }}
+        with:
+          name: midan-toolchain-14
+          path: transfer/toolchain.part.14
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('transfer/toolchain.part.15') != '' }}
+        with:
+          name: midan-toolchain-15
+          path: transfer/toolchain.part.15
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('transfer/toolchain.part.16') != '' }}
+        with:
+          name: midan-toolchain-16
+          path: transfer/toolchain.part.16
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('transfer/toolchain.part.17') != '' }}
+        with:
+          name: midan-toolchain-17
+          path: transfer/toolchain.part.17
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('transfer/toolchain.part.18') != '' }}
+        with:
+          name: midan-toolchain-18
+          path: transfer/toolchain.part.18
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('transfer/toolchain.part.19') != '' }}
+        with:
+          name: midan-toolchain-19
+          path: transfer/toolchain.part.19
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('transfer/toolchain.part.20') != '' }}
+        with:
+          name: midan-toolchain-20
+          path: transfer/toolchain.part.20
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('transfer/toolchain.part.21') != '' }}
+        with:
+          name: midan-toolchain-21
+          path: transfer/toolchain.part.21
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('transfer/toolchain.part.22') != '' }}
+        with:
+          name: midan-toolchain-22
+          path: transfer/toolchain.part.22
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('transfer/toolchain.part.23') != '' }}
+        with:
+          name: midan-toolchain-23
+          path: transfer/toolchain.part.23
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
