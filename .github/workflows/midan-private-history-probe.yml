@@ -1,0 +1,31 @@
+name: Check historical channel post recovery
+on:
+  push:
+    branches: [midan-book-recovery-20261125]
+    paths: ['.github/workflows/midan-private-history-probe.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Locate actual published posts in historical channel pages
+        run: |
+          set -eu
+          for n in 611 691 705; do
+            curl -sSL --max-time 20 "https://t.me/s/maydan_alkhabar?before=$n" -o "history-$n.html"
+          done
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          target={609,610,687,688,690,696,697,699,704}
+          found=set()
+          for p in Path('.').glob('history-*.html'):
+              s=p.read_text(errors='replace')
+              ids=set(map(int,re.findall(r'data-post="maydan_alkhabar/(\d+)"',s,re.I)))
+              found.update(ids&target)
+              print(p.name,'verified IDs',sorted(ids&target))
+          print('historical coverage',len(found),'of',len(target))
+          PY
