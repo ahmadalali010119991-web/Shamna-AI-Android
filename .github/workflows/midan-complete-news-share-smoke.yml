@@ -39,6 +39,10 @@ jobs:
           const sample=await ev("window.testPng");writeFileSync('news-1599-render.png',Buffer.from(sample,'base64'));ws.close();
           }finally{chrome.kill('SIGTERM')}
           JS
+          for ix in 1 2; do
+            curl -sS --max-time 40 -D "media-$ix.headers" -o "media-$ix.bin" -w "ARCHIVE PHOTO $ix HTTP %{http_code} bytes %{size_download}\n" "https://midan-archive.midan-khabar.workers.dev/media/archived-photo/1221/$ix"
+            grep -iE '^x-midan-media-(state|resolution):' "media-$ix.headers" || true
+          done
           node test.mjs
       - uses: actions/upload-artifact@v4
         with:
