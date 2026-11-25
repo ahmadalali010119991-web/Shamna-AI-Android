@@ -1,0 +1,50 @@
+name: Verify first live Cloudflare news receipt
+on:
+  push:
+    branches: [midan-book-recovery-20261125]
+    paths: ['.github/workflows/midan-first-live-receipt.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verify the same news item on the site and public Telegram channel
+        run: |
+          set -eu
+          base='https://midan-archive.midan-khabar.workers.dev'
+          for i in $(seq 1 12); do
+            code=$(curl -sS --max-time 10 -o article.json -w '%{http_code}' "$base/api/article?id=sana-2644586")
+            echo "ARTICLE HTTP $code"
+            if [ "$code" = 200 ]; then break; fi
+            sleep 5
+          done
+          test "$code" = 200
+          python3 - <<'PY'
+          import json
+          a=json.load(open('article.json'))['article']
+          assert a['id']=='sana-2644586'
+          assert len(a['fullText'])==593
+          assert int(a['channelMessageId'])>1600
+          open('mid.txt','w').write(str(a['channelMessageId']))
+          print('SITE MID',a['channelMessageId'],'TEXT CHARS',len(a['fullText']))
+          PY
+          mid=$(cat mid.txt)
+          curl -fLsS --max-time 20 "https://t.me/maydan_alkhabar/$mid?embed=1" -o channel.html
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          import json,re
+          a=json.load(open('article.json'))['article']
+          s=open('channel.html').read()
+          class P(HTMLParser):
+              def __init__(self): super().__init__();self.text=[]
+              def handle_data(self,data): self.text.append(data)
+          p=P();p.feed(s)
+          norm=lambda x: re.sub(r'\s+',' ',x).strip()
+          assert norm(a['title']) in norm(' '.join(p.text))
+          assert norm(a['fullText']) in norm(' '.join(p.text)), 'full body mismatch'
+          assert 'tgme_widget_message_photo' in s, 'photo absent'
+          print('TELEGRAM MATCH',a['channelMessageId'],'full text and photo confirmed')
+          PY
