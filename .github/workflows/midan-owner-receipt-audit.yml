@@ -1,0 +1,27 @@
+name: Audit recent private-source deliveries without republishing
+on:
+  push:
+    branches: [midan-book-recovery-20261125]
+    paths: ['.github/workflows/midan-owner-receipt-audit.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - run: |
+          curl -fLsS --max-time 25 'https://t.me/s/maydan_alkhabar' -o channel.html
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          import re
+          s=open('channel.html').read()
+          parts=re.split(r'data-post="maydan_alkhabar/(\d+)"',s,flags=re.I)
+          for i in range(1,len(parts),2):
+              mid,html=parts[i:i+2]
+              if int(mid)<1605: continue
+              private='خاص بميدان الخبر' in html
+              links=re.findall(r'open\.html\?article=(private-source99-\d+)',html)
+              print('CHANNEL',mid,'private',private,'ids',sorted(set(links)),'video',bool(re.search(r'tgme_widget_message_video_player',html)),'mp4',html.count('.mp4'))
+          PY
