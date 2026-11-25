@@ -1,0 +1,41 @@
+name: Midan restored awareness and news photo live smoke
+on:
+  push:
+    branches: [midan-book-recovery-20261125]
+    paths: ['.github/workflows/midan-restored-ui-smoke.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Verify deployed page and actual image bytes
+        shell: bash
+        run: |
+          set -eu
+          base='https://midan-archive.midan-khabar.workers.dev'
+          curl -fLsS --max-time 20 "$base/" -o page.html
+          python3 - <<'PY'
+          import re
+          h=open('page.html').read()
+          hero=re.search(r'<section class="hero"[^>]*>.*?</section>',h,re.S).group()
+          assert all(x in hero for x in ['id="awarenessInline"','id="awarenessSave"','id="awarenessShare"'])
+          assert h.count('id="awarenessInline"')==1
+          print('Awareness controls verified inside hero')
+          PY
+          for id in 1 27 53; do
+            curl -sSL --max-time 20 -o "awareness-$id.png" -w "awareness $id status %{http_code} bytes %{size_download} MIME %{content_type}\n" "$base/media/awareness-original/$id.png"
+          done
+          curl -sSL --max-time 20 -o photo-original.jpg -w "photo source status %{http_code} bytes %{size_download} MIME %{content_type}\n" 'https://cdn.sananews.sy/2026/11/photo_2_2026-11-23_00-37-41-1024x683.jpg'
+          curl -sSL --max-time 20 -o photo-proxy.jpg -w "photo proxy status %{http_code} bytes %{size_download} MIME %{content_type}\n" "$base/media/article-photo/1599/0"
+          python3 - <<'PY'
+          import pathlib,hashlib
+          for p in pathlib.Path('.').glob('*.png'):
+              b=p.read_bytes()
+              print(p.name,len(b),hashlib.sha256(b).hexdigest(),'PNG',b.startswith(b'\x89PNG\r\n\x1a\n'))
+          for p in pathlib.Path('.').glob('photo-*.jpg'):
+              b=p.read_bytes()
+              print(p.name,len(b),hashlib.sha256(b).hexdigest(),'JPEG',b.startswith(b'\xff\xd8\xff'))
+          PY
