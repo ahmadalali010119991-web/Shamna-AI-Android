@@ -1,0 +1,47 @@
+name: Verify stored production card in article share
+on:
+  push:
+    branches: [midan-book-recovery-20261125]
+    paths: ['.github/workflows/midan-stored-card-share-check.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Exercise real original source photos in Chrome
+        shell: bash
+        run: |
+          set -eu
+          export CHROME_PATH="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          cat > test.mjs <<'JS'
+          import assert from 'node:assert/strict';
+          import {spawn} from 'node:child_process';
+          import {writeFileSync,mkdtempSync} from 'node:fs';
+          import {tmpdir} from 'node:os';
+          import {join} from 'node:path';
+          const chrome=spawn(process.env.CHROME_PATH,['--headless=new','--user-data-dir='+mkdtempSync(join(tmpdir(),'midan-chrome-')),'--no-sandbox','--disable-dev-shm-usage','--remote-debugging-port=9222','--remote-allow-origins=*','--window-size=390,844','about:blank'],{stdio:['ignore','ignore','inherit']});
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          try{
+          let tabs;
+          for(let i=0;i<100;i++){try{tabs=await(await fetch('http://127.0.0.1:9222/json/list')).json();break}catch{await sleep(250)}}
+          assert(tabs?.length,'Chrome startup');const ws=new WebSocket(tabs.find(x=>x.type==='page').webSocketDebuggerUrl);await new Promise((resolve,reject)=>{ws.onopen=resolve;ws.onerror=reject});
+          let seq=0;const pending=new Map();ws.onmessage=e=>{const m=JSON.parse(e.data);const p=pending.get(m.id);if(p){pending.delete(m.id);clearTimeout(p.timer);m.error?p.reject(Error(m.error.message)):p.resolve(m.result)}};
+          function cdp(method,params={}){return new Promise((resolve,reject)=>{const id=++seq,timer=setTimeout(()=>{pending.delete(id);reject(Error('CDP timeout '+method))},120000);pending.set(id,{resolve,reject,timer});ws.send(JSON.stringify({id,method,params}))})}
+          async function ev(expression){const r=await cdp('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result.value}
+          await cdp('Page.enable');await cdp('Page.navigate',{url:'https://midan-archive.midan-khabar.workers.dev/'});
+          let ready=false;for(let i=0;i<60;i++){try{ready=await ev("typeof MidanAwarenessCard==='object'&&typeof awarenessMessages!=='undefined'&&document.querySelector('#awarenessText')?.textContent.length>10");if(ready)break}catch{}await sleep(500)}assert(ready,'Live generator loaded');
+          const result=await ev("(async()=>{const a=(await(await fetch('/api/article?mid=1608',{cache:'no-store'})).json()).article;const expected='ae4db8af2155dbace9a298539a981d0bf3fbfb7c5426750bb5d9fe09782c3512';if(a.finalCardUrls?.length!==1||!a.finalCardUrls[0].endsWith(expected+'.jpg')||!a.sourcePhotoReference)throw Error('wrong article card');const r=await fetch(a.finalCardUrls[0]);if(!r.ok)throw Error('stored card HTTP '+r.status);const b=await r.arrayBuffer();const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',b)),v=>v.toString(16).padStart(2,'0')).join('');if(hash!==expected)throw Error('wrong card digest');const bmp=await createImageBitmap(new Blob([b],{type:'image/jpeg'}));const c=document.createElement('canvas');c.width=bmp.width;c.height=bmp.height;c.getContext('2d').drawImage(bmp,0,0);bmp.close();window.testPng=c.toDataURL('image/png').split(',')[1];return {id:a.channelMessageId,hash,bytes:b.byteLength,width:c.width,height:c.height,originalPhoto:a.imageUrl.startsWith('https://cdn.sananews.sy/'),fullText:a.fullTextRecorded}})()");
+          console.log('STORED_CARD '+JSON.stringify(result));
+          assert(result.id===1608&&result.width===1080&&result.height===1350&&result.originalPhoto&&result.fullText);
+          const sample=await ev("window.testPng");writeFileSync('stored-card-1608.png',Buffer.from(sample,'base64'));ws.close();
+          }finally{chrome.kill('SIGTERM')}
+          JS
+          node test.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stored-card-1608
+          path: stored-card-1608.png
+          retention-days: 3
