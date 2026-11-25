@@ -1,0 +1,21 @@
+
+/* Additive: inherits dark emerald/gold UI; no changes to existing sections. */
+.fuel-section{margin-top:17px;background:linear-gradient(155deg,#092c20,#0d211d);border:1px solid #668251;border-radius:22px;padding:16px;color:#f8fbec;box-shadow:0 14px 38px rgba(0,0,0,.23)}
+.fuel-heading{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.fuel-heading .fuel-title{font-weight:900;font-size:18px;color:#ffdf90}
+.fuel-heading .fuel-subtitle{font-size:11.5px;color:#e2eddf;margin-top:5px}
+.fuel-refresh{color:#f6e3ac;background:#174433;border:1px solid #8a9667;border-radius:12px;padding:9px 13px;font-weight:800;cursor:pointer}
+.fuel-status{font-size:11.5px;margin:12px 0;line-height:1.7;color:#d5e7d9}
+.fuel-grid{display:flex;flex-direction:column;gap:10px}
+.fuel-card{border:1px solid #547458;background:#123829;border-radius:16px;padding:12px}
+.fuel-card-title{display:flex;justify-content:space-between;gap:8px;font-weight:900}
+.fuel-unit{color:#e2e5d3;font-size:11px;font-weight:600}
+.fuel-quote-row{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:8px;margin-top:9px}
+.fuel-syp-box,.fuel-usd-box{border:1px solid #4e6f5d;background:#0b291e;padding:9px;border-radius:12px;min-width:0}
+.fuel-label{display:block;font-size:10.5px;color:#c7d9cf;margin-bottom:4px}
+.fuel-main-price{display:block;color:#fff;font-size:18px;font-weight:900;font-variant-numeric:tabular-nums;direction:ltr;text-align:right}
+.fuel-previous-price{font-size:11px;line-height:1.6;color:#e1d8bd;margin-top:7px}
+.fuel-note{margin-top:11px;font-size:10.5px;color:#dfebdc;line-height:1.8}
+.fuel-source{color:#ffdf90;text-decoration:underline;text-underline-offset:3px}
+.fuel-card[hidden]{display:none!important}
+@media(max-width:360px){.fuel-main-price{font-size:15px}.fuel-syp-box,.fuel-usd-box{padding:7px}}

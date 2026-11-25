@@ -1,0 +1,16 @@
+/* Only the new settings UI. Existing app colors, cards, layout and gold sections remain unchanged. */
+#hasibat-currency-config[hidden], .results .card[hidden] {display:none!important}
+.hasibat-currency-trigger {border:1px solid #bd9a58;background:#184631;color:#ffdf91;padding:9px 11px;border-radius:12px;font-size:12px;font-weight:850;cursor:pointer;white-space:nowrap}
+#hasibat-currency-config{position:fixed;inset:0;z-index:900000;overflow:auto;overscroll-behavior:contain;background:rgba(2,18,12,.9);padding:calc(env(safe-area-inset-top,0px) + 17px) max(10px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 18px) max(10px,env(safe-area-inset-left,0px));color:#fff7e9;font-family:system-ui,Tahoma,sans-serif}
+.hasibat-currency-dialog{max-width:600px;margin:auto;background:linear-gradient(160deg,#153b2c,#09291f);border:1px solid #c3a45e;border-radius:22px;padding:19px 15px 22px;box-shadow:0 20px 60px #0008}
+.hasibat-settings-top{display:flex;justify-content:space-between;align-items:center;gap:10px}.hasibat-settings-top h2{font-size:21px;margin:0;color:#ffdf94}.hasibat-settings-top button{width:41px;height:41px;border-radius:12px;background:#29503e;color:white;border:1px solid #99794e}
+.hasibat-settings-intro,.hasibat-settings-note{font-size:12.5px;line-height:1.8;color:#e9f0e5}.hasibat-settings-search-label{display:block;font-size:12px;font-weight:800;margin:15px 0 10px}.hasibat-settings-search-label input{display:block;box-sizing:border-box;width:100%;min-height:46px;margin-top:8px;padding:8px 12px;border-radius:13px;border:1px solid #7fa184;background:#0a231b;color:white;font:inherit;font-size:16px}
+#hasibatCurrenciesCounter{color:#f3d38a;font-size:12px;font-weight:800}
+.hasibat-currencies-list{max-height:min(52vh,570px);overflow:auto;border:1px solid #4f785a;border-radius:14px;padding:6px;background:#0b251b}
+.hasibat-currency-option{display:flex;align-items:center;gap:10px;padding:10px 8px;border-bottom:1px solid #315344;min-height:45px;font-size:13px;cursor:pointer}
+.hasibat-currency-option:last-child{border-bottom:0}.hasibat-currency-option input{width:19px;height:19px;accent-color:#e8c375;flex:none}.hasibat-currency-option span{flex:1}.hasibat-currency-option b{font-size:11px;color:#f5d180;direction:ltr}
+.hasibat-currencies-info{min-height:25px;font-size:12px;line-height:1.7;color:#fff0bd}
+.hasibat-settings-actions{display:flex;gap:8px;flex-wrap:wrap}.hasibat-settings-actions button{min-height:43px;border:1px solid #b79c6b;background:#1e5540;color:#fff5dc;border-radius:12px;padding:9px 13px;font-weight:750;flex:1;cursor:pointer}
+.hasibat-settings-actions #hasibatSettingsDone{background:#f1cf80;color:#163429}
+body.hasibat-currency-settings-open{overflow:hidden}
+.hasibat-extra-currency-card{min-width:0}

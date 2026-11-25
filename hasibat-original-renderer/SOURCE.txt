@@ -1,0 +1,1 @@
+Original Hasibat APK 1.8.24. The two image generators are byte-identical to owner archive 1.8.26. No alternative drawing implementation.

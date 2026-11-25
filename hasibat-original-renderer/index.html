@@ -1,0 +1,1048 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
+<title>حاسبة الليرة السورية</title>
+<link rel="stylesheet" href="world-currencies.css">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#071422;--panel:#102638;--panel2:#153247;--line:#24495c;--ink:#eff8fc;--soft:#b8ced9;--muted:#89a8b8;
+  --accent:#4ee5c9;--accent2:#77ffe7;--good:#123c38;--warn:#f6c38a;--shadow:0 14px 38px rgba(0,0,0,.26)
+}
+*{box-sizing:border-box} html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh;background:radial-gradient(ellipse 95% 45% at 10% -20%,rgba(52,168,165,.20),transparent 70%),linear-gradient(180deg,#081523,#08131f);color:var(--ink);font:15px/1.6 system-ui,-apple-system,"Noto Sans Arabic",Tahoma,Arial,sans-serif}
+button,input,select{font:inherit} button{-webkit-tap-highlight-color:transparent} button:active{transform:scale(.985)}
+.screen{max-width:560px;margin:auto;padding:16px 14px calc(30px + env(safe-area-inset-bottom))}
+.header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:13px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}.logo{width:52px;height:52px;object-fit:cover;border-radius:15px;box-shadow:0 10px 24px rgba(16,183,161,.18);flex-shrink:0}
+.heading{font-size:21px;font-weight:900;letter-spacing:-.35px}.sub{font-size:12px;color:var(--muted);margin-top:1px}
+.refresh{border:1px solid #2d6872;background:#123247;color:#c8fff5;border-radius:14px;padding:11px 13px;font-size:12.5px;font-weight:850;display:flex;align-items:center;gap:7px;white-space:nowrap}.about-btn{border:1px solid #325168;background:#122c3e;color:#d6eff2;border-radius:13px;padding:10px 9px;font-size:12px;font-weight:850;white-space:nowrap}.actions{display:flex;align-items:center;gap:6px;flex-shrink:0}.refresh.loading .spin{animation:spin 1.05s linear infinite}.spin{display:inline-block;font-size:18px;line-height:1}@keyframes spin{to{transform:rotate(-360deg)}}
+.ticker{border:1px solid #27505f;background:linear-gradient(135deg,#0f2738,#123043);border-radius:17px;padding:11px 14px;display:flex;align-items:center;gap:10px;min-height:50px;box-shadow:var(--shadow);margin-bottom:14px}.ticker-badge{flex:0 0 auto;background:#163d45;color:#9ff8e8;border:1px solid #2f7c79;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:850}.ticker-text{font-size:13.5px;color:#daf7f4;font-weight:700;flex:1}.ticker-ref{font-size:10.5px;color:#89acb9;font-weight:600}.ticker-content{flex:1;min-width:0}
+.status{border:1px solid #30505d;background:#0f2f3a;border-radius:16px;padding:12px 13px;display:flex;gap:9px;align-items:flex-start;margin-bottom:14px;box-shadow:var(--shadow)}
+.status.off{background:#34261e;border-color:#63503c}.dot{width:8px;height:8px;border-radius:50%;background:var(--accent);margin-top:6px;box-shadow:0 0 10px rgba(78,229,201,.8);flex:0 0 auto}.status.off .dot{background:var(--warn);box-shadow:none}.statusMain{font-weight:900}.statusDetail{display:block;color:var(--muted);font-size:11.5px;margin-top:2px}
+.panel{background:linear-gradient(180deg,#11273a,#0d2132);border:1px solid var(--line);border-radius:22px;padding:16px;box-shadow:var(--shadow)}
+.panelHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.title{font-size:17px;font-weight:900}.mini{font-size:11px;color:var(--muted)}
+.form{display:flex;flex-direction:column;gap:12px}.label{font-size:12px;color:#c8dde7;font-weight:800;margin-bottom:5px}.field{background:#0b1e2d;border:1px solid #25495d;border-radius:16px;padding:12px 13px}
+.amount-input{width:100%;background:transparent;border:none;outline:0;color:#fff;font-size:32px;font-weight:900;direction:ltr;text-align:left;font-variant-numeric:tabular-nums}.amount-input::placeholder{color:#5d7c8f}
+.select-wrap{position:relative}.select-wrap::after{content:"⌄";position:absolute;left:14px;top:50%;transform:translateY(-52%);color:#a6d8d0;font-size:16px;pointer-events:none}.currency-select{appearance:none;-webkit-appearance:none;width:100%;background:#0b1e2d;border:1px solid #25495d;border-radius:16px;padding:15px 42px 15px 14px;color:#eff9fb;font-weight:850;outline:0}
+.note{margin-top:4px;font-size:12px;color:#9fc0ce}.note strong{color:#88f5e0}
+.results{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:15px}.card{background:linear-gradient(140deg,#143248,#0e2538);border:1px solid #285267;border-radius:20px;padding:14px 12px;min-height:125px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 10px 24px rgba(0,0,0,.18)}
+.card.active{border-color:#53e8cd;box-shadow:0 0 0 1px rgba(83,232,205,.2),0 12px 28px rgba(0,0,0,.2);background:linear-gradient(140deg,#16404d,#112b3d)}
+.cardTop{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}.name{font-size:13px;font-weight:900;line-height:1.45}.tag{font-size:10.5px;background:#193c52;color:#aed2df;border-radius:999px;padding:4px 8px;direction:ltr;font-weight:900}.card.active .tag{background:#1a5758;color:#c9fff4}
+.value{font-size:22px;font-weight:900;line-height:1.3;direction:ltr;text-align:left;word-break:break-word;font-variant-numeric:tabular-nums;letter-spacing:-.35px}.subvalue{font-size:11px;color:var(--muted)}
+.footerNote{margin-top:15px;border:1px dashed #355967;background:#0f2737;border-radius:14px;padding:11px 12px;text-align:center;font-size:12.5px;color:#d4eaee}.footerNote strong{color:#86f4de}
+.bottom{margin-top:14px;font-size:11.5px;color:var(--muted);text-align:center;line-height:1.85}
+.about-screen{display:none;position:fixed;z-index:40;inset:0;overflow-y:auto;overscroll-behavior:contain;background:#071522;padding:max(16px,env(safe-area-inset-top)) 16px calc(26px + env(safe-area-inset-bottom))}
+.about-screen.show{display:block}.about-inner{max-width:540px;margin:0 auto}.about-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.about-close{background:#143348;border:1px solid #326579;color:#c9f9ef;padding:9px 16px;border-radius:13px;font-weight:850}.about-title{font-size:21px;font-weight:900}.about-intro{background:linear-gradient(140deg,#133549,#0f263a);border:1px solid #315a68;border-radius:18px;padding:17px;line-height:1.85}.signature{color:#8ff5e4;font-size:15px;font-weight:900}.about-muted{color:#abc7d3;font-size:12px}.about-headline{font-size:16px;font-weight:900;margin:20px 3px 10px}.work{border:1px solid #294c5e;border-radius:16px;background:#10283b;padding:13px 14px;margin-bottom:9px}.work-name{font-size:14px;font-weight:900;color:#f0fbff}.work-desc{font-size:12.5px;color:#b6cdd8;margin-top:4px;line-height:1.75}.work-link{direction:ltr;unicode-bidi:plaintext;text-align:left;font-size:12px;color:#84eee0;overflow-wrap:anywhere;margin-top:6px}.about-note{text-align:center;margin:16px 4px;color:#89adbc;font-size:11.5px}
+
+/* Project library and readable cards */
+.work-action{display:inline-block;margin-top:9px;border:1px solid #317668;border-radius:11px;background:#123d40;color:#b6fff2;padding:7px 11px;font-weight:850;font-size:12px;text-align:right}
+.library-intro{color:#b5ced9;font-size:13px;line-height:1.9;margin:5px 3px 14px}
+.book{display:flex;gap:13px;padding:12px;background:linear-gradient(135deg,#102e40,#0c2234);border:1px solid #2e596c;border-radius:18px;margin-bottom:13px;align-items:flex-start}
+.book-cover{flex:0 0 34%;width:34%;max-width:150px;aspect-ratio:2/3;object-fit:cover;border-radius:11px;border:1px solid #5c4b36;box-shadow:0 8px 20px rgba(0,0,0,.4)}
+.book-info{min-width:0;flex:1}.book-title{color:#f8fafa;font-size:16px;font-weight:900;line-height:1.5}.book-sub{font-size:11.5px;color:#94eed6;font-weight:750;margin-bottom:6px}.book-desc{font-size:12px;color:#c2d8de;line-height:1.8}.book-actions{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0 6px}
+.book-primary,.book-secondary{font-weight:900;font-size:12px;padding:8px 10px;border-radius:11px;border:1px solid #2d7a70;flex:1;white-space:nowrap}
+.book-primary{background:#55e5c8;border-color:#55e5c8;color:#082e2f}.book-secondary{background:#123b48;color:#c8f8eb}.book-meta{color:#89a9b7;font-size:10.5px}
+.socials{display:grid;grid-template-columns:1fr 1fr;gap:10px}.social{background:#123144;border:1px solid #356071;border-radius:15px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 4px;color:#e1f7f9}.social-label{font-weight:900;font-size:13px}.social-handle{font-size:9.7px;color:#9bdfda;overflow-wrap:anywhere}
+@media(max-width:380px){.book{gap:9px;padding:9px}.book-desc{font-size:11.4px}.book-title{font-size:15px}.book-primary,.book-secondary{padding:8px 7px;font-size:11px}.book-cover{flex-basis:32%;width:32%}}
+
+@media(min-width:700px){.about-screen{padding-top:36px}}
+
+@media(max-width:380px){.heading{font-size:17px}.amount-input{font-size:28px}.results{gap:10px}.card{min-height:116px}.value{font-size:19px}.logo{width:45px;height:45px}.brand{gap:7px}.refresh{padding:9px 8px}.about-btn{padding:9px 7px}.card{padding:12px 9px}.name{font-size:12px}.tag{font-size:9px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* v1.4.2: protect touch targets and text from the system status and
+   navigation bars on WebViews that do not expose reliable safe-area values.
+   The fallback is intentionally used on older OEM WebView builds too. */
+:root{--system-status-clearance:max(32px, env(safe-area-inset-top, 0px));--system-navigation-clearance:max(36px, env(safe-area-inset-bottom, 0px))}
+.screen{
+  padding-top:calc(16px + var(--system-status-clearance));
+  padding-bottom:calc(36px + var(--system-navigation-clearance));
+  padding-left:max(14px, env(safe-area-inset-left, 0px));
+  padding-right:max(14px, env(safe-area-inset-right, 0px));
+}
+.about-screen{
+  padding-top:calc(16px + var(--system-status-clearance));
+  padding-bottom:calc(36px + var(--system-navigation-clearance));
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+}
+@media(orientation:landscape) and (max-height:500px){
+  .screen,.about-screen{padding-left:max(38px, env(safe-area-inset-left, 0px));padding-right:max(38px, env(safe-area-inset-right, 0px));}
+}
+
+/* v1.5 additive features; original identity and four-card layout remain intact. */
+.euro-card{grid-column:1/-1;min-height:104px}
+.gold-section{margin-top:17px;background:linear-gradient(150deg,#12283b,#0c2031);border:1px solid #385264;border-radius:22px;padding:16px;box-shadow:var(--shadow)}
+.gold-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}.gold-indicator{border:1px solid #8b6d31;background:#3b311d;color:#f5d895;padding:5px 12px;border-radius:100px;font-size:12px;font-weight:900}
+.gold-explanation{color:#aac5d1;margin:10px 0;font-size:12.5px;line-height:1.85}.gold-explanation strong{color:#f2d589}.gold-status{color:#b4e5da;font-size:11.5px;margin:9px 2px 13px}
+.gold-grid{display:flex;flex-direction:column;gap:12px}.gold-card{background:#122e40;border:1px solid #355366;border-radius:17px;padding:12px}
+.gold-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}.gold-title{color:#f4dc9c;font-size:16px;font-weight:900}.gold-karat{background:#352d1f;color:#e8c780;border-radius:8px;padding:3px 9px;font-size:11px}
+.gold-quotes{display:grid;grid-template-columns:1fr 1fr;gap:10px}.gold-currency{background:#0a2031;border:1px solid #2c4756;border-radius:13px;padding:10px;min-width:0}
+.gold-currency-name{font-weight:850;font-size:11px;color:#c5dbe3;min-height:22px}.gold-quote{display:flex;align-items:center;justify-content:space-between;gap:4px;border-top:1px solid #234255;padding:6px 0;font-size:11px;color:#9bbaca}
+.gold-quote strong{font-size:13px;color:#eef7f9;direction:ltr;text-align:left;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}.gold-disclaimer{font-size:11px;color:#8eafbc;line-height:1.8;margin:13px 0 0}
+.update-banner{margin-top:17px;background:#123b3d;border:1px solid #62d5bd;border-radius:18px;padding:16px}.update-banner[hidden]{display:none!important}.update-title{font-size:16px;font-weight:900;color:#d4fff1}.update-banner p{font-size:12px;color:#c8e6e4}.update-action{display:block;width:100%;border:0;border-radius:12px;background:#4ee5c9;color:#082e32;font-weight:900;padding:12px}.update-steps{display:grid;gap:8px;font-size:12px;line-height:1.8;color:#def6f1;margin:13px 0}.update-steps strong{color:#7cf9df}.update-later{border:1px solid #3d817c;background:transparent;color:#b9e7e0;border-radius:10px;padding:8px 10px;font-size:12px}
+@media(max-width:380px){.gold-currency{padding:8px}.gold-quote{flex-wrap:wrap}.gold-quote strong{font-size:12px}}
+/* v1.8: native in-app APK download and system installer (original UI retained). */
+.about-update-available{border:1px solid #55c7aa;background:#113b3b;border-radius:13px;padding:13px;margin-top:11px}
+.about-update-available[hidden],.update-progress[hidden]{display:none!important}
+.about-update-available strong{display:block;color:#d8ffed;font-size:13px}
+.about-update-available p{font-size:12px;color:#c3e4db;line-height:1.8;margin:6px 0 11px}
+.update-progress{font-size:12px;line-height:1.7;color:#c4ecdf;background:#0c3038;border:1px solid #2d5b5b;border-radius:10px;padding:9px 11px;margin-top:10px}
+.update-action:disabled{opacity:.58;cursor:progress}
+
+
+/* v1.6: silent daily morning greeting and occasional educational reminders */
+.reminder-optin{border:1px solid #2d766d;border-radius:15px;padding:12px 14px;margin:11px 0 0;background:linear-gradient(135deg,#0e3039,#0d2637);line-height:1.8}
+.reminder-optin[hidden]{display:none!important}.reminder-optin strong{font-size:13px;color:#d5fcf0}.reminder-optin p{font-size:11px;color:#adcbd1;margin:4px 0 9px}.reminder-actions{display:flex;gap:8px;flex-wrap:wrap}.reminder-action{flex:1;min-width:110px;background:#54e2c4;border:1px solid #54e2c4;color:#07322c;border-radius:11px;padding:9px 12px;font-weight:850;font-size:12px}.reminder-secondary{background:#143347;color:#c5e1e2;border-color:#38616a}.reminder-state{color:#a8cbc9;font-size:11.5px;margin:8px 0;line-height:1.8}.reminder-small{font-size:11px;color:#9cb8c4;line-height:1.85;margin:8px 0 0}
+
+/* v1.7: accessible per-category notification controls, no opt-in banner */
+.reminder-preferences{display:grid;gap:9px;margin:12px 0}
+.reminder-preference{width:100%;display:flex;align-items:center;justify-content:space-between;text-align:right;gap:12px;border:1px solid #325767;background:#102f3d;border-radius:14px;padding:11px 12px;color:#dff7f7}
+.reminder-preference strong{display:block;font-size:13px;color:#e6faf7}
+.reminder-preference small{display:block;font-size:10.5px;color:#a9c6d2;margin-top:3px}
+.reminder-switch{height:22px;width:39px;flex-shrink:0;border-radius:40px;background:#345367;border:1px solid #567180;position:relative;direction:ltr;transition:background .2s}
+.reminder-switch::after{content:"";width:16px;height:16px;background:#c4d4d9;border-radius:50%;position:absolute;top:2px;left:2px;transition:transform .2s}
+.reminder-preference[aria-pressed="true"] .reminder-switch{background:#1c8574;border-color:#4fcab4}
+.reminder-preference[aria-pressed="true"] .reminder-switch::after{transform:translateX(17px);background:#e5fff7}
+.reminder-preference:disabled{opacity:.52}
+
+/* Keep installed-version information visible beside the Updates heading. */
+.current-version-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 10px}
+.current-version-label{font-size:12px;font-weight:800;color:#a9f1e4;background:#123c47;border:1px solid #32716d;border-radius:999px;padding:5px 10px;direction:rtl;unicode-bidi:plaintext}
+
+/* 1.8.4 GOLD / EMERALD BRAND: VISUAL CHANGES ONLY.
+   Relative font, spacing and layout preserve all existing controls and workflows.
+   Legible pale text and tabular numbers on dark green surfaces, intentional gold accents. */
+:root{
+  color-scheme:dark;
+  --bg:#071B15;--panel:#103126;--panel2:#17412F;
+  --line:#527A5B;--ink:#FFFAEE;--soft:#F0F4E9;--muted:#E8F2E8;
+  --accent:#F5D477;--accent2:#FFEBAC;--good:#164832;--warn:#FFE3A3;
+  --shadow:0 15px 36px rgba(0,8,5,.36);
+}
+body{
+  background:radial-gradient(ellipse 90% 43% at 12% -14%,rgba(125,110,45,.22),transparent 69%),
+   radial-gradient(ellipse 75% 40% at 100% 0%,rgba(12,102,61,.18),transparent 76%),
+   linear-gradient(180deg,#071E16,#061611);
+  color:var(--ink);
+}
+.logo{border:1px solid #C9A860;box-shadow:0 7px 22px rgba(204,162,61,.22);background:#061B15}
+.heading,.about-title,.title,.name,.about-headline,.book-title,.work-name,.social-label{color:#FFF9ED}
+.sub,.mini,.bottom,.note,.statusDetail,.subvalue,.about-note,.about-muted,
+.library-intro,.book-desc,.book-meta,.gold-disclaimer,.gold-explanation,.gold-status,
+.gold-quote,.gold-currency-name,.work-desc,.reminder-small,.reminder-state,
+.reminder-preference small,.social-handle,.ticker-ref,.update-progress,.update-banner p,
+.about-update-available p,.reminder-optin p{color:#E8F2E8}
+.label,.gold-currency-name,.ticker-text,.book-info{color:#F5F7E9}
+.heading,.about-title,.title,.about-headline{font-weight:900}
+.refresh,.about-btn,.about-close,.sync,.reminder-secondary{
+  background:#1C4633;color:#FFF8E8;border:1px solid #A78B53;
+}
+.refresh:active,.about-btn:active,.about-close:active{background:#2A6045}
+.ticker{
+  background:linear-gradient(140deg,#113C2B,#0B2A20);border:1px solid #577A57;
+}
+.ticker-badge{
+ background:#594820;color:#FFE9A0;border:1px solid #B99A55;
+}
+.ticker-text,.ticker-ref{color:#F9F7EC}
+.status{
+ background:#12372C;border:1px solid #59795C;color:#F5F8EA;
+}
+.status.off{background:#392A1C;border-color:#A37B45;color:#FFF0D2}
+.dot{background:#F7D47C;box-shadow:0 0 10px rgba(234,192,88,.52)}
+.status.off .dot{background:#F2BE77}
+.statusMain,.statusDetail{color:#FFF9EE}
+.panel,.gold-section{
+ background:linear-gradient(170deg,#12392B,#0A271D);border:1px solid #5A7756;
+}
+.field,.currency-select{
+ background:#081F17;color:#FFFFFF;border:1px solid #779572;
+}
+.currency-select{font-weight:900;color:#FFFCF4}
+.select-wrap::after{color:#F5D685}
+.amount-input,.value,.gold-quote strong{
+ color:#FFFFFF!important;font-variant-numeric:tabular-nums;
+ text-shadow:0 1px 1px rgba(0,0,0,.35)
+}
+.amount-input::placeholder{color:#D8E2D8;opacity:1}
+.note strong,.footerNote strong,.gold-explanation strong,.book-sub,.signature,
+.update-steps strong{color:#FFE29A}
+.results .card,.card{
+ background:linear-gradient(145deg,#164432,#0E2A20);
+ border:1px solid #5D835D;
+}
+.card.active{
+ background:linear-gradient(145deg,#235239,#12382A);
+ border:2px solid #E3C676;
+ box-shadow:0 0 0 1px rgba(247,221,139,.16),0 9px 24px rgba(0,0,0,.23)
+}
+.name{color:#FAF6E6}
+.tag,.card.active .tag{background:#4B3D23;color:#FFE7A1;border:1px solid #8E7748}
+.subvalue{font-size:11.5px}
+.footerNote{
+ background:#102F25;border:1px dashed #A18A54;color:#F7F4E8;
+}
+.about-screen{background:linear-gradient(180deg,#071D17,#061710)}
+.about-intro,.book,.reminder-optin{
+ background:linear-gradient(145deg,#143B2D,#0B281E);border:1px solid #53785B;
+}
+.about-intro,.about-intro p{color:#F2F4E8}
+.work,.social,.reminder-preference{
+ background:#143728;border:1px solid #597B5D;color:#F9F7ED;
+}
+.work-desc,.book-desc,.library-intro{line-height:1.9}
+.work-link,.work-action{color:#FFE29A}
+.work-action{
+ background:#25412B;border:1px solid #B69C60;color:#FFEDB1;
+}
+.book-cover{border:1px solid #C3A15C}
+.book-title{color:#FFF9EB}
+.book-sub{font-weight:850}
+.book-primary,.update-action,.reminder-action:not(.reminder-secondary){
+ background:linear-gradient(145deg,#FFE49D,#E6BE60);
+ border:1px solid #F2D47D;color:#172A1B;font-weight:900;
+}
+.book-secondary,.update-later{
+ background:#1B422E;border:1px solid #B99B5C;color:#FFEDB3;
+}
+.social{color:#F8F7EA}
+.social-handle{color:#D9E9DA}
+.gold-indicator,.gold-karat{
+ background:#4B391F;border:1px solid #C8A458;color:#FFE7A7;
+}
+.gold-title{color:#FFE29A}
+.gold-card{background:#113529;border:1px solid #698363}
+.gold-currency{background:#08251B;border:1px solid #678465}
+.gold-quote{border-top:1px solid #476B53;color:#EAF0E7}
+.gold-quote strong{font-size:13.5px}
+.update-banner,.about-update-available{
+ background:#173D2A;border:1px solid #BFA360;
+}
+.update-title,.about-update-available strong{color:#FFE19A}
+.update-steps{color:#F7F3E5}
+.update-progress{background:#0E3124;border:1px solid #72926B;color:#F5F6E8}
+.reminder-optin strong,.reminder-preference strong{color:#FFF8EB}
+.reminder-preference small{color:#E2EBDD}
+.reminder-switch{background:#3C5341;border:1px solid #98A886}
+.reminder-switch::after{background:#F5F0DC}
+.reminder-preference[aria-pressed="true"] .reminder-switch{background:#D9B764;border-color:#FFE09A}
+.reminder-preference[aria-pressed="true"] .reminder-switch::after{background:#163A26}
+.reminder-preference:disabled{opacity:.66}
+.current-version-label{
+ background:#294B2F;border:1px solid #C9A75C;color:#FFE7A2;
+ font-weight:900;
+}
+button:focus-visible,select:focus-visible,input:focus-visible,[tabindex]:focus-visible{
+ outline:3px solid #FFE199;outline-offset:2px;
+}
+select option{background:#0D3023;color:#FFF9E8}
+/* All update and library numbers stay legible against dark branded surfaces. */
+.current-version-label,.gold-quote strong,.value,.amount-input{font-feature-settings:"tnum" 1}
+
+
+/* v1.8.7: Quran radio live stream; additive, deliberately isolated from app logic. */
+.quran-radio{margin:0 0 14px;padding:13px 14px;background:linear-gradient(140deg,#143d2b,#0b291e);border:1px solid #9e884e;border-radius:17px;box-shadow:0 8px 24px rgba(0,0,0,.14)}
+.quran-radio-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.quran-radio-info{flex:1;min-width:0}
+.quran-radio-heading{font-size:15px;font-weight:900;color:#fff2c3;display:flex;align-items:center;gap:7px}
+.quran-radio-state{font-size:12px;line-height:1.7;color:#e4eee0;margin-top:3px}
+.quran-radio-toggle{background:linear-gradient(145deg,#ffe69e,#dbb661);color:#142e1e;border:1px solid #efd380;min-width:105px;min-height:43px;padding:8px 13px;border-radius:12px;font-size:13px;font-weight:900;white-space:nowrap;box-shadow:0 3px 9px rgba(0,0,0,.18)}
+.quran-radio-toggle[aria-pressed="true"]{background:#244a31;color:#ffebba;border:1px solid #d7b96e}
+.quran-radio-playing .quran-radio-heading::after{content:"";width:7px;height:7px;border-radius:50%;background:#9bfa9b;box-shadow:0 0 9px #8df7b8}
+@media(max-width:345px){.quran-radio{padding:11px 10px}.quran-radio-toggle{min-width:95px;padding:8px 9px}}
+
+
+/* v1.8.18 proposal — local branded results card, independent of update engine. */
+.share-results-wrap{margin-top:18px;text-align:center}
+.share-results-button{width:100%;min-height:56px;border:1px solid #f5d47c;
+  border-radius:16px;display:flex;justify-content:center;align-items:center;gap:12px;
+  background:linear-gradient(145deg,#ffe69e,#e5bd62);color:#153022;
+  font-weight:900;font-size:15px;box-shadow:0 9px 20px rgba(0,0,0,.16);cursor:pointer}
+.share-results-button:disabled{opacity:.6;cursor:progress}
+.share-results-help{font-size:11.5px;color:#e7eedf;margin-top:9px;line-height:1.8}
+.share-results-status{font-size:12px;margin:10px 0 0;padding:9px 12px;border:1px solid #a18a54;
+  border-radius:12px;color:#fff4d4;background:#133b2a}
+.share-results-status[data-error="true"]{border-color:#c38766;color:#ffe8cd;background:#402b23}
+.value{white-space:nowrap!important;word-break:normal!important;overflow:hidden;text-overflow:ellipsis;font-size:clamp(18px,4.5vw,27px)}
+.hasibat-precise-result{font:500 10px/1.65 Tahoma,Arial,sans-serif;color:#cad8cb;text-align:right;max-width:100%;overflow-wrap:anywhere;opacity:.9}
+.hasibat-precise-result[hidden]{display:none!important}
+.results .card:not(#card-new):not(#card-old){grid-column:1/-1;min-height:84px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:'value name' 'precise description';align-items:center;gap:3px 10px;padding:13px 15px}
+.results .card:not(#card-new):not(#card-old) .cardTop{grid-area:name;justify-content:flex-start;flex-direction:row-reverse;align-items:center}
+.results .card:not(#card-new):not(#card-old) .value{grid-area:value;text-align:left;max-width:100%}
+.results .card:not(#card-new):not(#card-old) .subvalue{grid-area:description;text-align:right}
+.results .card:not(#card-new):not(#card-old) .hasibat-precise-result{grid-area:precise;text-align:left}
+
+/* Hasibat 1.8.22 additive price-image buttons, professional Telegram card and optional bid/ask */
+.share-prices-wrap{margin:17px 0 12px}.share-prices-wrap .share-results-button{font-size:14px}
+.hasibat-telegram-card{width:100%;display:flex;align-items:center;text-align:right;gap:13px;border:1px solid #cbaa66;background:linear-gradient(130deg,#153d2d,#082319);border-radius:18px;padding:16px;color:#fbf7e8;cursor:pointer;box-shadow:0 8px 26px #0003}
+.hasibat-telegram-symbol{flex:0 0 50px;width:50px;height:50px;background:#147eb0;color:white;display:grid;place-items:center;border-radius:17px;font-size:27px;transform:rotate(-12deg)}
+.hasibat-telegram-content{display:flex;flex:1;flex-direction:column;gap:4px;line-height:1.6}.hasibat-telegram-content strong{font-size:17px}.hasibat-telegram-content small{font-size:11.5px;color:#e4eee3}.hasibat-telegram-content b{color:#ffdb91;font-size:12px}
+#hasibatQuotes{display:none;margin-top:14px;padding:13px;border:1px solid #9c834a;background:#113a2a;border-radius:17px}
+#hasibatQuotes.show{display:block}#hasibatQuotes .quote-title{font-weight:900;color:#ffdf99;margin-bottom:8px}
+#hasibatQuotes .quote-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#hasibatQuotes .quote-card{border:1px solid #5a7d62;border-radius:13px;padding:10px;background:#09291e;min-width:0}
+#hasibatQuotes .quote-code{font-size:13px;color:#ffdd8f;font-weight:900}
+#hasibatQuotes .quote-amounts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+#hasibatQuotes .quote-amounts small{display:block;font-size:11px;color:#c8ddd0}
+#hasibatQuotes .quote-amounts strong{display:block;font-size:18px;color:white;direction:ltr;text-align:right;font-variant-numeric:tabular-nums}
+#hasibatQuotes .quote-notice{font-size:11px;color:#e8efd9;line-height:1.8;margin-top:8px}
+.hasibat-settings-quote{border:1px solid #62826a;border-radius:14px;padding:12px;margin:12px 0;background:#103b2a}
+.hasibat-settings-quote strong{display:block;color:#ffdb92;font-size:15px}
+.hasibat-settings-quote label{display:flex;gap:8px;align-items:center;color:#fff;cursor:pointer;font-size:13px;margin:9px 0 4px}
+.hasibat-settings-quote input{width:21px;height:21px;accent-color:#e0bd71}
+.hasibat-settings-quote small{display:block;color:#c9e0cf;line-height:1.7}
+
+/* additive radio pair: existing Quran station retained unchanged, new Miraath beside it */
+.hasibat-radio-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 14px}
+.hasibat-radio-pair .quran-radio{margin:0;min-width:0;padding:12px}
+.hasibat-radio-pair .quran-radio-row{display:flex;align-items:stretch;flex-direction:column;gap:9px}
+.hasibat-radio-pair .quran-radio-toggle{width:100%;min-height:42px}
+.hasibat-radio-pair .quran-radio-heading{font-size:13px;line-height:1.8}
+.hasibat-radio-pair .quran-radio-state{font-size:11px;line-height:1.8;min-height:31px}
+@media(max-width:380px){.hasibat-radio-pair{grid-template-columns:1fr}.hasibat-radio-pair .quran-radio-row{flex-direction:row;align-items:center}.hasibat-radio-pair .quran-radio-toggle{width:auto;min-width:95px}}
+</style>
+<link rel="stylesheet" href="fuel-widget.css">
+</head>
+<body>
+<div class="screen">
+  <header class="header">
+    <div class="brand">
+      <img class="logo" src="app_logo.png" alt="شعار حاسبة الليرة" />
+      <div>
+        <div class="heading">حاسبة الليرة</div>
+        <div class="sub">نتيجة واحدة واضحة بخمس عملات</div>
+      </div>
+    </div>
+    <div class="actions"><button id="aboutButton" class="about-btn" type="button">من نحن</button><button id="refresh" class="refresh" type="button" aria-label="تحديث الأسعار"><span class="spin">⟳</span>تحديث</button></div>
+  </header>
+
+  <section class="ticker" aria-label="تذكيرات نافعة">
+    <div id="tickerType" class="ticker-badge">ذِكر</div>
+    <div class="ticker-content"><div id="tickerText" class="ticker-text">سبحان الله العظيم، سبحان الله وبحمده</div><div id="tickerRef" class="ticker-ref">حديث صحيح · البخاري (6406)</div></div>
+  </section>
+
+
+
+  <div class="hasibat-radio-pair" aria-label="الإذاعات المباشرة">
+  <section class="quran-radio" id="quranRadioCard" aria-label="إذاعة القرآن الكريم مباشرة">
+    <div class="quran-radio-row">
+      <div class="quran-radio-info"><div class="quran-radio-heading">📻 إذاعة القرآن الكريم</div>
+        <div class="quran-radio-state" id="quranRadioStatus" role="status" aria-live="polite">بث مباشر · اتصال بالإنترنت</div></div>
+      <button class="quran-radio-toggle" type="button" id="quranRadioToggle" aria-pressed="false">▶ تشغيل</button>
+    </div>
+    <audio id="quranRadioAudio" preload="none" playsinline></audio>
+  </section>
+  <section class="quran-radio miraath-radio" id="miraathRadioCard" aria-label="إذاعة ميراث الأنبياء">
+    <div class="quran-radio-row">
+      <div class="quran-radio-info"><div class="quran-radio-heading">📻 إذاعة ميراث الأنبياء</div>
+        <div class="quran-radio-state" id="miraathRadioStatus" role="status" aria-live="polite"></div></div>
+      <button class="quran-radio-toggle" type="button" id="miraathRadioToggle" aria-pressed="false">▶ تشغيل</button>
+    </div>
+    <audio id="miraathRadioAudio" preload="none" playsinline></audio>
+  </section>
+  </div>
+
+  <div id="updateBanner" class="update-banner" role="status" hidden>
+    <div class="update-title">يتوفر تحديث جديد للتطبيق <span id="updateVersion"></span></div>
+    <p id="updateMessage">يتوفر إصدار أحدث يتضمن تحسينات جديدة.</p>
+    <button type="button" id="updateDownload" class="update-action">تحميل التحديث داخل التطبيق</button>
+    <div id="updateDownloadStatus" class="update-progress" role="status" aria-live="polite" hidden></div>
+    <div id="updateInstructions" class="update-steps"></div>
+    <button type="button" id="updateLater" class="update-later">تذكيري لاحقًا</button>
+  </div>
+
+  <div id="status" class="status off" role="status">
+    <span class="dot"></span>
+    <div>
+      <span id="statusMain" class="statusMain">جارِ تحديث الأسعار…</span>
+      <span id="statusDetail" class="statusDetail">سيتم عرض آخر أسعار محفوظة عند انقطاع الاتصال.</span>
+    </div>
+  </div>
+
+  <section class="panel">
+    <div class="panelHead">
+      <div>
+        <div class="title">الحاسبة السريعة</div>
+        <div class="mini">أدخل رقمًا واحدًا وحدد العملة</div>
+      </div>
+    </div>
+
+    <div class="form">
+      <div>
+        <div class="label">المبلغ</div>
+        <div class="field">
+          <input id="amountInput" class="amount-input" type="text" inputmode="decimal" autocomplete="off" placeholder="1" value="1" aria-label="المبلغ" />
+        </div>
+      </div>
+
+      <div>
+        <div class="label">العملة</div>
+        <div class="select-wrap">
+          <select id="currencySelect" class="currency-select" aria-label="العملة المختارة">
+            <option value="new">الليرة السورية الجديدة</option>
+            <option value="old">الليرة السورية القديمة</option>
+            <option value="try">الليرة التركية</option>
+            <option value="usd" selected>الدولار الأمريكي</option>
+            <option value="eur">اليورو الأوروبي</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">جميع النتائج تُعرض <strong>بالسعر الوسطي</strong> لسهولة الفهم، مع التحويل الثابت بين الليرة السورية الجديدة والقديمة.</div>
+
+    <div id="results" class="results" aria-label="نتائج التحويل">
+      <article class="card" id="card-new">
+        <div class="cardTop"><div class="name">الليرة السورية الجديدة</div><div class="tag">SYP NEW</div></div>
+        <div class="value" id="value-new">—</div>
+        <div class="subvalue">القيمة بالليرة الجديدة</div>
+      </article>
+      <article class="card" id="card-old">
+        <div class="cardTop"><div class="name">الليرة السورية القديمة</div><div class="tag">SYP OLD</div></div>
+        <div class="value" id="value-old">—</div>
+        <div class="subvalue">القيمة بالليرة القديمة</div>
+      </article>
+      <article class="card" id="card-try">
+        <div class="cardTop"><div class="name">الليرة التركية</div><div class="tag">TRY</div></div>
+        <div class="value" id="value-try">—</div>
+        <div class="subvalue">القيمة بالليرة التركية</div>
+      </article>
+      <article class="card" id="card-usd">
+        <div class="cardTop"><div class="name">الدولار الأمريكي</div><div class="tag">USD</div></div>
+        <div class="value" id="value-usd">—</div>
+        <div class="subvalue">القيمة بالدولار</div>
+      </article>
+      <article class="card euro-card" id="card-eur">
+        <div class="cardTop"><div class="name">اليورو الأوروبي</div><div class="tag">EUR · €</div></div>
+        <div class="value" id="value-eur">—</div>
+        <div class="subvalue">القيمة باليورو</div>
+      </article>
+    </div>
+
+    <section id="hasibatQuotes" aria-label="أسعار الشراء والبيع للعملات" aria-live="polite">
+      <div class="quote-title">أسعار الشراء والبيع · الليرة السورية الجديدة</div>
+      <div id="hasibatQuotesCards" class="quote-grid"></div>
+      <div class="quote-notice">أسعار مستقلة من المصدر المعتمد. لا تُغيّر النتائج الوسطية للحاسبة؛ سعر شراء المكتب للعملة غير سعر بيعها.</div>
+    </section>
+    <div class="share-results-wrap">
+      <button type="button" id="shareResults" class="share-results-button" aria-label="مشاركة نتائج التحويل بصورة PNG">
+        <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.7 10.7 6.6-4.2M8.7 13.3l6.6 4.2"/></svg>
+        مشاركة النتائج بصورة احترافية
+      </button>
+      <div class="share-results-help">تحتوي الصورة على المبلغ والعملات وتاريخ إنشائها حتى الثانية.</div>
+      <div id="shareResultsStatus" class="share-results-status" aria-live="polite" hidden></div>
+    </div>
+    <div class="footerNote"><strong>تذكير ثابت:</strong> كل ١ ليرة سورية جديدة = ١٠٠ ليرة سورية قديمة.</div>
+  </section>
+
+  <section class="gold-section" aria-label="أسعار الذهب في سوريا">
+    <div class="gold-heading"><div><div class="title">أسعار الذهب في سوريا</div><div class="mini">الغرام الواحد · عيارات 24 و22 و21 و18 و14</div></div><span class="gold-indicator">ذهب</span></div>
+    <div class="gold-explanation">تظهر أسعار <strong>الشراء والمبيع</strong> لكل عيار بالليرة السورية الجديدة وبالدولار، دون مصنعية.</div>
+    <div id="goldStatus" class="gold-status">جارِ تحميل أسعار الذهب…</div>
+    <div id="goldGrid" class="gold-grid">
+      <article class="gold-card" id="gold-card-24"><div class="gold-top"><span class="gold-title">عيار 24</span><span class="gold-karat">24K</span></div><div class="gold-quotes" data-karat="24"></div></article>
+      <article class="gold-card" id="gold-card-22"><div class="gold-top"><span class="gold-title">عيار 22</span><span class="gold-karat">22K</span></div><div class="gold-quotes" data-karat="22"></div></article>
+      <article class="gold-card" id="gold-card-21"><div class="gold-top"><span class="gold-title">عيار 21</span><span class="gold-karat">21K</span></div><div class="gold-quotes" data-karat="21"></div></article>
+      <article class="gold-card" id="gold-card-18"><div class="gold-top"><span class="gold-title">عيار 18</span><span class="gold-karat">18K</span></div><div class="gold-quotes" data-karat="18"></div></article>
+      <article class="gold-card" id="gold-card-14"><div class="gold-top"><span class="gold-title">عيار 14</span><span class="gold-karat">14K</span></div><div class="gold-quotes" data-karat="14"></div></article>
+    </div>
+    <div class="share-results-wrap share-prices-wrap"><button type="button" id="shareGoldResults" class="share-results-button">♧ مشاركة أسعار الذهب بصورة احترافية</button><div id="shareGoldStatus" class="share-results-status" aria-live="polite" hidden></div></div>
+    <p class="gold-disclaimer">أسعار استرشادية للغرام، وقد تختلف الأسعار الفعلية حسب المدينة والمصنعية. يظهر آخر تحديث ناجح عند انقطاع الإنترنت.</p>
+  </section>
+
+  <section class="fuel-section" aria-label="أسعار المحروقات في سوريا">
+    <div class="fuel-heading">
+      <div><div class="fuel-title">⛽ أسعار المحروقات في سوريا</div><div class="fuel-subtitle">بنزين 90 و95 · مازوت · غاز أسطوانات</div></div>
+      <button type="button" class="fuel-refresh" id="fuelRefresh">تحديث</button>
+    </div>
+    <p id="fuelStatus" class="fuel-status" aria-live="polite">جارِ تحميل أسعار المحروقات…</p>
+    <div id="fuelGrid" class="fuel-grid"></div>
+    <div class="share-results-wrap share-prices-wrap"><button type="button" id="shareFuelResults" class="share-results-button">⛽ مشاركة أسعار المحروقات بصورة احترافية</button><div id="shareFuelStatus" class="share-results-status" aria-live="polite" hidden></div></div>
+    <p class="fuel-note">المصدر الأساسي SP Today؛ عند حجب الجلب الآلي نستخدم SYPNow الاحتياطي مع إظهار مصدر البيانات الحقيقي وتاريخ تعديل السعر. الأسعار الرسمية مؤرخة، والدولار تقديري حسب سعر مبيع الدولار في الحاسبة. <a id="fuelSource" class="fuel-source" href="https://sp-today.com/energy">عرض المصدر</a></p>
+  </section>
+
+
+
+  <div class="bottom">يُحدَّث السعر تلقائيًا كل 30 ثانية أثناء فتح التطبيق، كما يمكنك التحديث فورًا من الزر بالأعلى.<div>الأسعار وسطية استرشادية وقد تختلف عند تنفيذ الصرف.</div></div>
+</div>
+<section id="aboutScreen" class="about-screen" role="dialog" aria-modal="true" aria-label="من نحن">
+  <div class="about-inner">
+    <div class="about-top"><div class="about-title">من نحن</div><button type="button" class="about-close" id="aboutClose">العودة للحاسبة</button></div>
+    <div class="about-intro">
+      <div class="signature">مشروعاتنا الرقمية والمعرفية</div>
+      <div class="about-muted">أدوات عملية لخدمة الناس، ومحتوى معرفي يدعو إلى العلم والتثبّت وحسن التفكير. نسعى إلى تقديم تجربة بسيطة، مفيدة، ومتاحة للجميع.</div>
+    </div>
+    <div class="about-headline">مشروعاتنا</div>
+    <div class="work">
+      <div class="work-name">دلّالنا</div><div class="work-desc">منصة سورية تجمع الإعلانات والفرص والخدمات، وتسهّل البحث عن العقارات والسيارات والوظائف وغيرها في مكان واحد.</div>
+      <button class="work-action" data-download-app="dallalna">تحميل تطبيق دلّالنا APK ↓</button>
+    </div>
+    <div class="work">
+      <div class="work-name">شامنا AI</div><div class="work-desc">مساعد ذكاء اصطناعي مستقل للبحث والكتابة والمعرفة والمساعدة اليومية في مجالات متنوعة.</div>
+      <button class="work-action" data-download-app="shamna">تحميل شامنا AI APK ↓</button>
+    </div>
+    <div class="work">
+      <div class="work-name">دلائل الهدى</div><div class="work-desc">مساحة للقراءة والتعلّم والمواد التوعوية ضمن منصة دلّالنا.</div>
+      <button class="work-action" data-external="https://dallalna.com/truth">زيارة دلائل الهدى ↗</button>
+    </div>
+    <div class="work">
+      <div class="work-name">حاسبة الليرة</div><div class="work-desc">ملف التطبيق الرسمي المتاح للتنزيل المباشر.</div>
+      <button class="work-action" data-download-app="hasibat">تحميل حاسبة الليرة APK ↓</button>
+    </div>
+    <div class="work">
+      <div class="work-name">ميدان الخبر</div><div class="work-desc">أخبار سوريا والعالم واللاجئين من مصادر منسوبة ومعلنة.</div>
+      <button class="work-action" data-download-app="midan">تحميل تطبيق ميدان الخبر APK ↓</button>
+    </div>
+    <div class="about-headline">مكتبتنا | اقرأ أو احتفظ بالكتاب</div>
+    <p class="library-intro">الكتابان متاحان هنا بنسختيهما المرفقتين كاملتين؛ يمكنك قراءتهما داخل التطبيق، حتى دون اتصال، أو حفظ ملف PDF على هاتفك.</p>
+    <article class="book">
+      <img src="books/islam-almutab.webp" alt="غلاف كتاب الإسلام المتعب" class="book-cover" loading="lazy" />
+      <div class="book-info">
+        <div class="book-title">الإسلام المتعب</div>
+        <div class="book-sub">من اليقظة إلى الوعي والبناء</div>
+        <div class="book-desc">مدخل توعوي يتناول أثر الإعلام والشائعات والتحديات المحيطة بالعقيدة والهوية والأسرة، ويدعو إلى التثبّت من الأخبار، وفهم الإسلام بعلم، وبناء جيل واعٍ لا يستسلم للخوف.</div>
+        <div class="book-actions"><button class="book-primary" data-read="mutab">قراءة الكتاب</button><button class="book-secondary" data-save="mutab">حفظ PDF</button></div>
+        <div class="book-meta">89 صفحة · النسخة الأصلية المرفقة</div>
+      </div>
+    </article>
+    <article class="book">
+      <img src="books/islam-la-yatab.webp" alt="غلاف كتاب الإسلام لا يتعب" class="book-cover" loading="lazy" />
+      <div class="book-info">
+        <div class="book-title">الإسلام لا يتعب</div>
+        <div class="book-sub">تأصيل فكري وفلسفي وتوثيقي</div>
+        <div class="book-desc">عمل موسّع يناقش الإيمان والعقل والعلم والأخلاق والهوية والحداثة، ويفحص الحجج والاعتراضات مع الاهتمام بالدليل والتوثيق والتمييز بين الحقيقة والاحتمال.</div>
+        <div class="book-actions"><button class="book-primary" data-read="la_yatab">قراءة الكتاب</button><button class="book-secondary" data-save="la_yatab">حفظ PDF</button></div>
+        <div class="book-meta">560 صفحة · النسخة الأصلية المرفقة</div>
+      </div>
+    </article>
+    <div class="about-headline current-version-heading"><span>تحديثات التطبيق</span><span id="installedVersionLabel" class="current-version-label" aria-live="polite">الإصدار الحالي: جارِ التحقق…</span></div>
+    <div class="work"><div class="work-desc">يتحقق التطبيق تلقائيًا من وجود نسخة أحدث عند الاتصال بالإنترنت. يمكنك أيضًا التحقق يدويًا.</div>
+      <button class="work-action" type="button" id="checkUpdates">التحقق من وجود تحديث</button>
+      <div class="about-muted" id="updateCheckStatus"></div>
+      <div id="aboutUpdateAvailable" class="about-update-available" hidden>
+        <strong id="aboutUpdateTitle">يتوفر إصدار جديد من التطبيق</strong>
+        <p id="aboutUpdateDetails">التحديث متاح للتنزيل.</p>
+        <button type="button" class="update-action" id="aboutUpdateDownload">تحميل التحديث داخل التطبيق</button>
+        <div id="aboutUpdateProgress" class="update-progress" role="status" aria-live="polite" hidden></div>
+        <p class="reminder-small">سيتم تحميل الملف والتحقق منه وفتح شاشة تثبيته مباشرة، دون حذف التطبيق أو فقدان بياناته.</p>
+      </div>
+    </div>
+
+    <div class="about-headline">الإشعارات والتحكم بها</div>
+    <div class="work" aria-label="إدارة إشعارات التطبيق">
+      <div class="work-desc">يطلب التطبيق إذن الإشعارات تلقائيًا عند أول تشغيل. بعد موافقتك، تصلك التحية الصباحية والفوائد القصيرة وتنبيهات الإصدارات الجديدة، دون صوت أو اهتزاز.</div>
+      <div id="reminderState" class="reminder-state" role="status">جارِ التحقق من إعدادات الإشعارات…</div>
+      <div class="reminder-preferences" id="reminderPreferences">
+        <button type="button" class="reminder-preference" id="prefMorning" aria-pressed="true"><span>☀️ <strong>التحية الصباحية</strong><small>كل يوم عند الساعة السابعة تقريبًا</small></span><span class="reminder-switch" aria-hidden="true"></span></button>
+        <button type="button" class="reminder-preference" id="prefLessons" aria-pressed="true"><span>📖 <strong>الفوائد الشرعية</strong><small>تذكيرات قصيرة في أوقات متباعدة</small></span><span class="reminder-switch" aria-hidden="true"></span></button>
+        <button type="button" class="reminder-preference" id="prefUpdates" aria-pressed="true"><span>↻ <strong>تنبيهات تحديث التطبيق</strong><small>فحص دوري للإصدارات الجديدة حتى عند إغلاق الحاسبة</small></span><span class="reminder-switch" aria-hidden="true"></span></button>
+      </div>
+      <div class="reminder-actions">
+        <button type="button" class="reminder-action reminder-secondary" id="reminderToggle">إيقاف جميع الإشعارات</button>
+        <button type="button" class="reminder-action reminder-secondary" id="reminderSystemSettings">إعدادات إشعارات الهاتف</button>
+        <button type="button" class="reminder-action reminder-secondary" id="reminderPrecise" hidden>تحسين دقة موعد السابعة</button>
+      </div>
+      <div class="reminder-small">الإشعارات الصامتة تُعرض وفق إعدادات أندرويد. قد يتأخر التنبيه قليلًا بسبب توفير الطاقة أو انقطاع الإنترنت. يجب السماح بإشعارات التطبيق من الهاتف.</div>
+    </div>
+    <div class="about-headline">قناة ميدان الخبر الرسمية</div>
+    <button type="button" id="hasibatMidanJoin" class="hasibat-telegram-card" data-external="https://t.me/maydan_alkhabar" aria-label="الانضمام إلى قناة ميدان الخبر الرسمية على تيليجرام">
+      <span class="hasibat-telegram-symbol" aria-hidden="true">➤</span><span class="hasibat-telegram-content"><strong>ميدان الخبر</strong><small>أخبار سوريا واللاجئين وأهم تطورات العالم · منشورات أسعار الصرف</small><b>الانضمام للقناة الرسمية ←</b></span>
+    </button>
+    <div class="about-headline">تابعوا حساباتنا</div>
+    <div class="socials">
+      <button class="social" data-external="https://www.tiktok.com/@alislam_almutab_book"><span class="social-label">تيك توك</span><span class="social-handle" dir="ltr">@alislam_almutab_book</span></button>
+      <button class="social" data-external="https://www.instagram.com/alislam_almutab_book/"><span class="social-label">إنستغرام</span><span class="social-handle" dir="ltr">@alislam_almutab_book</span></button>
+    </div>
+    <div class="about-note">غلافا الكتابين وصفحاتهما من النسختين الأصليتين دون تعديل. القراءة داخل التطبيق تعمل دون إنترنت.</div>
+  </div>
+</section>
+<script>
+'use strict';
+const el=id=>document.getElementById(id);
+const amountInput=el('amountInput');
+const currencySelect=el('currencySelect');
+const resultKeys=['new','old','try','usd','eur'];
+const phrases=[{"type":"رسالة نافعة","text":"الإسلام ليس متعبًا؛ الذي يتعب هو المسلم حين يبتعد عن مصدر قوته، ويترك عقله لغيره، ووقته لمنصته، وتربية أبنائه للصدفة.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"لا ينتصر الحق بمجرد كونه حقًا إذا عجز أهله عن شرحه وتمثيله؛ لأنه لا يحتاج إلى الكذب، بل يحتاج إلى حضور مستمر، وصوت واضح، وقدوة صادقة.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"الذي يُضعف المسلم ليس كثرة الشبهات، بل البعد عن مصدر قوته. فإذا عاد إلى كتاب ربه وسنة نبيه، وعرف ربه، وأتقن علوم عصره، نهض عزيزًا ثابتًا.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"مهما كان عمري، فأنا في حضرته صغير. ومهما علا قدري، فأنا ثمرة من ثمار خبرته. ومهما ظننت أنني أسرع منه، فأبي يعرف الطريق أكثر مني.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"استعادة التاريخ ليست بكاءً على الماضي، بل بداية لاستعادة المستقبل؛ فالأمة التي أنجبت الخوارزمي وابن الهيثم قادرة أن تنجب من جديد.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"الدفاع عن فضل علماء المسلمين لا يعني إنكار إنجازات غيرهم؛ فالإنصاف أن يُذكر السابق، والشارح، والمؤسس، والمطور، كلٌّ بقدره.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"كان المسلمون أصحاب حضارة كبرى؛ مدنهم مقصد للعلم، ولغتهم لغة المعرفة، وكتب علمائهم تُدرّس خارج بلادهم.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"حذف الحضارة الإسلامية من تاريخ العلم ليس حذف فصل عابر، بل نزع حلقة مركزية من السلسلة التي صنعت العالم الحديث.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"التجهيل الممنهج لا يعني منع كل مدرسة، بل يعني تقديم معرفة محدودة تخدم الحاكم، وتُضعف قدرة الأمة على إنتاج نخبة مستقلة وواعية.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"الخلل ليس في الاعتراف بفضل علماء أوروبا، بل في احتكار تعريف الاكتشاف، فتُهمّش المقدمات الإسلامية، وتُقدّم النهايات الأوروبية كأنها البداية كلها.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"استعادة تاريخ علماء المسلمين ليست حنينًا للماضي، بل بداية لاستعادة الثقة وبناء المستقبل؛ فالأمة التي قدّمت العلم تستطيع أن تُضيف إليه من جديد.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"حين يكتب المنتصر التاريخ وحده، تتحول حضارة قدمت العلم قرونًا إلى هامش صغير، وتبدو أوروبا كأنها بداية القصة ونهايتها.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"الاقتصاد الاستعماري لم يكن ليبقى بالشعوب، بل بالخدم وأسواق المستعمر؛ لذلك أضعفت الصناعات المحلية، واستُنزفت الموارد، وهيئت الأمة منشغلة بالحاجة.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"حين تُهمّش لغة الأمة في التعليم والإدارة، لا تُضعف الكلمات فقط؛ بل تُضرب الذاكرة والهوية، ويُفصل الجيل عن تراثه ومصادر قوته.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"الإنصاف في تاريخ العلم يقتضي ألا نختزل السلسلة كلها في آخر اسم وصل إلى الصيغة النهائية. فمن مهّد للفكرة وشرحها وقاسها جزء من القصة لا هامش فيها.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"ضرب اللغة ليس أمرًا ثقافيًا ثانويًا؛ إنه ضرب للذاكرة والهوية والمعرفة. فإذا هُمّشت لغة الأمة، انقطع كثير من أبنائها عن تراثهم ومصادر قوتهم.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"لسنا ضد الغرب، ولا ننكر فضل علمائه، لكننا نرفض أن يُمحى السابق لتعظيم اللاحق. العدل أن نذكر من لاحظ، ومن فسّر، ومن قاس، ومن طوّر.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"في الكيمياء، أسهم جابر بن حيان والمدرسة الجابرية والرازي في تأسيس التجريب المبكر وتقنيات المختبر، من التقطير والتبلور إلى الأدوات والعمليات والتنقية، ثم جاء الأوروبيون ليدفعوا الكيمياء الحديثة على أساس كمي أكثر صرامة. البداية أقدم من الرواية الشائعة.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"لم يكن نيوتن أول من عرف أن الأجسام تسقط نحو الأرض، فقد سبق علماء مثل البيروني إلى دراسة الثقل واتجاه الأجسام نحو مركز الأرض، لكن نيوتن جمع بين سقوط الأجسام وحركة الأجرام في قانون رياضي كوني واحد. الإنصاف يقتضي أن يُذكر السابق واللاحق معًا.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"لم تكن الحضارة الإسلامية جسرًا صامتًا بين اليونان وأوروبا، بل كانت في مراحل كثيرة أهم مركز عالمي للعلوم والفلك والرياضيات والطب والبصريات والفلسفة والكيمياء والهندسة. كان العالم يأتي إلى بغداد ودمشق والقاهرة وقرطبة وصقلية ليتعلم، وكانت الترجمة ثم التأليف والتجريب أساس النهضة.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"فكرة الآلة القابلة للبرمجة لم تبدأ في العصر الصناعي الحديث، فقد صمم بنو موسى أنظمة آلية مبتكرة، وابتكر الجزري آلات وتحكمًا ميكانيكيًا مؤقتًا بالماء والعمل. ثم جاء جوزيف جاكار وباباج والحاسوب الحديث. لا تمحى البدايات لأن الصورة النهائية تغيرت.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"لم يكن الاستعمار سبب كل ضعف أصاب العالم الإسلامي، لكنه استغل الضعف وعمّقه. سيطر على الأرض والتعليم واللغة والاقتصاد والذاكرة، فحوّل كثيرًا من الشعوب من أمة تنتج العلم إلى مجتمعات تستهلكه وتُقسم وتُبعد عن الثقة بتاريخها.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"في قصة الكاميرا، لم يخترع ابن الهيثم التصوير الحديث، لكنه وضع أهم الأسس العلمية والبصرية التي تقوم عليها الكاميرا، عبر دراسته للضوء والظلال وتكوين الصورة ومسار الضوء. ثم جاء نيبس لتثبيت الصورة، وتطورت تقنيات التصوير الضوئي.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"العلم لا يولد دفعة واحدة. قد يبدأ بملاحظة، ثم تفسير، ثم قياس، ثم قانون، ثم تطبيق. لكن المناهج الحديثة كثيرًا ما تختصر هذه السلسلة كلها في آخر اسم وصل إلى الصيغة النهائية، فتختفي البدايات ويُمحى من وضع الأساس.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"في الطب، قدم ابن النفيس أول وصف صحيح معروف للدورة الدموية الرئوية، فرفض فكرة الثقوب الخفية في جدار القلب وبين مسار الدم بين القلب والرئتين. ثم جاء هارفي فأثبت بالتجربة والحساب الدورة الدموية العامة في الجسم.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"لم تكن قوة الحضارة الإسلامية في ادعاء أن كل العلوم بدأت منها، بل في ثقتها التي جعلتها تأخذ علم اليونان والفرس والهنود والسريان، وتحفظ أسماء أصحابها، ثم تشرحه وتنقده وتصححه وتضيف إليه. كانت الأمانة في النقل عندها جزءًا من الأمانة العلمية.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"ناقش ابن الهيثم أن الضوء يحتاج إلى زمن لينتقل، ونقض البيروني أنه أسرع من الصوت، ثم جاء رومر فاستنتج زمنية انتقاله فلكيًا، وتبعه هيغنز وفيزو في الحساب والقياس. هكذا تُكتب تواريخ العلم كاملة، لا باقتطاع مراحله الأولى.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"البيت الذي يمنع أبناءه من السؤال لا يحميهم، بل يترك أسئلتهم حتى يجيب عنها الغرباء. علّم ابنك أن يسأل بأدب، وأن يبحث بصدق، وأن يعود إليك من غير خوف.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"الحضارة ليست مباني مرتفعة وتقنيات متقدمة فقط؛ بل إنسان يعرف واجبه، ومؤسسة تحفظ الحقوق، وعلم يتحول إلى عمل، وأخلاق تمنع القوة من أن تصبح ظلمًا.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"من يملك انتباهك، يستطيع أن يختار لك ما تفكر فيه، حتى إن لم يستطع أن يفرض عليك ما تعتقده. لذلك أصبح حفظ الوقت والانتباه جزءًا من حماية العقل والهوية.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"ليست كل فكرة شائعة صحيحة، فقد يصنع التكرار شعورًا زائفًا بأن الرأي المنتشر حقيقة محسومة. فالعاقل لا يقيس صدق الكلام بعدد من يرددونه، بل بقوة دليله وسلامة مصدره.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"لا نريد مسلمًا تابعًا لكل صوت، بل صاحب بصيرة يعرف من أين يأخذ، وعلى أي أصل يبني.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"لا يكفي أن يعرف المسلم أن دينه حق فحسب، بل يجب أن يفهم لماذا هو حق، وكيف يثبته ويدافع عنه.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"من فهم دينه على بصيرة، لم تضره كثرة الأصوات، ولم تخدعه زينة الباطل.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"ليست قوة المسلم في كثرة الجدل، بل في صحة الحجة، وعدل النظر، وحسن البيان.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"يبدأ الإصلاح من الفرد، ثم الأسرة، ثم الوعي العام. فإذا صلح التصور، وصح العلم، وقوي الخلق، صار المسلم جزءًا من الحل، لا رقمًا جديدًا في قائمة المتعبين.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"من المفارقات العجيبة أن بعض الخطابات الغربية تقدم شيخ الإسلام ابن تيمية بوصفه مرجعًا للتطرف، حتى إن دراسة منشورة على موقع الحكومة البريطانية وصفت فئة من أبرز المراجع الفكرية التي يستند إليها التيار السني المتشدد.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"السؤال: ما قولكم فيمن جعل مرجعه كتاب الله وسنة نبيه ﷺ الصحيحة، وفهمهما على ما ثبت عن الصحابة والتابعين لهم بإحسان، ولم يقدم قول أحد ولا تعصبًا على الدليل، ورأى اجتهادات العلماء أقوالًا بشرية تُقبل بقدر موافقتها للدليل، وتُرد بقدر مخالفتها له، مع حفظ مكانة العلماء وعدم تقديسهم؟\nالجواب: هذا هو منهج السلف الصالح.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"لو كان لا ينكر المنكر إلا من لم يقع فيه، لما أنكر المنكر إلا محمد صلى الله عليه وسلم.\nفمن منا معصوم؟\nوفي الحديث القدسي: إنكم تخطئون بالليل والنهار.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"هجرُ العاصي بدلَ إصلاحه لا يفتح له باب التوبة، بل قد يورثه احتقارًا، ويُغلق في وجهه طريق العودة.\n\nوليس كل عاصٍ يُهجر؛ فمن كان يكره ذنبه، ويقبل النصح، فحقّه الصحبة الصالحة والتذكير.\n\nوأما من يجاهر بالمعصية، ويُزيّنها، ويدعو إليها، فذلك الذي تُحذر صحبته.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"ليس كل عاصٍ رفيق سوء؛ فقد يذنب المرء وهو يكره ذنبه، وينتظر يدًا تأخذ به إلى التوبة. وإنما رفيق السوء حقًا هو من يهون عليك المعصية، ويزينها لك، ويبعدك عن الله. فالصاحب يُقاس بالأثر: هل ترتقي معه، أم تسقط به؟","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"غلب على تعليم أجيال سابقة أن يكون الاهتمام بالحفظ أكثر من الفهم والعمل.\n\nوالحفظ بلا فهم يضعف مع الأيام، أما الفهم فيثبت، ويصنع وعيًا وسلوكًا، ويبقى أثره في الناس.\n\nلذلك واجبنا أن نبني جيلًا لا يردد ما يحفظه فقط، بل يفهمه، ويعمل به، وينفع به غيره.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"إذا تكررت الصورة المشوهة، فلا يكفي أن ننفيها مرة واحدة. يجب أن تتكرر الحقيقة كذلك.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"ما الذي يُستهدف في الشاب؟ وقته، وانتباهه، وصورته عن نفسه، ومرجعيته، وطموحه.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"الحلال والحرام لا تصنعهما الدعاية، والعدل لا تحدده الدولة الأقوى.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"المسلم المستيقظ لا يصدق كل شائعة، ولا يحول كل خطأ إلى خطة عالمية، ولا يبرئ نفسه من مسؤولية التقصير.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"النسوية الغربية لم تستطع تحصيل حقوق المرأة التي حصلت عليها المرأة المسلمة منذ 1400 عام.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"نريد مسلمًا يصحو، ثم يفهم، ثم يعمل؛ فاليقظة التي لا تنتج علمًا تتحول إلى غضب، والعلم الذي لا ينتج عملًا يتحول إلى معلومات باردة.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"المسلم لا يدافع عن الإسلام برفض العلم، بل بتعلمه، ولا يثبت صدق دينه بإلصاق فيزياء عصره، بل بأن يجمع بين معرفة الخالق وفهم خلقه، وبين أخلاق الوحي ودقة المختبر.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"العدو الخارجي لا يعفينا من إصلاح الداخل. وما يحاك ضدنا لا ينجح إلا إذا وجد جهلًا أو ظلمًا أو فراغًا أو انقسامًا يستطيع أن يدخل منه.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"الإسلام ليس اسمًا وشعارًا، ولا مجموعة محفوظات منفصلة، ولا طقوسًا تؤدى دون رؤية من الحياة. الإسلام استسلام واعٍ لله، ورؤية للوجود، وميزان للأخلاق، ومنهج يبني الإنسان والأسرة والمجتمع.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"من يريد حماية الشباب لا يكتفي بمنعهم من الخطأ؛ يجب أن يعطيهم شيئًا عظيمًا يعيشون له: معرفة بالله، ورسالة أخلاقية، وعملًا نافعًا، ومشروعًا يشعرون أنهم شركاء فيه.","ref":"من رسائل التوعية المعتمدة"},{"type":"رسالة نافعة","text":"إذا لم يقدم البيت والمسجد والمدرسة للشاب جوابًا عاقلًا، ستقدم له المنصة جوابًا آخر.","ref":"من رسائل التوعية المعتمدة"}];
+const labels={new:'الليرة السورية الجديدة',old:'الليرة السورية القديمة',try:'الليرة التركية',usd:'الدولار الأمريكي',eur:'اليورو الأوروبي'};
+const values=Object.fromEntries(resultKeys.map(k=>[k,el('value-'+k)]));
+const cards=Object.fromEntries(resultKeys.map(k=>[k,el('card-'+k)]));
+const model={rates:null,gold:null,connection:'loading',goldConnection:'loading',busy:false};
+function normalizeNumber(value){
+  let s=String(value??'').trim().replace(/[٠-٩]/g,c=>String(c.charCodeAt(0)-1632)).replace(/[۰-۹]/g,c=>String(c.charCodeAt(0)-1776)).replace(/[\s٬]/g,'').replace(/٫/g,'.');
+  if(s.includes(',')&&!s.includes('.')&&/^\d+,\d{1,6}$/.test(s)) s=s.replace(',','.');
+  else s=s.replace(/,/g,'');
+  if(!s) return null;
+  if(!/^(?:\d+\.?\d*|\.\d+)$/.test(s)) return NaN;
+  return Number(s);
+}
+function formatNumber(n,key){
+  if(n===null||!Number.isFinite(n)||n<0) return '—';
+  const digits=key==='old'?2:key==='new'?4:6;
+  return n.toLocaleString('en-US',{maximumFractionDigits:digits,minimumFractionDigits:0});
+}
+function midpoint(buy,sell){ return (buy+sell)/2; }
+function validateRates(v){
+  return !!(v&&[v.usdBuy,v.usdSell,v.tryBuy,v.trySell,v.eurBuy,v.eurSell,v.checkedAt].every(Number.isFinite)&&v.usdBuy>0&&v.usdSell>0&&v.tryBuy>0&&v.trySell>0&&v.checkedAt>0);
+}
+function applyRates(v){ if(!validateRates(v)) return false; model.rates=v; return true; }
+function getMidRates(){
+  if(!model.rates) return null;
+  return { usd: midpoint(model.rates.usdBuy, model.rates.usdSell), trY: midpoint(model.rates.tryBuy, model.rates.trySell), eur: midpoint(model.rates.eurBuy, model.rates.eurSell) };
+}
+function calculate(value,from,to){
+  if(!Number.isFinite(value)||value<0||value>1e15) return null;
+  if(from===to) return value;
+  let sypNew;
+  const mids=getMidRates();
+  if(from==='new') sypNew=value;
+  else if(from==='old') sypNew=value/100;
+  else if(from==='usd') { if(!mids) return null; sypNew=value*mids.usd; }
+  else if(from==='try') { if(!mids) return null; sypNew=value*mids.trY; }
+  else if(from==='eur') { if(!mids) return null; sypNew=value*mids.eur; }
+  if(to==='new') return sypNew;
+  if(to==='old') return sypNew*100;
+  if(to==='usd') return mids? sypNew/mids.usd : null;
+  if(to==='eur') return mids? sypNew/mids.eur : null;
+  return mids? sypNew/mids.trY : null;
+}
+function currentAmount(){ return normalizeNumber(amountInput.value); }
+function readableResult(n,key) {
+  if (n===null || !Number.isFinite(n) || n<0) return {main:'—',precise:''};
+  const maxDecimals = n>0 && n<1 ? Math.min(12,Math.max(4,Math.ceil(-Math.log10(n))+2)) : 2;
+  let main = n.toLocaleString('en-US',{maximumFractionDigits:maxDecimals,minimumFractionDigits:0});
+  // Never display a positive value as zero due to rounding.
+  if (n>0 && Number(main.replace(/,/g,''))===0) main=n.toPrecision(3);
+  let original = formatNumber(n,key);
+  if(n>0 && Number(original.replace(/,/g,''))===0) {
+    original = n<1e-12 ? n.toExponential(3) : n.toLocaleString('en-US',{maximumFractionDigits:12});
+  }
+  const precise = original===main ? '' : original;
+  return {main,precise};
+}
+function showReadableResult(key,value) {
+  const display = readableResult(value,key);
+  const node = values[key];
+  node.textContent=display.main;
+  node.title=display.precise||display.main;
+  const card=cards[key];
+  let exact=card.querySelector('.hasibat-precise-result');
+  if(!exact) {
+    exact=document.createElement('div');
+    exact.className='hasibat-precise-result';
+    exact.dir='ltr';
+    exact.setAttribute('aria-label','القيمة الدقيقة');
+    card.appendChild(exact);
+  }
+  exact.textContent=display.precise ? 'القيمة الدقيقة: '+display.precise : '';
+  exact.hidden=!display.precise;
+  exact.title=display.precise||'';
+}
+
+function render(){
+  const selected=currencySelect.value;
+  const amount=currentAmount();
+  const valid=amount!==null&&Number.isFinite(amount)&&amount>=0&&amount<=1e15;
+  resultKeys.forEach(k=>cards[k].classList.toggle('active',k===selected));
+  for(const key of resultKeys){
+    const result = valid ? calculate(amount, selected, key) : null;
+    showReadableResult(key,valid ? result : null);
+  }
+  if(valid && amount!==null && Number.isFinite(amount)) showReadableResult(selected,amount);
+}
+function lastChecked(){
+  if(!model.rates) return 'آخر تحديث غير متوفر بعد';
+  const d=new Date(model.rates.checkedAt);
+  const age=Math.max(0,Math.floor((Date.now()-model.rates.checkedAt)/60000));
+  return 'آخر تحديث ناجح: '+d.toLocaleTimeString('ar-SY',{hour:'2-digit',minute:'2-digit'})+' · '+(age<1?'منذ أقل من دقيقة':'منذ '+age+' دقيقة');
+}
+function updateStatus(){
+  el('refresh').classList.toggle('loading',model.busy);
+  el('status').classList.toggle('off',model.connection!=='online');
+  el('statusMain').textContent = model.busy ? 'جارِ تحديث الأسعار…' : model.connection==='online' ? 'الأسعار الحالية جاهزة' : model.rates ? 'تعذر التحديث — تُستخدم آخر أسعار محفوظة' : 'يتعذر جلب الأسعار الآن';
+  el('statusDetail').textContent = model.rates ? lastChecked() : 'يمكنك المتابعة بتحويل الليرتين السورية القديمة والجديدة حتى بدون اتصال.';
+}
+window.appRateLoading=function(){ model.busy=true; updateStatus(); };
+window.onAppRates=function(data){ model.busy=false; model.connection=applyRates(data)?'online':(model.rates?'offline':'cached'); updateStatus(); render(); };
+window.onAppRatesFailure=function(){ model.busy=false; model.connection=model.rates?'offline':'cached'; updateStatus(); render(); };
+const goldKarats=['24','22','21','18','14'];
+function validGold(g){
+  return !!(g&&Number.isFinite(g.checkedAt)&&goldKarats.every(k=>{
+    const q=g['g'+k];return q&&['sypBuy','sypSell','usdBuy','usdSell'].every(f=>Number.isFinite(q[f])&&q[f]>0)&&q.sypBuy<=q.sypSell&&q.usdBuy<=q.usdSell;
+  }));
+}
+function renderGold(){
+  el('goldStatus').textContent=model.gold?(model.goldConnection==='online'?'أسعار الذهب جاهزة · آخر جلب ناجح: ':'آخر أسعار ذهب محفوظة · آخر جلب ناجح: ')+new Date(model.gold.checkedAt).toLocaleTimeString('ar-SY',{hour:'2-digit',minute:'2-digit'}):'لم تتوفر أسعار الذهب بعد؛ يتطلب الجلب الأول اتصالًا بالإنترنت.';
+  for(const karat of goldKarats){
+    const q=model.gold&&model.gold['g'+karat];
+    const parent=document.querySelector('[data-karat="'+karat+'"]');
+    parent.textContent='';
+    for(const unit of ['syp','usd']){
+      const column=document.createElement('div');column.className='gold-currency';
+      const header=document.createElement('div');header.className='gold-currency-name';header.textContent=unit==='syp'?'الليرة السورية الجديدة':'الدولار الأمريكي';column.appendChild(header);
+      for(const kind of ['Buy','Sell']){
+        const item=document.createElement('div');item.className='gold-quote';
+        const label=document.createElement('span');label.textContent=kind==='Buy'?'شراء':'مبيع';
+        const value=document.createElement('strong');value.textContent=q?formatNumber(q[unit+kind],unit==='syp'?'new':'usd'):'—';
+        item.append(label,value);column.appendChild(item);
+      }
+      parent.appendChild(column);
+    }
+  }
+}
+window.onAppGold=function(g){if(validGold(g)){model.gold=g;model.goldConnection='online';}else model.goldConnection='offline';renderGold();};
+window.onAppGoldFailure=function(){model.goldConnection='offline';renderGold();};
+function displayInstalledVersion(){
+ const label=el('installedVersionLabel');
+ try {
+  const nativeVersion=(window.CurrencyHost&&CurrencyHost.installedVersion)
+   ?String(CurrencyHost.installedVersion()).trim():'';
+  label.textContent=/^\d+(?:\.\d+){1,3}$/.test(nativeVersion)
+   ?'الإصدار الحالي: '+nativeVersion
+   :'الإصدار الحالي: غير متاح';
+ }catch(error){label.textContent='الإصدار الحالي: غير متاح';}
+}
+displayInstalledVersion();
+const UPDATE_PAGE='https://dallalna.com/install';
+let updateAvailable=false;
+let acceptedUpdateVersion='';
+// Two independent guards: Android compares build numbers; the interface compares
+// the actual installed versionName to defeat stale/cached native callbacks.
+function nativeInstalledVersion(){
+  try { return String(window.CurrencyHost?.installedVersion?.()||'').trim(); }
+  catch (_error) { return ''; }
+}
+function compareNumericReleaseNames(a,b){
+  if(!/^\d+(?:\.\d+){1,3}$/.test(a) || !/^\d+(?:\.\d+){1,3}$/.test(b))return null;
+  const x=a.split('.').map(Number),y=b.split('.').map(Number);
+  for(let i=0;i<Math.max(x.length,y.length);i++){
+    const left=x[i]||0,right=y[i]||0;
+    if(left!==right)return left>right?1:-1;
+  }
+  return 0;
+}
+function isRealUpdate(data){
+  if(!data||!data.available)return false;
+  const offered=String(data.versionName||'').trim();
+  const installed=nativeInstalledVersion();
+  // If either version cannot be validated, native still refuses unsafe installs;
+  // do not falsely claim a new update in the page.
+  const compared=compareNumericReleaseNames(offered,installed);
+  return compared===1;
+}
+function clearStaleUpdate(){
+  updateAvailable=false;
+  updateDownloadReady=false;
+  acceptedUpdateVersion='';
+  currentDownloadMode='download';
+  el('updateBanner').hidden=true;
+  el('aboutUpdateAvailable').hidden=true;
+  el('updateCheckStatus').textContent='التطبيق محدَّث بالفعل.';
+  for(const id of ['updateDownloadStatus','aboutUpdateProgress']){
+    const line=el(id);line.hidden=true;line.textContent='';
+  }
+  setDownloadButton('التطبيق محدَّث بالفعل',true);
+}
+function updateInstructions(){
+ const e=el('updateInstructions');e.textContent='';
+ const intro=document.createElement('strong');intro.textContent='طريقة التحديث:';e.appendChild(intro);
+ const steps=[
+  '1. اضغط «تحميل التحديث»؛ سيتولى التطبيق تنزيل ملف APK والتحقق من سلامته وتوقيعه.',
+  '2. بعد اكتمال التنزيل ستفتح شاشة أندرويد لتأكيد التثبيت. قد يُطلب منك السماح بتثبيت التحديثات من هذا التطبيق أول مرة.',
+  '3. اختر «تثبيت» فوق الإصدار الحالي مباشرة. لا تحذف التطبيق القديم ولا تفقد إعداداته.'
+ ];
+ for(const text of steps){const p=document.createElement('div');p.textContent=text;e.appendChild(p);}
+}
+let updateDownloadReady=false;
+let currentDownloadMode='download';
+function setDownloadButton(text,disabled){
+ for(const id of ['updateDownload','aboutUpdateDownload']){
+  const button=el(id);button.textContent=text;button.disabled=!!disabled;
+ }
+}
+window.onAppUpdateInfo=function(data){
+ const status=el('updateCheckStatus');
+ if(!isRealUpdate(data)){
+  // Never claim 'up to date' while the installed build is older than an
+  // update already announced. A failed network check is not an installation.
+  const installed=nativeInstalledVersion();
+  if(acceptedUpdateVersion && compareNumericReleaseNames(installed,acceptedUpdateVersion)===-1){
+   status.textContent='لم يُثبَت التحديث '+acceptedUpdateVersion+' بعد. تحقق من رابط التنزيل وأعد المحاولة.';
+   return;
+  }
+  if(!data || data.available!==false){
+   status.textContent='تعذر تأكيد حالة الإصدار من الخادم. أعد المحاولة.';
+   return;
+  }
+  clearStaleUpdate();return;
+ }
+ if(acceptedUpdateVersion!==String(data.versionName)){
+  currentDownloadMode='download';
+  for(const id of ['updateDownloadStatus','aboutUpdateProgress']){
+   const line=el(id);line.hidden=true;line.textContent='';
+  }
+ }
+ acceptedUpdateVersion=String(data.versionName);
+ updateAvailable=true;
+ updateDownloadReady=!!data.downloadReady;
+ el('updateVersion').textContent=data.versionName||'';
+ el('updateMessage').textContent=data.message||'تم إصدار نسخة جديدة من التطبيق.';
+ el('aboutUpdateTitle').textContent='يتوفر تحديث جديد — الإصدار '+(data.versionName||'الأحدث');
+ el('aboutUpdateDetails').textContent=data.message||'تتوفر تحسينات جديدة للتطبيق.';
+ updateInstructions();
+ el('updateBanner').hidden=false;
+ el('aboutUpdateAvailable').hidden=false;
+ el('updateLater').hidden=!!data.required;
+ status.textContent='يتوفر إصدار أحدث. يمكنك تنزيله وتثبيته من داخل التطبيق.';
+ if(!updateDownloadReady){setDownloadButton('رابط التحديث غير معتمد حاليًا، أعد الفحص',true);}
+ else if(currentDownloadMode==='download')setDownloadButton('تحميل التحديث داخل التطبيق',false);
+};
+window.onAppUpdateFailure=function(){el('updateCheckStatus').textContent='تعذر فحص التحديثات. تحقق من اتصال الإنترنت.';};
+window.onUpdateDownloadState=function(data){
+ if(!data)return;
+ if(data.status==='up_to_date'){
+  // Native status messages can be stale or cached. The package installed on
+  // the device remains the authority. Do not hide a pending upgrade.
+  const installed=nativeInstalledVersion();
+  const relation=compareNumericReleaseNames(installed,acceptedUpdateVersion);
+  if(acceptedUpdateVersion && relation!==null && relation>=0){
+   clearStaleUpdate();
+  }else{
+   el('updateCheckStatus').textContent='لم يثبت تثبيت الإصدار الأحدث. أعد محاولة التنزيل أو ثبّته من الرابط الرسمي.';
+  }
+  return;
+ }
+ if(!updateAvailable||!acceptedUpdateVersion)return;
+ const state=String(data.status||''),msg=String(data.message||'');
+ const pct=Number.isFinite(Number(data.progress))&&Number(data.progress)>=0?' ('+Number(data.progress)+'٪)':'';
+ for(const id of ['updateDownloadStatus','aboutUpdateProgress']){
+  const line=el(id);line.hidden=false;line.textContent=msg+pct;
+ }
+ if(state==='downloading'||state==='fetching'||state==='verifying'){
+  currentDownloadMode='downloading';setDownloadButton('جارِ التحميل والتحقق…',true);
+ }else if(state==='ready'){
+  currentDownloadMode='ready';setDownloadButton('تثبيت التحديث الآن',false);
+ }else if(state==='installing'){
+  currentDownloadMode='ready';setDownloadButton('إعادة فتح شاشة التثبيت',false);
+ }else if(state==='error'||state==='unavailable'){
+  currentDownloadMode='download';setDownloadButton('إعادة محاولة تحميل التحديث',!updateDownloadReady);
+ }else if(state==='up_to_date'){
+  currentDownloadMode='download';setDownloadButton('التطبيق محدَّث بالفعل',true);
+ }
+};
+function triggerNativeUpdate(){
+ if(window.CurrencyHost&&CurrencyHost.downloadUpdate) CurrencyHost.downloadUpdate();
+ else el('updateCheckStatus').textContent='تعذر بدء التنزيل. يرجى التحديث من صفحة دلّالنا.';
+}
+el('updateDownload').addEventListener('click',triggerNativeUpdate);
+el('aboutUpdateDownload').addEventListener('click',triggerNativeUpdate);
+el('updateLater').addEventListener('click',()=>{el('updateBanner').hidden=true;});
+el('checkUpdates').addEventListener('click',()=>{el('updateCheckStatus').textContent='جارِ التحقق…';if(window.CurrencyHost)CurrencyHost.checkUpdates();});
+amountInput.addEventListener('input',render);
+currencySelect.addEventListener('change',render);
+el('refresh').addEventListener('click',()=>{ if(window.CurrencyHost) CurrencyHost.refresh(); });
+// Reader and system document picker are native Android functions. The PDF content is bundled offline.
+for(const button of document.querySelectorAll('[data-read]')) button.addEventListener('click',()=>{
+  if(window.CurrencyHost && CurrencyHost.openBook) CurrencyHost.openBook(button.getAttribute('data-read'));
+});
+for(const button of document.querySelectorAll('[data-save]')) button.addEventListener('click',()=>{
+  if(window.CurrencyHost && CurrencyHost.saveBook) CurrencyHost.saveBook(button.getAttribute('data-save'));
+});
+for(const button of document.querySelectorAll('[data-download-app]')) button.addEventListener('click',()=>{
+  const app=button.getAttribute('data-download-app');
+  if(!['dallalna','shamna','hasibat','midan'].includes(app))return;
+  const oldLabel=button.textContent;
+  button.textContent='جارٍ طلب التحميل…';
+  const url=app==='midan'?'https://midan-al-khabar.vercel.app/api/news?verified=midan110'
+     :app==='hasibat'?'https://midan-al-khabar.vercel.app/api/download?app=hasibat'
+     :'https://midan-al-khabar.vercel.app/api/download?app='+encodeURIComponent(app);
+  try{
+    if(window.CurrencyHost && typeof CurrencyHost.downloadOfficial==='function'){
+      CurrencyHost.downloadOfficial(app);
+    }else{
+      window.location.assign(url);
+    }
+  }catch(error){
+    window.location.assign(url);
+  }finally{
+    setTimeout(()=>{button.textContent=oldLabel;},2500);
+  }
+});
+for(const button of document.querySelectorAll('[data-external]')) button.addEventListener('click',()=>{
+  if(window.CurrencyHost && CurrencyHost.openExternal) CurrencyHost.openExternal(button.getAttribute('data-external'));
+});
+let tickerOrder=[],tickerIndex=0,tickerPrevious=-1;
+function shuffleTicker(){tickerOrder=phrases.map((_,i)=>i);for(let i=tickerOrder.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[tickerOrder[i],tickerOrder[j]]=[tickerOrder[j],tickerOrder[i]];}if(tickerOrder[0]===tickerPrevious)[tickerOrder[0],tickerOrder[1]]=[tickerOrder[1],tickerOrder[0]];tickerIndex=0;}
+function showTicker(){if(tickerIndex>=tickerOrder.length)shuffleTicker();const pos=tickerOrder[tickerIndex++];tickerPrevious=pos;const item=phrases[pos];el('tickerType').textContent=item.type;el('tickerText').textContent=item.text;el('tickerRef').textContent=item.ref;}
+shuffleTicker();showTicker();setInterval(showTicker,12000);
+const aboutScreen=el('aboutScreen');
+function syncAbout(){displayInstalledVersion();let visible=location.hash==='#about';aboutScreen.classList.toggle('show',visible);document.body.style.overflow=visible?'hidden':'';}
+el('aboutButton').addEventListener('click',()=>{amountInput.blur();location.hash='about';syncAbout();});
+el('aboutClose').addEventListener('click',()=>{if(location.hash==='#about')history.back();else{aboutScreen.classList.remove('show');document.body.style.overflow='';}});
+window.addEventListener('hashchange',syncAbout);window.addEventListener('popstate',syncAbout);
+window.addEventListener('keydown',event=>{if(event.key==='Escape'&&location.hash==='#about'){history.back();}});
+syncAbout();
+setInterval(updateStatus,30000);
+try{
+  if(window.CurrencyHost){
+    const previous=CurrencyHost.cachedRates();
+    if(previous){ try{ if(applyRates(JSON.parse(previous))) model.connection='cached'; }catch(e){} }
+    CurrencyHost.refresh();
+    if(CurrencyHost.cachedGold){const cached=CurrencyHost.cachedGold();if(cached){try{const g=JSON.parse(cached);if(validGold(g)){model.gold=g;model.goldConnection='cached';}}catch(e){}}}
+    if(CurrencyHost.checkUpdates)CurrencyHost.checkUpdates();
+  } else model.connection='offline';
+}catch(e){ model.connection='offline'; }
+
+// Native reminder category toggles continue to use the original preferences;
+// only the text-only notification receiver is replaced with the owner's 53 messages.
+function syncOwnerAdviceSchedule(){try{window.ResultShareHost?.syncAdviceSchedule?.();}catch(_){} }
+// v1.7: Automatic OS permission on first run; this panel is for opt-out and control only.
+let reminderStatus={enabled:false,granted:false,exact:false,morning:true,lessons:true,updates:true};
+function getReminderSettings(){
+ try{if(window.CurrencyHost&&CurrencyHost.reminderState)return JSON.parse(CurrencyHost.reminderState());}catch(e){}
+ return reminderStatus;
+}
+function renderReminderSettings(info){
+ reminderStatus=Object.assign({},reminderStatus,info||{});
+ const s=reminderStatus;
+ const active=!!s.enabled&&!!s.granted;
+ el('reminderState').textContent=!s.enabled?'أوقفت الإشعارات من داخل التطبيق.':!s.granted?'يلزم السماح بإشعارات التطبيق من إعدادات الهاتف.':'الإشعارات مفعّلة وصامتة. يمكنك التحكم في أنواعها أدناه.';
+ el('reminderToggle').textContent=s.enabled?'إيقاف جميع الإشعارات':'إعادة تشغيل الإشعارات';
+ el('reminderPrecise').hidden=!active||!!s.exact||!s.morning;
+ for(const [key,field] of [['prefMorning','morning'],['prefLessons','lessons'],['prefUpdates','updates']]){
+  const btn=el(key);btn.setAttribute('aria-pressed',String(!!s[field]));btn.disabled=!s.enabled;
+ }
+}
+window.onReminderStatus=function(data){renderReminderSettings(data);};
+el('reminderToggle').addEventListener('click',()=>{
+ try{
+  if(!window.CurrencyHost)return;
+  if(reminderStatus.enabled){CurrencyHost.disableReminders();}
+  else{CurrencyHost.enableReminders();}
+  setTimeout(()=>{renderReminderSettings(getReminderSettings());syncOwnerAdviceSchedule();},600);
+ }catch(e){}
+});
+for(const [key,category,field] of [['prefMorning','morning','morning'],['prefLessons','lessons','lessons'],['prefUpdates','updates','updates']]){
+ el(key).addEventListener('click',()=>{
+  try{if(!window.CurrencyHost||!CurrencyHost.setReminderCategory)return;
+   CurrencyHost.setReminderCategory(category,!reminderStatus[field]);
+   setTimeout(()=>{renderReminderSettings(getReminderSettings());syncOwnerAdviceSchedule();},350);
+  }catch(e){}
+ });
+}
+el('reminderSystemSettings').addEventListener('click',()=>{try{if(window.CurrencyHost&&CurrencyHost.openNotificationSettings)CurrencyHost.openNotificationSettings();}catch(e){}});
+el('reminderPrecise').addEventListener('click',()=>{try{if(window.CurrencyHost&&CurrencyHost.preciseMorning)CurrencyHost.preciseMorning();}catch(e){}});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)renderReminderSettings(getReminderSettings());});
+renderReminderSettings(getReminderSettings());
+
+render(); updateStatus(); renderGold();
+</script>
+<script>
+// v1.8.7 Quran live radio. This module never touches rates, books, gold, updates, or reminders.
+(function setupQuranRadio(){
+  'use strict';
+  const button=document.getElementById('quranRadioToggle');
+  const audio=document.getElementById('quranRadioAudio');
+  const status=document.getElementById('quranRadioStatus');
+  const card=document.getElementById('quranRadioCard');
+  if(!button||!audio||!status||!card)return;
+  // Direct HTTPS MP3 radio feeds. The secondary feed is used only when the first fails.
+  const feeds=['https://qurango.net/radio/mix','https://edge.mixlr.com/channel/rwumx'];
+  let wanted=false,feedIndex=0,waitingTimeout=0;
+  function show(message){status.textContent=message;}
+  function setButton(){button.textContent=wanted?'■ إيقاف':'▶ تشغيل';button.setAttribute('aria-pressed',String(wanted));}
+  function cancelTimeout(){if(waitingTimeout){clearTimeout(waitingTimeout);waitingTimeout=0;}}
+  function stopped(message){wanted=false;cancelTimeout();audio.pause();audio.removeAttribute('src');audio.load();card.classList.remove('quran-radio-playing');setButton();show(message||'تم إيقاف الإذاعة');}
+  function tryFeed(){
+    if(!wanted)return;
+    cancelTimeout();
+    if(feedIndex>=feeds.length){stopped('تعذر الاتصال بالبث. تحقق من الإنترنت، ثم حاول مجددًا.');return;}
+    show(feedIndex===0?'جارِ الاتصال بالبث المباشر…':'جارِ تجربة مصدر بث احتياطي…');
+    audio.src=feeds[feedIndex];audio.load();
+    waitingTimeout=setTimeout(()=>{if(wanted&&audio.paused){feedIndex++;tryFeed();}},22000);
+    try{
+      const result=audio.play();
+      if(result&&typeof result.catch==='function')result.catch(()=>{if(wanted){feedIndex++;tryFeed();}});
+    }catch(e){if(wanted){feedIndex++;tryFeed();}}
+  }
+  button.addEventListener('click',()=>{
+    if(wanted){stopped();return;}
+    if(navigator.onLine===false){show('لا يوجد اتصال بالإنترنت لتشغيل البث.');return;}
+    document.dispatchEvent(new CustomEvent('hasibat-radio-start',{detail:{station:'quran'}}));
+    wanted=true;feedIndex=0;setButton();tryFeed();
+  });
+  document.addEventListener('hasibat-radio-start',e=>{if(e.detail?.station==='miraath'&&wanted)stopped('تم إيقاف إذاعة القرآن الكريم عند تشغيل ميراث الأنبياء');});
+  audio.addEventListener('playing',()=>{if(!wanted)return;cancelTimeout();card.classList.add('quran-radio-playing');show('يعمل البث المباشر الآن · استماع طيب');});
+  audio.addEventListener('waiting',()=>{if(wanted)show('جارِ تحميل الصوت المباشر…');});
+  audio.addEventListener('error',()=>{if(!wanted)return;feedIndex++;tryFeed();});
+  audio.addEventListener('ended',()=>{if(!wanted)return;feedIndex=0;tryFeed();});
+  window.addEventListener('offline',()=>{if(wanted)show('انقطع الإنترنت؛ بانتظار عودة الاتصال…');});
+  window.addEventListener('online',()=>{if(wanted&&audio.paused){feedIndex=0;tryFeed();}});
+  try{
+    if('mediaSession' in navigator){
+      navigator.mediaSession.metadata=new MediaMetadata({title:'إذاعة القرآن الكريم',artist:'بث مباشر',album:'حاسبة الليرة السورية'});
+      navigator.mediaSession.setActionHandler('play',()=>{if(!wanted)button.click();else audio.play().catch(()=>{});});
+      navigator.mediaSession.setActionHandler('pause',()=>{if(wanted)button.click();});
+      navigator.mediaSession.setActionHandler('stop',()=>{if(wanted)button.click();});
+    }
+  }catch(e){} // Older Android WebViews do not expose Media Session.
+  setButton();
+})();
+</script>
+<script>
+// Miraath Radio: verified HTTPS audio/mpeg live endpoint. No external-page button.
+(function setupMiraathRadio(){
+ 'use strict';
+ const card=document.getElementById('miraathRadioCard');
+ const button=document.getElementById('miraathRadioToggle');
+ const audio=document.getElementById('miraathRadioAudio');
+ const status=document.getElementById('miraathRadioStatus');
+ if(!card||!button||!audio||!status)return;
+ const stream='https://radio.al7eah.net/8010/stream';
+ let active=false,watchdog=0;
+ function label(t){status.textContent=t;}
+ function clear(){if(watchdog){clearTimeout(watchdog);watchdog=0;}}
+ function stop(message){
+  active=false;clear();audio.pause();audio.removeAttribute('src');audio.load();
+  card.classList.remove('quran-radio-playing');
+  button.textContent='▶ تشغيل';button.setAttribute('aria-pressed','false');
+  label(message||'');
+ }
+ function start(){
+  if(!active)return;
+  clear();label('جارِ الاتصال بالبث المباشر…');
+  audio.src=stream;audio.load();
+  // HTTPS audio/mpeg verified reachable. Never fall back to the obsolete :7000 host.
+  watchdog=setTimeout(()=>{if(active&&audio.paused)stop('تعذر تشغيل البث. حاول مجددًا.');},24000);
+  try{
+   const promise=audio.play();
+   if(promise&&typeof promise.catch==='function')promise.catch(()=>{if(active)stop('تعذر تشغيل البث. حاول مجددًا.');});
+  }catch(_){if(active)stop('تعذر تشغيل البث. حاول مجددًا.');}
+ }
+ button.addEventListener('click',()=>{
+  if(active){stop();return;}
+  if(navigator.onLine===false){label('لا يوجد اتصال بالإنترنت.');return;}
+  document.dispatchEvent(new CustomEvent('hasibat-radio-start',{detail:{station:'miraath'}}));
+  active=true;button.textContent='■ إيقاف';button.setAttribute('aria-pressed','true');start();
+ });
+ document.addEventListener('hasibat-radio-start',e=>{if(e.detail?.station==='quran'&&active)stop();});
+ audio.addEventListener('playing',()=>{
+  if(!active)return;
+  clear();card.classList.add('quran-radio-playing');label('البث يعمل الآن');
+ });
+ audio.addEventListener('waiting',()=>{if(active)label('جارِ تحميل البث…');});
+ audio.addEventListener('error',()=>{if(active)stop('تعذر تشغيل البث. حاول مجددًا.');});
+ audio.addEventListener('ended',()=>{if(active)stop('انتهى البث. اضغط تشغيل للمحاولة مجددًا.');});
+ window.addEventListener('offline',()=>{if(active)label('انقطع اتصال الإنترنت.');});
+ window.addEventListener('online',()=>{if(active&&audio.paused)start();});
+})();
+</script>
+<script src="fuel-widget.js"></script>
+<script src="world-currencies.js"></script>
+<script src="share-results.js"></script>
+<script src="share-prices.js"></script>
+</body>
+</html>
