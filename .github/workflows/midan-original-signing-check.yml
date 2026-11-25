@@ -1,0 +1,58 @@
+name: Midan original signing readiness (no APK publication)
+on:
+  push:
+    branches: [midan-original-signing-check-20261125]
+    paths: ['.github/workflows/midan-original-signing-check.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    environment: android-signing
+    timeout-minutes: 5
+    steps:
+      - name: Verify original signing key in protected environment
+        shell: bash
+        env:
+          MIDAN_ENCRYPTED_KEY_B64: ${{ secrets.MIDAN_ENCRYPTED_KEY_B64 }}
+          MIDAN_GPG_PASSPHRASE: ${{ secrets.MIDAN_GPG_PASSPHRASE }}
+          MIDAN_STORE_PASSWORD: ${{ secrets.MIDAN_STORE_PASSWORD }}
+          MIDAN_KEY_PASSWORD: ${{ secrets.MIDAN_KEY_PASSWORD }}
+          MIDAN_ZIP_PASSWORD: ${{ secrets.MIDAN_ZIP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          for name in MIDAN_ENCRYPTED_KEY_B64 MIDAN_GPG_PASSPHRASE MIDAN_STORE_PASSWORD MIDAN_KEY_PASSWORD; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error::Required signing secret is not available in this environment: $name"
+              exit 1
+            fi
+          done
+          work="$(mktemp -d)"
+          trap 'rm -rf "$work"' EXIT
+          export GNUPGHOME="$work/gpg"
+          mkdir -m 700 "$GNUPGHOME"
+          printf '%s' "$MIDAN_ENCRYPTED_KEY_B64" | base64 -d > "$work/signing.gpg"
+          printf '%s' "$MIDAN_GPG_PASSPHRASE" | gpg --batch --no-tty --pinentry-mode loopback --passphrase-fd 0 --output "$work/signing.zip" --decrypt "$work/signing.gpg" >/dev/null 2>&1 || { echo "::error::Protected signing archive decryption failed"; exit 1; }
+          export MIDAN_CHECK_DIR="$work"
+          python3 - <<'PY'
+          import os, pathlib, zipfile
+          root = pathlib.Path(os.environ['MIDAN_CHECK_DIR'])
+          try:
+              with zipfile.ZipFile(root/'signing.zip') as z:
+                  entries=[e for e in z.infolist() if pathlib.PurePosixPath(e.filename).name=='midan-release.p12']
+                  if len(entries)!=1 or entries[0].file_size>1000000:
+                      raise ValueError()
+                  data=z.read(entries[0],pwd=os.environ.get('MIDAN_ZIP_PASSWORD','').encode() or None)
+                  (root/'original.p12').write_bytes(data)
+          except Exception:
+              raise SystemExit('Protected keystore extraction failed')
+          PY
+          keytool -exportcert -alias midanrelease -storetype PKCS12 -keystore "$work/original.p12" -storepass:env MIDAN_STORE_PASSWORD -file "$work/cert.der" >/dev/null 2>&1 || { echo "::error::Original key alias or store password failed"; exit 1; }
+          printf '%s  %s\n' '079a8d353edd9aaff1f8731fe459d64152ca2164d66fe081c2fbc73d32ef5a3c' "$work/cert.der" | sha256sum --check --status || { echo "::error::Certificate differs from original APK"; exit 1; }
+          printf 'Midan signing readiness check\n' > "$work/challenge.txt"
+          jar --create --file "$work/challenge.jar" -C "$work" challenge.txt
+          jarsigner -keystore "$work/original.p12" -storetype PKCS12 -storepass:env MIDAN_STORE_PASSWORD -keypass:env MIDAN_KEY_PASSWORD "$work/challenge.jar" midanrelease >/dev/null 2>&1 || { echo "::error::Private key signing failed"; exit 1; }
+          jarsigner -verify "$work/challenge.jar" >/dev/null 2>&1 || { echo "::error::Signature verification failed"; exit 1; }
+          echo "Original certificate matched and private key signing verified. No key, password, archive, or APK exported."
