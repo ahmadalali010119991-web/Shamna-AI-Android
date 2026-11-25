@@ -1,0 +1,32 @@
+name: Diagnose video service availability without media upload
+on:
+  push:
+    branches: [midan-book-recovery-20261125]
+    paths: ['.github/workflows/midan-video-health-independent.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Single independent read-only health request
+        run: |
+          set -eu
+          code=$(curl -sS --max-time 70 -D headers.txt -o response.txt -w '%{http_code}' https://midan-video-worker-preflight.onrender.com/health)
+          echo "VIDEO_HEALTH_HTTP $code"
+          python3 - <<'PY'
+          import json
+          h={}
+          for l in open('headers.txt'):
+              if ':' in l:
+                  k,v=l.split(':',1)
+                  h[k.strip().lower()]=v.strip()
+          print('HEALTH_HEADERS',json.dumps({k:h[k] for k in ('content-type','retry-after','server') if k in h}))
+          try:
+              j=json.load(open('response.txt'))
+              print('HEALTH_FIELDS',json.dumps({k:j[k] for k in ('ok','version','busy','ready','processingEnabled','code') if k in j}))
+          except (ValueError,TypeError):
+              print('HEALTH_NON_JSON')
+          PY
