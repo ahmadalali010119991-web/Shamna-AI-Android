@@ -1,0 +1,43 @@
+name: Restore original book cover artwork
+on:
+  push:
+    branches: [midan-book-recovery-20261125]
+    paths: ['.github/workflows/midan-restore-book-covers.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: midan-book-recovery-20261125
+      - name: Extract only cover pages from exact original PDFs
+        shell: bash
+        run: |
+          set -eu
+          t="$(mktemp -d)"
+          trap 'rm -rf "$t"' EXIT
+          curl -fLsS --retry 2 --max-time 60 'https://github.com/ahmadalali010119991-web/Shamna-AI-Android/releases/download/hasibat-v1.8.25/Hasibat-AlLira-v1.8.25.apk' -o "$t/original.apk"
+          printf '%s  %s\n' '7e33b13e78027a27ead931aa1f8bc739e20880598f7fb162d3b6cffb611575d4' "$t/original.apk" | sha256sum -c
+          python3 - "$t" <<'PY'
+          import zipfile,hashlib,pathlib,sys
+          root=pathlib.Path(sys.argv[1])
+          with zipfile.ZipFile(root/'original.apk') as z:
+              for n,h in [('islam-almutab','44eaca7c414e3e907c6586bfcaa42a269a8bdbff72f4c0a0111d51e885ac78fb'),('islam-la-yatab','7d862a63bbf36b14dbe5b453f16f0c1556ac1c488bd248a82c4e1b01204225b1')]:
+                  b=z.read('assets/books/'+n+'.pdf')
+                  assert hashlib.sha256(b).hexdigest()==h
+                  (root/(n+'.pdf')).write_bytes(b)
+          PY
+          command -v pdftoppm
+          mkdir -p midan-restored-books/covers
+          for n in islam-almutab islam-la-yatab; do
+            pdftoppm -f 1 -l 1 -scale-to 420 -jpeg -jpegopt quality=84 -singlefile "$t/$n.pdf" "midan-restored-books/covers/$n"
+          done
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- midan-restored-books/covers/islam-almutab.jpg midan-restored-books/covers/islam-la-yatab.jpg
+          sha256sum midan-restored-books/covers/*.jpg
+          if ! git diff --cached --quiet; then git commit -m 'restore(midan): exact original book cover artwork'; git push origin HEAD:refs/heads/midan-book-recovery-20261125; fi
