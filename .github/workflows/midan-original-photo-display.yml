@@ -1,0 +1,31 @@
+name: Verify live original news images
+on:
+  push:
+    branches: [midan-book-recovery-20261125]
+    paths: ['.github/workflows/midan-original-photo-display.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - run: |
+          python3 - <<'PY'
+          import urllib.request,json
+          base='https://midan-archive.midan-khabar.workers.dev'
+          for mid in [1602,1603,1604]:
+              a=json.load(urllib.request.urlopen(base+'/api/article?mid='+str(mid),timeout=20))['article']
+              assert a['sourcePhotoReference'] is True
+              assert a['imageUrl'].startswith('https://cdn.sananews.sy/')
+              assert a['images'][0]==a['imageUrl']
+              assert '/media/title-cards/' in a['shareImageUrl']
+              req=urllib.request.Request(a['imageUrl'],headers={'User-Agent':'Mozilla/5.0','Range':'bytes=0-65535'})
+              with urllib.request.urlopen(req,timeout=20) as r:
+                  assert r.status in [200,206]
+                  assert r.headers['Content-Type'].startswith('image/')
+                  b=r.read(16)
+                  assert b.startswith((b'\xff\xd8\xff',b'\x89PNG'))
+              print('verified',mid,'original source photo',a['imageUrl'],'sharing card separate')
+          PY
