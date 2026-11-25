@@ -1,117 +1,14 @@
-# Run verified private-source99 direct media backfill through the existing GitHub OIDC bridge 2026-11-13.
-# Trigger authenticated production sync after Private_Source99 auto-publication fix 2026-11-13. Source posts 6 and 7; existing queue prevents duplicates.
-# Production v4 media recovery reporting smoke-trigger 2026-11-13.
-# Incident 552 queue diagnostics live-check 2026-11-13.
-# Diagnose Supabase fallback state interface after Blob suspension (2026-11-13).
-# Verify multi-route media queue is persisted through authenticated Supabase fallback 2026-11-13.
-name: Publish Midan news and app updates to Telegram
-# Trigger one authenticated production sync after multi-route media v4 deployment (2026-11-13).
-# Live Syrian field voices enabled; preserve source attribution and prevent replay.
-# Publish revised, source-grounded introductions for the four APK apps (once only).
-# Telegram-safe pacing enabled for news and field voices.
-# Arabic news, precise grounded location labels, native APK documents and icon cards.
-# Verify safe two-news-per-cycle scheduling and APK upload retry.
-# Run the authenticated Arabic-only handler; the push-test endpoint now delegates to it.
-# No foreign-language link previews; apps are native APK attachments with published icons.
+# Retired legacy Midan-only publication workflow after Cloudflare migration.
+# The previous implementation remains in Git history. Do not invoke the old shared bridge.
+name: Midan legacy publisher retired
 on:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/midan-telegram-sync.yml']
-  schedule:
-    - cron: '3-59/5 * * * *'
   workflow_dispatch:
-
 permissions:
   contents: read
-  id-token: write
-
-concurrency:
-  group: midan-telegram-sync
-  cancel-in-progress: false
-
 jobs:
-  sync:
+  retired:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 1
     steps:
-      - name: Authenticate with GitHub OIDC and sync channel
-        shell: bash
-        env:
-          BRIDGE_URL: https://dallalna-telegram-bridge.vercel.app/api/sync-v2
-        run: |
-          set -euo pipefail
-          # All events use the same authenticated Syrian-first quality-checked publication engine.
-          if [[ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" || -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]]; then
-            echo "GitHub OIDC is not available"
-            exit 1
-          fi
-          token="$(curl --fail --silent --show-error \
-            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=dallalna-telegram-bridge" | jq -r '.value')"
-          if [[ -z "$token" || "$token" == "null" ]]; then
-            echo "Could not obtain OIDC token"
-            exit 1
-          fi
-          response="$(curl --fail-with-body --silent --show-error \
-            --retry 2 --retry-delay 8 --max-time 120 \
-            -X POST -H "Authorization: Bearer ${token}" \
-            -H "Content-Type: application/json" --data '{}' \
-            "${BRIDGE_URL}")"
-          # Do not report a successful CI run when the publisher returned HTTP 200
-          # with ok:false, an error field, or invalid JSON.
-          printf '%s\n' "$response" | jq '{ok,status,error,seeded,sentNews,sentVoices,sentApps,pendingNews,eligibleCount,publicationGuard,rates,errors,mediaRecovery,videoWatchButtons}'
-          if ! printf '%s\n' "$response" | jq -e 'type == "object" and .ok == true and (.error == null or .error == "")' >/dev/null; then
-            echo "::error::Midan Telegram bridge reported a publishing failure; inspect its response and Vercel runtime logs."
-            exit 1
-          fi
-          # Distinguish news-sync success from failed pending-media recovery.
-          # Media failures must remain visible without interrupting ordinary news publishing.
-          printf '%s\n' "$response" | jq -r '
-            if (.mediaRecovery.skipped == "state_write_failed") or
-               (.mediaRecovery.reason == "write_rejected") or
-               ((.mediaRecovery.cause // "") | startswith("seed_error:"))
-            then "::warning::Pending media recovery is not persisting: " +
-                 ((.mediaRecovery.cause // .mediaRecovery.reason // "unknown") | tostring)
-            else empty end
-          '
-          # Queue backlog is visible even if it is not itself an error; workers
-          # may need retries for Telegram rate limits or missing source media.
-          printf '%s\n' "$response" | jq -r '
-            if (.pendingNews | type) == "number" and .pendingNews > 0
-            then "::notice::Telegram has " + (.pendingNews|tostring) + " pending news items."
-            else empty end
-          '
-          # APK uploads and app updates are dispatched idempotently by the minute heartbeat.
-          # Do not repost existing applications on a GitHub push.
-
-          # Secondary 07:00/19:00 Damascus photo attempt (daily Vercel cron is primary).
-          # Backend idempotency prevents duplicate images for a time slot.
-          if [[ "$GITHUB_EVENT_NAME" != "push" ]]; then
-            if ! curl --silent --show-error --fail-with-body \
-              --retry 1 --retry-delay 4 --max-time 45 \
-              -X POST -H "Authorization: Bearer ${token}" \
-              -H "Content-Type: application/json" --data '{}' \
-              "https://dallalna-telegram-bridge.vercel.app/api/daily-v2" \
-              | jq '{ok,status,period,reason}'; then
-              echo "::warning::Daily exchange-image check failed; news sync remained successful."
-            fi
-          fi
-
-# Social button repair: align existing Telegram channel posts with @alislam_almutab_book on both platforms.
-# Editorial test: inside Syria > Syrians abroad/refugees > major Middle East > exceptional world, no unrelated stories.
-
-# Editorial policy: Syrian domestic first; Syrian diaspora second; major Middle East third; exceptional world only.
-
-# Production bridge post-deploy OIDC sync verification: 2026-11-12; keep the authenticated publisher path unchanged.
-
-# 2026-11-13: authorized live idempotency and repair-ledger observation; no configuration change.
-
-# Verify live production transactional media-retry queue after safe switch (2026-11-14).
-
-# Production test: consume disposable non-channel media queue job; no real Telegram post (2026-11-14).
-
-# Verify transient HTTP 503 video-watch retry in production (2026-11-14).
-
-# Verify site-news alternate transport for video watcher in production (2026-11-14).
-
-# Verify optional ten-minute video watcher cadence after production rollout (2026-11-14).
+      - name: Confirm legacy workflow is retired
+        run: echo "Midan publication is managed through Cloudflare. No legacy requests or Telegram messages were sent."
