@@ -1,0 +1,40 @@
+name: Restore the exact freely distributed Midan book
+on:
+  push:
+    branches: [midan-book-recovery-20261125]
+    paths: ['.github/workflows/midan-free-book-restore.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: midan-book-recovery-20261125
+      - name: Restore only the free book, pinned to the previously released APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp)"
+          trap 'rm -f "$tmp"' EXIT
+          curl -fLsS --retry 2 --max-time 60 'https://github.com/ahmadalali010119991-web/Shamna-AI-Android/releases/download/hasibat-v1.8.25/Hasibat-AlLira-v1.8.25.apk' -o "$tmp"
+          printf '%s  %s\n' '7e33b13e78027a27ead931aa1f8bc739e20880598f7fb162d3b6cffb611575d4' "$tmp" | sha256sum -c
+          mkdir -p midan-restored-books
+          python3 - "$tmp" <<'PY'
+          import hashlib, pathlib, sys, zipfile
+          with zipfile.ZipFile(sys.argv[1]) as z:
+              data=z.read('assets/books/islam-almutab.pdf')
+          assert len(data)==4600328 and hashlib.sha256(data).hexdigest()=='44eaca7c414e3e907c6586bfcaa42a269a8bdbff72f4c0a0111d51e885ac78fb' and data.startswith(b'%PDF-')
+          pathlib.Path('midan-restored-books/islam-almutab.pdf').write_bytes(data)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- midan-restored-books/islam-almutab.pdf
+          if git diff --cached --quiet; then echo "Already restored"; else
+            git commit -m 'restore(midan): exact freely distributed Islam Almutab PDF'
+            git push origin HEAD:refs/heads/midan-book-recovery-20261125
+          fi
+          echo "Restored verified free PDF at $(git rev-parse HEAD)"
