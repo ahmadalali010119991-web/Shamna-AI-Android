@@ -1,0 +1,75 @@
+name: Recover and verify original Hasibat generator
+on:
+  push:
+    branches: [midan-book-recovery-20261125]
+    paths: ['.github/workflows/hasibat-original-renderer-recovery.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  original:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: midan-book-recovery-20261125
+      - name: Extract unchanged calculator assets from verified official APK
+        run: |
+          set -eu
+          curl -fLsS --max-time 120 'https://github.com/ahmadalali010119991-web/Shamna-AI-Android/releases/download/hasibat-v1.8.24/Hasibat-AlLira-v1.8.24.apk' -o /tmp/hasibat.apk
+          echo 'd25fd6312a01aae5789dd60d9b1e6b873b82e178fcafa324ff0c458b77aefdbe  /tmp/hasibat.apk' | sha256sum -c -
+          mkdir -p hasibat-original-renderer
+          for n in index.html share-results.js share-prices.js fuel-widget.js world-currencies.js fuel-widget.css world-currencies.css app_logo.png awareness-53.json; do
+            unzip -p /tmp/hasibat.apk "assets/$n" > "hasibat-original-renderer/$n"
+            test -s "hasibat-original-renderer/$n"
+          done
+          cd hasibat-original-renderer
+          echo 'd0a96137f9ee366d88c9cb53cf5657baefc9b3e35f18888002f1246195c2bb37  share-results.js' | sha256sum -c -
+          echo 'efc99609e4e0488918e52211c775a6364c7565f96c4dcb404567640b92c7e867  share-prices.js' | sha256sum -c -
+          sha256sum index.html share-results.js share-prices.js fuel-widget.js world-currencies.js fuel-widget.css world-currencies.css app_logo.png awareness-53.json > SHA256SUMS
+          printf '%s\n' 'Original Hasibat APK 1.8.24. The two image generators are byte-identical to owner archive 1.8.26. No alternative drawing implementation.' > SOURCE.txt
+      - name: Test original currency, gold and fuel generators using synthetic test inputs only
+        run: |
+          set -eu
+          python3 -m http.server 8765 --bind 127.0.0.1 --directory hasibat-original-renderer >/tmp/hasibat-http.log 2>&1 &
+          export CHROME_PATH="$(command -v google-chrome || command -v chromium)"
+          cat >/tmp/test-original.mjs <<'JS'
+          import assert from 'node:assert/strict';
+          import {spawn} from 'node:child_process';
+          import {writeFileSync,mkdtempSync} from 'node:fs';
+          import {tmpdir} from 'node:os';
+          import {join} from 'node:path';
+          const chrome=spawn(process.env.CHROME_PATH,['--headless=new','--user-data-dir='+mkdtempSync(join(tmpdir(),'hasibat-')),'--no-sandbox','--disable-dev-shm-usage','--remote-debugging-port=9222','--remote-allow-origins=*','about:blank']);
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          try{
+          let tabs;for(let i=0;i<80;i++){try{tabs=await(await fetch('http://127.0.0.1:9222/json/list')).json();break}catch{await sleep(250)}}assert(tabs?.length);
+          const ws=new WebSocket(tabs.find(x=>x.type==='page').webSocketDebuggerUrl);await new Promise((resolve,reject)=>{ws.onopen=resolve;ws.onerror=reject});let seq=0;const pending=new Map();ws.onmessage=e=>{const m=JSON.parse(e.data),p=pending.get(m.id);if(p){pending.delete(m.id);clearTimeout(p.timer);m.error?p.reject(Error(m.error.message)):p.resolve(m.result)}};
+          function cdp(method,params={}){return new Promise((resolve,reject)=>{const id=++seq,timer=setTimeout(()=>{pending.delete(id);reject(Error('CDP timeout '+method))},30000);pending.set(id,{resolve,reject,timer});ws.send(JSON.stringify({id,method,params}))})}
+          async function ev(expression){const r=await cdp('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result.value}
+          await cdp('Network.enable');await cdp('Network.setBlockedURLs',{urls:['https://*']});await cdp('Emulation.setTimezoneOverride',{timezoneId:'Asia/Damascus'});await cdp('Page.enable');await cdp('Page.navigate',{url:'http://127.0.0.1:8765/index.html'});
+          let ready=false;for(let i=0;i<80;i++){try{ready=await ev("!!window.HasibatShareTools&&typeof window.HasibatFuelReceive==='function'");if(ready)break}catch{}await sleep(250)}assert(ready,'original app renderer loaded');
+          await ev(`(()=>{const now=Date.now();onAppRates({usdBuy:150,usdSell:152,tryBuy:2.98,trySell:3,eurBuy:165,eurSell:167,checkedAt:now});const gold={checkedAt:now};for(const k of [24,22,21,18,14])gold['g'+k]={sypBuy:k*600,sypSell:k*610,usdBuy:k*4,usdSell:k*4.1};onAppGold(gold);HasibatFuelReceive({source:'https://sp-today.com/energy',sourceUpdatedAt:'25/11/2026',checkedAt:now,rows:[{id:'gasoline95',newSyp:195},{id:'gasoline90',newSyp:185},{id:'diesel',newSyp:175},{id:'lpg10kg',newSyp:1600}]});document.getElementById('amountInput').value='1';document.getElementById('currencySelect').value='usd';render();return true})()`);
+          for(const [kind,button] of [['currency','shareResults'],['gold','shareGoldResults'],['fuel','shareFuelResults']]){
+          await ev("document.getElementById('shareResultsPreview')?.remove();document.getElementById("+JSON.stringify(button)+").click();true");
+          let png;for(let i=0;i<80;i++){png=await ev("document.querySelector('#shareResultsPreview img')?.naturalWidth===1080?document.querySelector('#shareResultsPreview img').src:null");if(png)break;await sleep(250)}
+          assert(png?.startsWith('data:image/png;base64,'),'original '+kind+' generator');const raw=Buffer.from(png.split(',')[1],'base64');assert.equal(raw.readUInt32BE(16),1080);assert(raw.length>20000);writeFileSync('test-'+kind+'.png',raw);console.log('ORIGINAL_HASIBAT',kind,raw.readUInt32BE(16),raw.readUInt32BE(20),raw.length);
+          }
+          ws.close();
+          }finally{chrome.kill('SIGTERM')}
+          JS
+          node /tmp/test-original.mjs
+      - name: Preserve exact calculator source on recovery branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add hasibat-original-renderer
+          if ! git diff --cached --quiet; then
+            git commit -m "restore: original signed Hasibat calculator image assets"
+            git push origin HEAD:midan-book-recovery-20261125
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hasibat-original-renderer-fixture-test
+          path: test-*.png
+          retention-days: 3
