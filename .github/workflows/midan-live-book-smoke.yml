@@ -1,0 +1,27 @@
+name: Verify live Midan book route
+on:
+  push:
+    branches: [midan-book-recovery-20261125]
+    paths: ['.github/workflows/midan-live-book-smoke.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Verify PDF origin and live route without exposing private data
+        shell: bash
+        run: |
+          set -u
+          base='https://midan-archive.midan-khabar.workers.dev'
+          for pair in "origin|https://raw.githubusercontent.com/ahmadalali010119991-web/Shamna-AI-Android/7d57b4e16dc4bf39dfeedc563dfe9eeb8305a041/midan-restored-books/islam-almutab.pdf" "live|$base/media/books/islam-almutab.pdf" "download|$base/api/download?book=islam-almutab"; do
+            name="${pair%%|*}"; url="${pair#*|}"
+            if curl -sSL --max-time 25 -o "$name.pdf" -w "$name HTTP %{http_code} bytes %{size_download} MIME %{content_type}\n" "$url"; then
+              sha256sum "$name.pdf"
+              if head -c 5 "$name.pdf" | grep -q '^%PDF-'; then echo "$name PDF signature OK"; fi
+            fi
+          done
+          printf '%s  live.pdf\n' '44eaca7c414e3e907c6586bfcaa42a269a8bdbff72f4c0a0111d51e885ac78fb' | sha256sum -c
+          printf '%s  download.pdf\n' '44eaca7c414e3e907c6586bfcaa42a269a8bdbff72f4c0a0111d51e885ac78fb' | sha256sum -c
