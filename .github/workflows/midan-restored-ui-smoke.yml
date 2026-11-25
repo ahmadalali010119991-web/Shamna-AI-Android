@@ -39,3 +39,20 @@ jobs:
               b=p.read_bytes()
               print(p.name,len(b),hashlib.sha256(b).hexdigest(),'JPEG',b.startswith(b'\xff\xd8\xff'))
           PY
+          curl -fLsS --max-time 20 "$base/site.js" -o live-site.js
+          node --check live-site.js
+          curl -fLsS --max-time 20 "$base/news-card-studio.js" -o live-studio.js
+          node --check live-studio.js
+          for n in islam-almutab islam-la-yatab; do
+            curl -fLsS --max-time 20 "https://raw.githubusercontent.com/ahmadalali010119991-web/Shamna-AI-Android/964d4fc25c5901bbaa19fb5ae46d9af5a4ce8412/midan-restored-books/covers/$n.jpg" -o "cover-$n.jpg" -w "cover $n status %{http_code} bytes %{size_download} MIME %{content_type}\n"
+            python3 -c 'import sys; assert open(sys.argv[1],"rb").read(3)==bytes.fromhex("ffd8ff")' "cover-$n.jpg"
+          done
+          if ! head -c 3 photo-proxy.jpg | grep -q '^'; then true; fi
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          data=Path('photo-proxy.jpg').read_bytes()
+          if not data.startswith(bytes.fromhex('ffd8ff')):
+              try: print('Photo proxy status detail',json.loads(data))
+              except: print('Photo proxy not JPEG')
+          PY
