@@ -23,4 +23,16 @@ jobs:
               dates=re.findall(r'<time\b[^>]*datetime="([^"]+)"',html)
               text=re.findall(r'class="[^"]*tgme_widget_message_text[^"]*"',html)
               print('post',id,'dates',dates,'text_nodes',len(text),'photo',html.count('tgme_widget_message_photo_wrap'),'video',html.count('tgme_widget_message_video_player'))
+          class P(HTMLParser):
+              def __init__(self): super().__init__(convert_charrefs=True);self.stack=[];self.post=None;self.cur=[]
+              def handle_starttag(self,t,a):
+                  a=dict(a);c=a.get('class','');id=a.get('data-post','')
+                  if id.lower().startswith('private_source99/'): self.post=id;print('CARD',id)
+                  if 'tgme_widget_message_text' in c or (t=='time' and 'datetime' in a):
+                      print('NODE',self.post,t,c,'parents',' > '.join(x[1] or x[0] for x in self.stack[-4:]),'date',a.get('datetime',''))
+                  if t not in ('area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'): self.stack.append((t,c))
+              def handle_endtag(self,t):
+                  for i in range(len(self.stack)-1,-1,-1):
+                      if self.stack[i][0]==t: del self.stack[i:];break
+          P().feed(s)
           PY
