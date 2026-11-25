@@ -10,7 +10,8 @@ execFileSync('ffprobe',['-version'],{stdio:'ignore',timeout:5000});
 archive.fill(0);
 if(process.argv.includes('--check-only')){console.log('ciphertext and dependencies verified');process.exit(0)}
 // Keep the build-only test unchanged; enable the authenticated worker only with an explicit runtime flag.
-if(process.env.MIDAN_WORKER_ENABLED==='1'){
+const runtimeConfigured=/^[a-f0-9]{64}$/.test(process.env.MIDAN_ARCHIVE_KEY||'')&&typeof process.env.MIDAN_WORKER_KEY==='string'&&Buffer.byteLength(process.env.MIDAN_WORKER_KEY)>=32;
+if(process.env.MIDAN_WORKER_ENABLED==='1'&&runtimeConfigured){
  require('./bootstrap.cjs');
  return;
 }
@@ -34,5 +35,5 @@ const synthetic=syntheticTest();
 http.createServer((req,res)=>{
  const health=req.method==='GET'&&req.url==='/health';
  res.writeHead(health?200:503,{'content-type':'application/json','cache-control':'no-store'});
- res.end(JSON.stringify({ok:false,ready:false,mode:'build-verification-only',archiveVerified:true,dependenciesVerified:true,processingEnabled:false,synthetic}));
+ res.end(JSON.stringify({ok:false,ready:false,mode:'build-verification-only',archiveVerified:true,dependenciesVerified:true,processingEnabled:false,runtimeConfigured,activationRequested:process.env.MIDAN_WORKER_ENABLED==='1',synthetic}));
 }).listen(Number(process.env.PORT||8080),'0.0.0.0');
