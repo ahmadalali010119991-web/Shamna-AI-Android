@@ -1,0 +1,28 @@
+name: Verify archived Telegram photo transport
+on:
+  push:
+    branches: [midan-book-recovery-20261125]
+    paths: ['.github/workflows/midan-archive-photo-transport.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Read exact restored archive photos without exposing credentials
+        run: |
+          set -eu
+          base='https://midan-archive.midan-khabar.workers.dev'
+          for pair in 1221/1 1221/2 844/0 845/0; do
+            name="${pair//\//-}"
+            curl -sS --max-time 35 -D "$name.headers" -o "$name.bin" -w "$pair HTTP %{http_code} bytes %{size_download}\n" "$base/media/archived-photo/$pair" || true
+            grep -iE '^x-midan-media-(state|resolution):' "$name.headers" || true
+          done
+          python3 - <<'PY'
+          import pathlib
+          for p in pathlib.Path('.').glob('*.bin'):
+              b=p.read_bytes()
+              print(p.name,'valid image',b.startswith(bytes.fromhex('ffd8ff')) or b.startswith(bytes.fromhex('89504e470d0a1a0a')))
+          PY
