@@ -1,0 +1,32 @@
+name: Inspect missing private video attachment
+on:
+  push:
+    branches: [midan-book-recovery-20261125]
+    paths: ['.github/workflows/midan-owner-video-attachment-probe.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - run: |
+          set -eu
+          for mid in 21 24 26; do
+            curl -fLsS --max-time 15 "https://t.me/Private_Source99/$mid?embed=1" -o "post-$mid.html"
+          done
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          import re
+          class P(HTMLParser):
+              def handle_starttag(self,t,a):
+                  a=dict(a)
+                  c=a.get('class','')
+                  if t in ['video','source'] or 'video' in c or 'document' in c:
+                      print('MEDIA',t,c[:100], 'attrs',sorted(a),'has_video_url',any('.mp4' in v for v in a.values() if isinstance(v,str)))
+          for mid in [21,24,26]:
+              s=open(f'post-{mid}.html').read()
+              print('POST',mid,'identity',bool(re.search(r'data-post="Private_Source99/'+str(mid)+'"',s,re.I)),'mp4 occurrences',s.count('.mp4'))
+              P().feed(s)
+          PY
