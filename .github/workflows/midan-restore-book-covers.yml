@@ -31,6 +31,7 @@ jobs:
                   assert hashlib.sha256(b).hexdigest()==h
                   (root/(n+'.pdf')).write_bytes(b)
           PY
+          if ! command -v pdftoppm >/dev/null; then sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils; fi
           command -v pdftoppm
           mkdir -p midan-restored-books/covers
           for n in islam-almutab islam-la-yatab; do
