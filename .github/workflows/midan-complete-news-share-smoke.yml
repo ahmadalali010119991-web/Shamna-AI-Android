@@ -35,6 +35,7 @@ jobs:
           console.log('LIVE SHARE RESULTS '+JSON.stringify(result));
           assert.equal(result.find(x=>x.id===1599)?.success,true,'reported article must share');
           assert.equal(result.find(x=>x.id===1221)?.success,true,'multi-photo article must share');
+          assert.equal(result.find(x=>x.id===1221)?.photos,3,'must include all three recorded photos');
           const sample=await ev("window.testPng");writeFileSync('news-1599-render.png',Buffer.from(sample,'base64'));ws.close();
           }finally{chrome.kill('SIGTERM')}
           JS
