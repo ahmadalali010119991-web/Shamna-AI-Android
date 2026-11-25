@@ -1,0 +1,47 @@
+name: Verify original Hasibat generator on Cloudflare
+on:
+  push:
+    branches: [midan-book-recovery-20261125]
+    paths: ['.github/workflows/hasibat-live-original-preview.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify pinned assets and actual calculator-generated preview
+        shell: bash
+        run: |
+          set -eu
+          export CHROME_PATH="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          cat > test.mjs <<'JS'
+          import assert from 'node:assert/strict';
+          import {spawn} from 'node:child_process';
+          import {writeFileSync,mkdtempSync} from 'node:fs';
+          import {tmpdir} from 'node:os';
+          import {join} from 'node:path';
+          const chrome=spawn(process.env.CHROME_PATH,['--headless=new','--user-data-dir='+mkdtempSync(join(tmpdir(),'midan-chrome-')),'--no-sandbox','--disable-dev-shm-usage','--remote-debugging-port=9222','--remote-allow-origins=*','--window-size=390,844','about:blank'],{stdio:['ignore','ignore','inherit']});
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          try{
+          let tabs;
+          for(let i=0;i<100;i++){try{tabs=await(await fetch('http://127.0.0.1:9222/json/list')).json();break}catch{await sleep(250)}}
+          assert(tabs?.length,'Chrome startup');const ws=new WebSocket(tabs.find(x=>x.type==='page').webSocketDebuggerUrl);await new Promise((resolve,reject)=>{ws.onopen=resolve;ws.onerror=reject});
+          let seq=0;const pending=new Map();ws.onmessage=e=>{const m=JSON.parse(e.data);const p=pending.get(m.id);if(p){pending.delete(m.id);clearTimeout(p.timer);m.error?p.reject(Error(m.error.message)):p.resolve(m.result)}};
+          function cdp(method,params={}){return new Promise((resolve,reject)=>{const id=++seq,timer=setTimeout(()=>{pending.delete(id);reject(Error('CDP timeout '+method))},120000);pending.set(id,{resolve,reject,timer});ws.send(JSON.stringify({id,method,params}))})}
+          async function ev(expression){const r=await cdp('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result.value}
+          await cdp('Page.enable');await cdp('Page.navigate',{url:'https://midan-hasibat-pilot.midan-khabar.workers.dev/original-renderer/preview.html'});
+          let ready=false;for(let i=0;i<100;i++){try{const state=await ev("document.body?.dataset?.originalReady||document.body?.dataset?.originalError&&'error'||''");if(state==='error')throw Error('original preview failed');ready=state==='1';if(ready)break}catch(e){if(e.message==='original preview failed')throw e}await sleep(500)}assert(ready,'original live calculator preview loaded');
+          const result=await ev("(async()=>{const assets={'share-results.js':'d0a96137f9ee366d88c9cb53cf5657baefc9b3e35f18888002f1246195c2bb37','share-prices.js':'efc99609e4e0488918e52211c775a6364c7565f96c4dcb404567640b92c7e867'};for(const [n,sha] of Object.entries(assets)){const r=await fetch(n);if(!r.ok)throw Error(n+' HTTP '+r.status);const b=await r.arrayBuffer();const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',b)),x=>x.toString(16).padStart(2,'0')).join('');if(digest!==sha)throw Error(n+' wrong SHA')}const img=document.body.querySelector(':scope > img');if(!img||img.naturalWidth!==1080||img.naturalHeight<1000||!img.src.startsWith('data:image/png;base64,'))throw Error('original image missing');window.testPng=img.src.split(',')[1];return {width:img.naturalWidth,height:img.naturalHeight,originalAssetsVerified:true}})()");
+          console.log('LIVE_HASIBAT_ORIGINAL '+JSON.stringify(result));
+          assert(result.width===1080&&result.height>1000&&result.originalAssetsVerified);
+          const sample=await ev("window.testPng");writeFileSync('hasibat-live-preview.png',Buffer.from(sample,'base64'));ws.close();
+          }finally{chrome.kill('SIGTERM')}
+          JS
+          node test.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hasibat-live-preview
+          path: hasibat-live-preview.png
+          retention-days: 3
