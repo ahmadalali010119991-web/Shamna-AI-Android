@@ -1,0 +1,43 @@
+name: Verify original photograph in news card
+on:
+  push:
+    branches: [midan-book-recovery-20261125]
+    paths: ['.github/workflows/midan-photo-card-regression.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check image references and actual returned image bytes
+        run: |
+          python3 - <<'PY'
+          import urllib.request,json
+          base='https://midan-archive.midan-khabar.workers.dev'
+          for mid in [1602,1603,1604]:
+              a=json.load(urllib.request.urlopen(base+'/api/article?mid='+str(mid),timeout=20))['article']
+              assert a['sourcePhotoReference']
+              assert a['imageUrl'].startswith('https://cdn.sananews.sy/')
+              assert a['sharePhotoUrls'][0]=='/media/article-photo/'+str(mid)+'/0',a['sharePhotoUrls']
+              with urllib.request.urlopen(base+a['sharePhotoUrls'][0],timeout=25) as r:
+                  assert r.status==200 and r.headers['Content-Type'].startswith('image/')
+                  data=r.read()
+                  assert len(data)>1000 and data.startswith((b'\xff\xd8\xff',b'\x89PNG'))
+              print('ORIGINAL PHOTO',mid,len(data))
+          PY
+      - name: Render portrait and landscape cards using production studio
+        run: |
+          npm install --no-save playwright
+          npx playwright install chromium
+          node <<'JS'
+          const {chromium}=require('playwright');
+          (async()=>{const browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          const page=await browser.newPage({viewport:{width:1000,height:900}});
+          await page.goto('https://midan-archive.midan-khabar.workers.dev/',{waitUntil:'domcontentloaded',timeout:30000});
+          await page.waitForFunction(()=>window.MidanNewsCardStudio?.render);
+          const results=await page.evaluate(async()=>{const a=(await(await fetch('/api/article?mid=1604')).json()).article;
+          const out=[];for(const mode of ['portrait','landscape']){const r=await window.MidanNewsCardStudio.render({title:a.title,summary:'',source:a.source,date:a.publishedAt,sourceUrl:a.sourceUrl,category:a.category,photo:a.sharePhotoUrls[0],photoFallback:a.imageUrl},mode);if(!r.layout?.photo)throw Error('SOURCE_IMAGE_MISSING');out.push({mode,width:r.canvas.width,height:r.canvas.height,photo:true})}return out});
+          console.log(JSON.stringify(results));await browser.close()})().catch(e=>{console.error(e);process.exit(1)});
+          JS
