@@ -1,78 +1,25 @@
 {
-  "pagesScanned": 3,
-  "approved": 10,
-  "rejected": 17,
+  "pagesScanned": 2,
+  "approved": 1,
+  "rejected": 4,
   "reasons": {
-    "insufficient_news_evidence": 14,
-    "very_short": 3
+    "insufficient_news_evidence": 4
   },
   "excludedUrls": [
-    {
-      "url": "https://t.me/suhebb0/48354",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/48355",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/48356",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/48357",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/48359",
-      "reason": "very_short"
-    },
-    {
-      "url": "https://t.me/suhebb0/48361",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/48362",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/48366",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/48368",
-      "reason": "very_short"
-    },
-    {
-      "url": "https://t.me/suhebb0/48372",
-      "reason": "insufficient_news_evidence"
-    },
     {
       "url": "https://t.me/suhebb0/48373",
       "reason": "insufficient_news_evidence"
     },
     {
-      "url": "https://t.me/suhebb0/48345",
-      "reason": "very_short"
-    },
-    {
-      "url": "https://t.me/suhebb0/48347",
+      "url": "https://t.me/suhebb0/48375",
       "reason": "insufficient_news_evidence"
     },
     {
-      "url": "https://t.me/suhebb0/48349",
+      "url": "https://t.me/suhebb0/48376",
       "reason": "insufficient_news_evidence"
     },
     {
-      "url": "https://t.me/suhebb0/48350",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/48351",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/48352",
+      "url": "https://t.me/suhebb0/48377",
       "reason": "insufficient_news_evidence"
     }
   ]
