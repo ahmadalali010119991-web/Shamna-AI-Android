@@ -37,7 +37,7 @@ export async function runExtractionBatch(db,{limit=3,fetcher=fetch,known}={}){
   }catch(e){
    if(stage==='commit'){outcomes.push({state:'completion_unconfirmed'});continue}
    const msg=String(e?.message||'');const reason=/^http_\d{3}$/.test(msg)||['not_html','empty','too_large','invalid_identity','identity_or_timestamp_mismatch','text_limit','archive_known_review','archive_lookup_incomplete'].includes(msg)?msg:stage+'_unavailable';
-   try{const r=await db.query('SELECT midan_queue.finish_job_v1($1,$2,false,$3) AS saved',[row.job_id,row.lease_token,reason]);outcomes.push({state:r?.rows?.length===1&&r.rows[0].saved===true?'retry_or_blocked':'completion_unconfirmed',reason})}catch{outcomes.push({state:'completion_unconfirmed'})}
+   try{const deferred=stage==='archive';const why=deferred?(reason==='archive_known_review'||reason==='archive_lookup_incomplete'?reason:'archive_unavailable'):reason;const sql=deferred?'SELECT midan_queue.defer_extraction_v1($1,$2,$3) AS saved':'SELECT midan_queue.finish_job_v1($1,$2,false,$3) AS saved';const r=await db.query(sql,[row.job_id,row.lease_token,why]);outcomes.push({state:r?.rows?.length===1&&r.rows[0].saved===true?(deferred?(why==='archive_known_review'?'known_blocked':'archive_deferred'):'retry_or_blocked'):'completion_unconfirmed',reason:why})}catch{outcomes.push({state:'completion_unconfirmed'})}
   }
  }
  return {claimed:rows.length,outcomes};
