@@ -10,7 +10,8 @@ export async function selectVerifiedReplica({primary,replica,verify,authority,no
  };
  let p;try{p=await primary()}catch{p={status:503}};
  if(!p||!Number.isInteger(p.status))return unavailable("invalid_primary_response");
- if(p.status!==200&&p.status!==408&&p.status!==429&&p.status!==502&&p.status!==503&&p.status!==504&&p.status!==500)return unavailable("primary_not_retryable");
+ if(p.status===429||p.quotaLimited===true||p.reason==="quota_limited")return unavailable("quota_limited");
+ if(p.status!==200&&p.status!==408&&p.status!==502&&p.status!==503&&p.status!==504&&p.status!==500)return unavailable("primary_not_retryable");
  let h;try{h=await authority()}catch{return unavailable("authority_unavailable")}
  if(p.status===200){try{if(await valid(p,h))return {state:"primary",snapshot:p.snapshot,publicationAllowed:false}}catch{}}
  let r;try{r=await replica()}catch{return unavailable("replica_unavailable")}
