@@ -8,7 +8,15 @@ async function readPage(r){if(!r.ok)throw Error('http_'+r.status);if(!/text\/htm
 
 function attr(n,key){const a=n.attributes?.filter(x=>x.name.value.toLowerCase()===key)||[];if(a.length>1)throw Error('duplicate_attribute');const v=a[0]?.value?.value;if(v===undefined)return null;return v.replace(/&(?:amp|lt|gt|quot|apos|nbsp|#\d{1,7}|#x[\da-fA-F]{1,6});/g,t=>{const m={'&amp;':'&','&lt;':'<','&gt;':'>','&quot;':'"','&apos;':"'",'&nbsp;':' '};if(Object.hasOwn(m,t))return m[t];const i=t.startsWith('&#x')?parseInt(t.slice(3,-1),16):parseInt(t.slice(2,-1),10);return i>0&&i<=0x10ffff&&!(i>=0xd800&&i<=0xdfff)?String.fromCodePoint(i):t})}
 function visit(nodes,cb){let count=0;const stack=[...nodes].reverse().map(n=>({n,parents:[]}));while(stack.length){const {n,parents}=stack.pop();if(++count>100000||parents.length>128)throw Error('ast_limit');cb(n,parents);if(n.type==='Tag'&&Array.isArray(n.body)){const p=[...parents,n];for(let i=n.body.length-1;i>=0;i--)stack.push({n:n.body[i],parents:p})}}}
-function textOf(n){let out='';visit(n.body||[],(v,parents)=>{if(v.type==='Text'&&!parents.some(x=>['!--','script','style','template'].includes(x.name)))out+=v.value});return cleanParagraph(out)}
+function normalizeHtmlText(raw){
+ const names={amp:'&',lt:'<',gt:'>',quot:'"',apos:"'",nbsp:' ',ldquo:'\u201c',rdquo:'\u201d',lsquo:'\u2018',rsquo:'\u2019',ndash:'\u2013',mdash:'\u2014',hellip:'\u2026',laquo:'\u00ab',raquo:'\u00bb',rlm:'\u200f',lrm:'\u200e',bull:'\u2022',middot:'\u00b7',thinsp:' ',ensp:' ',emsp:' '};
+ const decoded=raw.replace(/&(#(?:x[0-9a-f]{1,6}|[0-9]{1,7})|[A-Za-z][A-Za-z0-9]{1,31});/gi,(all,key)=>{
+ if(key[0]==='#'){const n=key[1].toLowerCase()==='x'?parseInt(key.slice(2),16):parseInt(key.slice(1),10);if(!Number.isInteger(n)||n<32||n>0x10ffff||n>=0xd800&&n<=0xdfff||n>=0x7f&&n<=0x9f)throw Error('unsupported_numeric_entity');return String.fromCodePoint(n)}
+ if(!Object.hasOwn(names,key))throw Error('unsupported_named_entity');return names[key];
+ });
+ return clean(decoded.replace(/[\u200e\u200f]/g,''));
+}
+function textOf(n){let out='';visit(n.body||[],(v,parents)=>{if(v.type==='Text'&&!parents.some(x=>['!--','script','style','template'].includes(x.name)))out+=v.value});return normalizeHtmlText(out)}
 export async function extractSanaNode(row,fetcher=fetch){
  const ident=identity(row.source_url);if(row.source_id!=='sana'||!ident||ident.key!==row.source_key)throw Error('invalid_identity');
  const response=await fetcher(row.source_url,{redirect:'manual',headers:{accept:'text/html'},signal:AbortSignal.timeout(10000)});
