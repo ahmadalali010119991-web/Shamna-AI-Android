@@ -1,0 +1,110 @@
+{
+  "schema": 1,
+  "mode": "staging_metadata_only",
+  "automaticPublication": false,
+  "notes": "Configuration copied from deployed discovery code, not current D1 registry or evidence of redistribution rights. Existing source approvals remain authoritative. No polling enabled.",
+  "sources": [
+    {
+      "id": "sana",
+      "feed": "https://sana.sy/feed/",
+      "role": "syria",
+      "adapter": "existing-sana-rss"
+    },
+    {
+      "id": "aljazeera",
+      "feed": "https://www.aljazeera.net/aljazeerarss/a7c186be-1baa-4bd4-9d80-a84db769f779/73d0e1b4-532f-45ef-b135-bfdff8b8cab9",
+      "role": "regional",
+      "adapter": "existing-aj-rss"
+    },
+    {
+      "id": "suhebb0",
+      "direct": "https://t.me/s/suhebb0",
+      "fallback": "https://raw.githubusercontent.com/ahmadalali010119991-web/Shamna-AI-Android/main/midan-site-snapshot/data/field-news-10h.json",
+      "role": "syria",
+      "adapter": "existing-field-telegram"
+    },
+    {
+      "id": "enabbaladi",
+      "name": "عنب بلدي",
+      "feed": "https://www.enabbaladi.net/feed/",
+      "role": "syria",
+      "hosts": [
+        "enabbaladi.net",
+        "www.enabbaladi.net"
+      ],
+      "adapter": "restored-rss"
+    },
+    {
+      "id": "anadolu",
+      "name": "وكالة الأناضول",
+      "feed": "https://www.aa.com.tr/ar/rss/default?cat=guncel",
+      "role": "regional",
+      "hosts": [
+        "aa.com.tr",
+        "www.aa.com.tr"
+      ],
+      "adapter": "restored-rss"
+    },
+    {
+      "id": "bbc-ar",
+      "name": "بي بي سي عربي",
+      "feed": "https://feeds.bbci.co.uk/arabic/rss.xml",
+      "role": "world",
+      "hosts": [
+        "bbc.com",
+        "www.bbc.com",
+        "bbc.co.uk",
+        "www.bbc.co.uk"
+      ],
+      "adapter": "restored-rss"
+    },
+    {
+      "id": "dw-ar",
+      "name": "دويتشه فيله عربي",
+      "feed": "https://rss.dw.com/rdf/rss-ar-all",
+      "role": "refugees",
+      "hosts": [
+        "dw.com",
+        "www.dw.com"
+      ],
+      "adapter": "restored-rss"
+    },
+    {
+      "id": "france24-ar",
+      "name": "فرانس 24 عربي",
+      "feed": "https://www.france24.com/ar/rss",
+      "role": "regional",
+      "hosts": [
+        "france24.com",
+        "www.france24.com"
+      ],
+      "adapter": "restored-rss"
+    },
+    {
+      "id": "euronews-ar",
+      "name": "يورونيوز عربي",
+      "feed": "https://arabic.euronews.com/rss?level=theme&name=news",
+      "role": "refugees",
+      "hosts": [
+        "arabic.euronews.com"
+      ],
+      "adapter": "restored-rss",
+      "legacyDisabled": true
+    },
+    {
+      "id": "un-ar",
+      "name": "أخبار الأمم المتحدة بالعربية",
+      "feed": "https://news.un.org/feed/subscribe/ar/news/region/middle-east/feed/rss.xml",
+      "role": "regional",
+      "hosts": [
+        "news.un.org"
+      ],
+      "adapter": "restored-rss"
+    }
+  ],
+  "legacyHelper": {
+    "id": "tagesschau",
+    "feed": "https://www.tagesschau.de/infoservices/alle-meldungen-100~rss2.xml",
+    "observedScheduledCall": false
+  }
+}
