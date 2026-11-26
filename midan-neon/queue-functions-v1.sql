@@ -46,4 +46,8 @@ BEGIN
  GET DIAGNOSTICS n=ROW_COUNT; RETURN n;
 END $function$;
 
+REVOKE EXECUTE ON FUNCTION midan_queue.claim_jobs_v1(text,integer,integer) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION midan_queue.finish_job_v1(bigint,uuid,boolean,text) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION midan_queue.recover_exhausted_jobs_v1(integer) FROM PUBLIC;
+
 COMMIT;
