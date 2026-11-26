@@ -1,32 +1,12 @@
 {
   "pagesScanned": 3,
-  "approved": 14,
-  "rejected": 16,
+  "approved": 10,
+  "rejected": 17,
   "reasons": {
     "insufficient_news_evidence": 14,
-    "very_short": 2
+    "very_short": 3
   },
   "excludedUrls": [
-    {
-      "url": "https://t.me/suhebb0/48388",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/48390",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/48391",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/48393",
-      "reason": "very_short"
-    },
-    {
-      "url": "https://t.me/suhebb0/48395",
-      "reason": "insufficient_news_evidence"
-    },
     {
       "url": "https://t.me/suhebb0/48399",
       "reason": "insufficient_news_evidence"
@@ -56,19 +36,43 @@
       "reason": "insufficient_news_evidence"
     },
     {
-      "url": "https://t.me/suhebb0/48380",
+      "url": "https://t.me/suhebb0/48409",
       "reason": "insufficient_news_evidence"
     },
     {
-      "url": "https://t.me/suhebb0/48384",
+      "url": "https://t.me/suhebb0/48410",
       "reason": "insufficient_news_evidence"
     },
     {
-      "url": "https://t.me/suhebb0/48385",
+      "url": "https://t.me/suhebb0/48413",
       "reason": "very_short"
     },
     {
-      "url": "https://t.me/suhebb0/48387",
+      "url": "https://t.me/suhebb0/48414",
+      "reason": "insufficient_news_evidence"
+    },
+    {
+      "url": "https://t.me/suhebb0/48416",
+      "reason": "insufficient_news_evidence"
+    },
+    {
+      "url": "https://t.me/suhebb0/48417",
+      "reason": "very_short"
+    },
+    {
+      "url": "https://t.me/suhebb0/48418",
+      "reason": "insufficient_news_evidence"
+    },
+    {
+      "url": "https://t.me/suhebb0/48419",
+      "reason": "insufficient_news_evidence"
+    },
+    {
+      "url": "https://t.me/suhebb0/48393",
+      "reason": "very_short"
+    },
+    {
+      "url": "https://t.me/suhebb0/48395",
       "reason": "insufficient_news_evidence"
     }
   ]
