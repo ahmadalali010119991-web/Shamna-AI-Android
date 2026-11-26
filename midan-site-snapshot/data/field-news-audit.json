@@ -1,78 +1,35 @@
 {
-  "pagesScanned": 3,
-  "approved": 10,
-  "rejected": 17,
+  "pagesScanned": 2,
+  "approved": 4,
+  "rejected": 6,
   "reasons": {
-    "insufficient_news_evidence": 14,
-    "very_short": 3
+    "insufficient_news_evidence": 4,
+    "promotion": 1,
+    "very_short": 1
   },
   "excludedUrls": [
     {
-      "url": "https://t.me/suhebb0/48399",
+      "url": "https://t.me/suhebb0/48421",
       "reason": "insufficient_news_evidence"
     },
     {
-      "url": "https://t.me/suhebb0/48400",
+      "url": "https://t.me/suhebb0/48424",
       "reason": "insufficient_news_evidence"
     },
     {
-      "url": "https://t.me/suhebb0/48402",
-      "reason": "insufficient_news_evidence"
+      "url": "https://t.me/suhebb0/48426",
+      "reason": "promotion"
     },
     {
-      "url": "https://t.me/suhebb0/48405",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/48406",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/48407",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/48408",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/48409",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/48410",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/48413",
+      "url": "https://t.me/suhebb0/48427",
       "reason": "very_short"
     },
     {
-      "url": "https://t.me/suhebb0/48414",
+      "url": "https://t.me/suhebb0/48428",
       "reason": "insufficient_news_evidence"
     },
     {
-      "url": "https://t.me/suhebb0/48416",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/48417",
-      "reason": "very_short"
-    },
-    {
-      "url": "https://t.me/suhebb0/48418",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/48419",
-      "reason": "insufficient_news_evidence"
-    },
-    {
-      "url": "https://t.me/suhebb0/48393",
-      "reason": "very_short"
-    },
-    {
-      "url": "https://t.me/suhebb0/48395",
+      "url": "https://t.me/suhebb0/48429",
       "reason": "insufficient_news_evidence"
     }
   ]
