@@ -1,27 +1,72 @@
 {
-  "pagesScanned": 2,
-  "approved": 9,
-  "rejected": 5,
+  "pagesScanned": 3,
+  "approved": 11,
+  "rejected": 16,
   "reasons": {
-    "insufficient_news_evidence": 4,
+    "insufficient_news_evidence": 13,
+    "opinion_or_advice": 2,
     "very_short": 1
   },
   "excludedUrls": [
     {
-      "url": "https://t.me/suhebb0/48463",
+      "url": "https://t.me/suhebb0/48478",
       "reason": "insufficient_news_evidence"
     },
     {
-      "url": "https://t.me/suhebb0/48464",
+      "url": "https://t.me/suhebb0/48479",
       "reason": "insufficient_news_evidence"
     },
     {
-      "url": "https://t.me/suhebb0/48468",
+      "url": "https://t.me/suhebb0/48483",
       "reason": "insufficient_news_evidence"
     },
     {
-      "url": "https://t.me/suhebb0/48470",
+      "url": "https://t.me/suhebb0/48484",
+      "reason": "insufficient_news_evidence"
+    },
+    {
+      "url": "https://t.me/suhebb0/48485",
+      "reason": "insufficient_news_evidence"
+    },
+    {
+      "url": "https://t.me/suhebb0/48486",
+      "reason": "insufficient_news_evidence"
+    },
+    {
+      "url": "https://t.me/suhebb0/48487",
+      "reason": "insufficient_news_evidence"
+    },
+    {
+      "url": "https://t.me/suhebb0/48488",
+      "reason": "opinion_or_advice"
+    },
+    {
+      "url": "https://t.me/suhebb0/48490",
+      "reason": "insufficient_news_evidence"
+    },
+    {
+      "url": "https://t.me/suhebb0/48491",
+      "reason": "opinion_or_advice"
+    },
+    {
+      "url": "https://t.me/suhebb0/48493",
+      "reason": "insufficient_news_evidence"
+    },
+    {
+      "url": "https://t.me/suhebb0/48494",
       "reason": "very_short"
+    },
+    {
+      "url": "https://t.me/suhebb0/48495",
+      "reason": "insufficient_news_evidence"
+    },
+    {
+      "url": "https://t.me/suhebb0/48496",
+      "reason": "insufficient_news_evidence"
+    },
+    {
+      "url": "https://t.me/suhebb0/48497",
+      "reason": "insufficient_news_evidence"
     },
     {
       "url": "https://t.me/suhebb0/48471",
